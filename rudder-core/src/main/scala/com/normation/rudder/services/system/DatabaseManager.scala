@@ -55,13 +55,25 @@ trait DatabaseManager {
   
 
   /**
-   * Return the database size
+   * Return the reports database size
    */
   def getDatabaseSize() : Box[Long]
   
+  /**
+   * Return the archive reports database size
+   */
+  def getArchiveSize() : Box[Long]
   
+  /**
+   * Archive reports older than target date in archived reports database
+   * and delete them from reports database
+   */
   def archiveEntries(date : DateTime) : Int
-  
+
+  /**
+   * Delete reports older than target date both in archived reports and reports database
+   */
+  def deleteEntries(date : DateTime) : Int
 }
 
 class DatabaseManagerImpl(
@@ -108,5 +120,18 @@ class DatabaseManagerImpl(
      }
    }
    
+   def getArchiveSize() : Box[Long] = {
+     try {
+       reportsRepository.getArchiveSize()
+     } catch {
+       case e: Exception =>
+         logger.error("Could not compute the size of the database, cause is " + e.getMessage())
+         Failure(e.getMessage())
+     }
+   }
+
    def archiveEntries(date : DateTime) = reportsRepository.archiveEntries(date)
+
+   def deleteEntries(date : DateTime) = reportsRepository.deleteEntries(date)
+
 }
