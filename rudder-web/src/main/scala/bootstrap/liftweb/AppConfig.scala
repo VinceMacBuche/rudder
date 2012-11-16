@@ -1130,9 +1130,12 @@ class AppConfig extends Loggable {
     , reportingService
     , techniqueRepository)
 
+  @Bean
+  def AutomaticReportLogger = new AutomaticReportLogger(reportingService,reportsRepository,ldapRuleRepository,ldapDirectiveRepository,nodeInfoService,1)
   ////////////////////// Snippet plugins & extension register //////////////////////
   import com.normation.plugins.{ SnippetExtensionRegister, SnippetExtensionRegisterImpl }
   @Bean
   def snippetExtensionRegister: SnippetExtensionRegister = new SnippetExtensionRegisterImpl()
 
+  
 }

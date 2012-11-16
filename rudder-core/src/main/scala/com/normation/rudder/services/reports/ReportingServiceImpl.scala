@@ -241,6 +241,19 @@ class ReportingServiceImpl(
     result
   }
   
+  def findReportsAfter(id : Int) : Seq[ExecutionBatch] =   {
+    val expectedRuleReports = confExpectedRepo.findAllCurrentExpectedReports().flatMap(confExpectedRepo.findCurrentExpectedReports(_))
+
+    val result = mutable.Buffer[ExecutionBatch]()
+    
+
+    for (conf <- expectedRuleReports) {
+     createBatchFromConfigurationReports(conf,id).foreach(result+= _)
+    }
+    
+    result
+    
+  }
   
   /************************ Helpers functions **************************************/
   
@@ -274,7 +287,31 @@ class ReportingServiceImpl(
     }
   }
   
-  
+     /**
+   * From a RuleExpectedReports, create batch synthesizing these information by
+   * searching reports in the database from the beginDate to the endDate
+   * @param expectedOperationReports
+   * @param reports
+   * @return
+   */
+  private def createBatchFromConfigurationReports(expectedConfigurationReports : RuleExpectedReports, id:Int) : Option[ExecutionBatch] = {
+    
+    // Fetch the reports corresponding to this rule, and filter them by nodes
+    val reports = reportsRepository.getReportsAfter(id)/*reportsRepository.findReportsByRule(expectedConfigurationReports.ruleId, Some(expectedConfigurationReports.serial), Some(beginDate), endDate).filter( x => 
+            expectedConfigurationReports.nodeIds.contains(x.nodeId)  )  
+*/
+    if (reports.size>0)
+      Some(new ConfigurationExecutionBatch(
+          expectedConfigurationReports.ruleId,
+          expectedConfigurationReports.directiveExpectedReports,
+          expectedConfigurationReports.serial,
+          DateTime.now(),
+          reports,
+          expectedConfigurationReports.nodeIds,
+          expectedConfigurationReports.beginDate, 
+          expectedConfigurationReports.endDate))
+    else None
+  }
   
   /**
    * From a RuleExpectedReports, create batch synthetizing the last run

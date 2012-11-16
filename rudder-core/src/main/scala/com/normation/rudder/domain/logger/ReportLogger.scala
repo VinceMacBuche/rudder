@@ -37,9 +37,31 @@ package com.normation.rudder.domain.logger
 import org.slf4j.LoggerFactory
 import net.liftweb.common.Logger
 import net.liftweb.common.Failure
+import com.normation.rudder.domain.reports.bean.ReportType
+import com.normation.rudder.domain.reports.bean.ErrorReportType
+import com.normation.rudder.domain.reports.bean.RepairedReportType
+import com.normation.rudder.domain.reports.bean.Reports
 
 object ReportLogger extends Logger {
   override protected def _logger = LoggerFactory.getLogger("report")
 }
 
+
+object AllReportLogger extends Logger {
+  override protected def _logger = LoggerFactory.getLogger("log")
+  
+  def FindLogger(reportType : String) :((=> AnyRef) => Unit) = reportType match{ 
+    case Reports.RESULT_ERROR    => ErrorReportLogger.error
+    case Reports.RESULT_REPAIRED => RepairedReportLogger.warn
+    case _ => this.info
+  }
+}
+
+object ErrorReportLogger extends Logger{
+  override protected def _logger = LoggerFactory.getLogger("error")
+}
+
+object RepairedReportLogger extends Logger{
+  override protected def _logger = LoggerFactory.getLogger("repaired")
+}
 

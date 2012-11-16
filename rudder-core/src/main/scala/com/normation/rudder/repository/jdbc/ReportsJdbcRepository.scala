@@ -284,6 +284,22 @@ class ReportsJdbcRepository(jdbcTemplate : JdbcTemplate) extends ReportsReposito
     delete
     
   }
+  
+  def getHighestId : Box[Int] = {
+    val query = "select id from RudderSysEvents order by id desc limit 1"
+    
+    jdbcTemplate.query(query,IdMapper).toSeq match {
+      case seq if seq.size > 1 => Failure("Too many answer for the highest id in the database")
+      case seq => seq.headOption ?~! "No report where found in database (and so, we can not get highest id)"
+      
+    } 
+  }
+  
+  def getReportsAfter(id : Int) : Seq[Reports] = {
+    val query = "%s and id > '%d'".format(baseQuery,id)
+    
+    jdbcTemplate.query(query,ReportsMapper).toSeq;
+  }
 }
 
 
@@ -311,5 +327,10 @@ object ExecutionTimeMapper extends RowMapper[DateTime] {
 object DatabaseSizeMapper extends RowMapper[Long] {
    def mapRow(rs : ResultSet, rowNum: Int) : Long = {
         rs.getLong("size")
+    }
+}
+object IdMapper extends RowMapper[Int] {
+   def mapRow(rs : ResultSet, rowNum: Int) : Int = {
+        rs.getInt("id")
     }
 }

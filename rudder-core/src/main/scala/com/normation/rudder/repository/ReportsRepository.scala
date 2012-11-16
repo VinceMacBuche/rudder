@@ -114,5 +114,7 @@ trait ReportsRepository {
   
   def archiveEntries(date : DateTime) : Int
   
+  def getHighestId : Box[Int]
   
+  def getReportsAfter(id : Int) : Seq[Reports]
 }
