@@ -160,25 +160,25 @@ along with this program. If not, see <http://www.gnu.org/licenses/agpl.html>.
    
    <logger name="report" level="info" additivity="false">
      <appender-ref ref="OPSLOG" />
-     <!-- comment the following appender if you don't want to have logs about report in both stdout and opslog -->
+     <!-- comment the following appender if you don't want to have logs about reports in both stdout and opslog -->
      <appender-ref ref="STDOUT" />
    </logger>
 
    <logger name="application" level="info" additivity="false">
      <appender-ref ref="OPSLOG" />
-     <!-- comment the following appender if you don't want to have logs about report in both stdout and opslog -->
+     <!-- comment the following appender if you don't want to have logs about the webapp in both stdout and opslog -->
      <appender-ref ref="STDOUT" />
    </logger>
 
    <logger name="migration" level="info" additivity="false">
      <appender-ref ref="OPSLOG" />
-     <!-- comment the following appender if you don't want to have logs about report in both stdout and opslog -->
+     <!-- comment the following appender if you don't want to have logs about migration process in both stdout and opslog -->
      <appender-ref ref="STDOUT" />
    </logger>
 
    <logger name="historization" level="info" additivity="false">
      <appender-ref ref="OPSLOG" />
-     <!-- comment the following appender if you don't want to have logs about report in both stdout and opslog -->
+     <!-- comment the following appender if you don't want to have logs about histoization in both stdout and opslog -->
      <appender-ref ref="STDOUT" />
    </logger>
 </configuration>
