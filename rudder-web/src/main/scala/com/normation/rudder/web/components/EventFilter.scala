@@ -1,6 +1,6 @@
 /*
 *************************************************************************************
-* Copyright 2011 Normation SAS
+* Copyright 2012 Normation SAS
 *************************************************************************************
 *
 * This program is free software: you can redistribute it and/or modify
@@ -49,30 +49,35 @@ class EventFilter (
     ) extends DispatchSnippet with Loggable {
     
     def dispatch = { 
-    case "showForm" => { _ => <div id="filterZone">{filter()}</div> }
+    case "showForm" => { _ => <div id="filterZone">      <b> Display event types :</b> {filter()}</div>}
   }
 
     val f = EventLogFilter
 
-    
+      def onclick ="""
+           var actualLevel= levels[level];
+          if(lesslevel.indexOf(actualLevel)==-1) 
+           $('#less').button('disable').blur().removeClass('ui-state-hover');
+      else 
+           $('#less').button('enable');
+          if (morelevel.indexOf(actualLevel)==-1) 
+           $('#more').button('disable').blur().removeClass('ui-state-hover');
+      else 
+                     $('#more').button('enable');
+         console.log($('.'+actualLevel));
+       $('.'+actualLevel).each(function(i,lev){console.log($(lev));$(lev).css('display','inline');});
+        levels.filter(function(x){return x!=actualLevel;}).forEach(function(x){
+          console.log( $('.'+x)); $('.'+x).each(function(i,c){$(c).css('display','none');});   
+        })
+      """
     def filter(filters:List[EventLogFilter]= f.configuration :: f.inventory :: f.intern :: Nil) : NodeSeq = {
-      <div id="filter">
-      <b> Display event types :</b> 
-        <ul style="padding-left:50px">
-        {filters.map(_.display(targetfilter))}
+      <fieldset id="filter" class="filterfieldset filtermainfieldset"><legend><b>filter by event type</b></legend>
+            <span>{SHtml.submit("Less filters...",()=>(),("id","less"),("type","button"),("onclick","level = level-1;"+onclick))}
+      {SHtml.submit("More filters...",()=>(),("id","more"),("type","button"),("onclick","level = level+1;"+onclick))}</span>
+        <ul style="padding-left:25px;display:inline;" >
+        {filters.map(filter => filter.display(targetfilter))}
         </ul>
-      <div>{SHtml.ajaxButton("More filters...",()=>Replace("filter",filter2()))}</div>
-      </div>++Script(JsRaw("var filter = [];"))
-    }
-    
-    def filter2(filters:List[EventLogFilter]= f.Rule :: f.Directive :: f.Node ::  f.intern :: Nil) : NodeSeq = {
-      <div id="filter">
-      <b> Display event types :</b> 
-        <ul style="padding-left:50px">
-        {filters.map(_.display(targetfilter))}
-        </ul>
-      <div>{SHtml.ajaxButton("Less filters...",()=>Replace("filter",filter()))}</div>
-      </div>++Script(JsRaw("var filter = [];"))
+      </fieldset> ++Script(JsRaw("  $('#less').button();  $('#more').button(); var filter = []; var level=0; var levels=['level1','level2','level3']; var lesslevel=['level2','level3'];var morelevel=['level1','level2'];"+onclick))
     }
 
 }
@@ -92,10 +97,32 @@ case class EventLogFilter(
      filter = filter.filter(function(y){ return y!=x; }); } ) }
       $('#%s').dataTable().fnFilter(filter.join('|'),3,true,false);
       """.format(filter,target))
-  def display(target:String) = <li><span> {name} : { SHtml.checkbox(false, (bool) => (),onclick(target))}</span></li>
+  
+  def childs = EventLogFilter.childs(this)
+  def parent = EventLogFilter.parent(this)
+  def display(target:String) = {
+      def level1 = <span> {name} : { SHtml.checkbox(false, (bool) => (),onclick(target))}</span>
+      def level2 = { childs match {
+        case Nil => level1
+        case _ => <fieldset class="filterfieldset"><legend>{name}</legend><ul id={name}>{childs.flatMap(child => <li>{child.oneLevel(target)}</li>)}</ul></fieldset>
+      }
+      }
+      def level3 = {childs match {
+        case Nil => level1
+        case _ =>   <fieldset class="filterfieldset"><legend>{name}</legend><ul id={name}>{childs.map(_.twoLevel(target))}</ul></fieldset>
+      }
+      } 
+    
+    <li class="level1" style="vertical-align:top;"> {level1} </li>    <li class="level2" style="vertical-align:top;" > {level2} </li>    <li class="level3" style="vertical-align:top;">{level3} </li>
+  }
+  def oneLevel(target:String) = <span> {name} : { SHtml.checkbox(false, (bool) => (),onclick(target))}</span>
+  def twoLevel(target:String) = childs match {
+    case Nil => <li>{oneLevel(target)}</li>
+    case _   => <li id={name}><b>{name} :</b><ul style="display:inline">{childs.flatMap( child => <li style="display:inline">{child.oneLevel(target)}</li>)}</ul></li>
+  }
 }
 
-object EventLogFilter{
+case object EventLogFilter{
   def apply(name:String,eventType:EventLogType):EventLogFilter= EventLogFilter(name,List(eventType))
   implicit def toEventType(evtFilters:List[EventLogFilter]):List[EventLogType] = evtFilters.flatMap(_.eventTypes)  
 
@@ -113,7 +140,7 @@ object EventLogFilter{
   val directives = List(addDirective,modDirective,delDirective)
   val Directive = EventLogFilter("Directive",directives)
   val successfulDep = EventLogFilter("Successful",SuccessfulDeploymentEventType)
-  val failedDep = EventLogFilter("Failed",SuccessfulDeploymentEventType)
+  val failedDep = EventLogFilter("Failed",FailedDeploymentEventType)
   val manualDep = EventLogFilter("Manual Start",ManualStartDeployementEventType)
   val deployments = List(successfulDep,failedDep,manualDep)
   val deployment = EventLogFilter("Deployment",deployments)
@@ -159,6 +186,36 @@ object EventLogFilter{
   val autodep = EventLogFilter("Automatic Deployment start",AutomaticStartDeployementEventType)
   val interns = List(user,AppliStart,autodep)
   val intern = EventLogFilter("Internal",interns)
+  
+  def parent(filter:EventLogFilter): EventLogFilter = filter match {
+    case _ if confs.contains(filter) => configuration
+    case _ if techniques.contains(filter) => tech
+    case _ if deployments.contains(filter) => deployment
+    case _ if directives.contains(filter) => Directive
+    case _ if rules.contains(filter) => Rule
+    
+    case _ if inventories.contains(filter) => inventory
+    case _ if groups.contains(filter) => Group
+    case _ if nodes.contains(filter) => Node
+    
+    case _ if interns.contains(filter) => intern
+    case _ if users.contains(filter) => user
+    case _ => filter
+  }
+  
+  def childs(filter:EventLogFilter): List[EventLogFilter] = filter match {
+    case this.configuration => confs
+    case this.tech => techniques
+    case this.deployment => deployments
+    case this.Directive => directives
+    case this.Rule => rules
+    case this.inventory =>  inventories
+    case this.Node => nodes
+    case this.Group => groups
+    case this.intern => interns
+    case this.user => users
+    case _ => Nil
+  }
 }
 
 

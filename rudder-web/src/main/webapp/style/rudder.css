@@ -2489,3 +2489,12 @@ div.ac_results {
 fieldset {
   border: 1px solid #B4B3A8;
 }
+.filtermainfieldset{
+	margin-left:250px;
+    border: 2px ridge #B4B3A8;
+}
+.filterfieldset {
+	display:inline;
+	padding:5px;
+	text-align:right
+}
