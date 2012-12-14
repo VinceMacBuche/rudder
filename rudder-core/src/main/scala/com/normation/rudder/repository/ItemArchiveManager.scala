@@ -60,6 +60,7 @@ import com.normation.eventlog.EventActor
 import com.normation.rudder.domain.policies.DirectiveId
 import net.liftweb.common.Failure
 import com.normation.rudder.domain.policies.ActiveTechniqueId
+import com.normation.eventlog.ModificationId
 
 
 
@@ -125,18 +126,18 @@ trait ItemArchiveManager {
    * Save all items handled by that archive manager 
    * and return an ID for the archive on success. 
    */
-  def exportAll(commiter:PersonIdent, actor:EventActor, reason:Option[String], includeSystem:Boolean = false) : Box[(GitArchiveId, NotArchivedElements)]
+  def exportAll(commiter:PersonIdent, modId: ModificationId, actor:EventActor, reason:Option[String], includeSystem:Boolean = false) : Box[(GitArchiveId, NotArchivedElements)]
   
-  def exportRules(commiter:PersonIdent, actor:EventActor, reason:Option[String], includeSystem:Boolean = false) : Box[GitArchiveId]
+  def exportRules(commiter:PersonIdent, modId: ModificationId, actor:EventActor, reason:Option[String], includeSystem:Boolean = false) : Box[GitArchiveId]
   
   /**
    * Export the technique library. 
    * The strategy in case some directive are in error is to ignore them, keeping error message so that they can be logged/displayed
    * at the end of the process. 
    */
-  def exportTechniqueLibrary(commiter:PersonIdent, actor:EventActor, reason:Option[String], includeSystem:Boolean = false) : Box[(GitArchiveId, NotArchivedElements)]
+  def exportTechniqueLibrary(commiter:PersonIdent, modId: ModificationId, actor:EventActor, reason:Option[String], includeSystem:Boolean = false) : Box[(GitArchiveId, NotArchivedElements)]
   
-  def exportGroupLibrary(commiter:PersonIdent, actor:EventActor, reason:Option[String], includeSystem:Boolean = false) : Box[GitArchiveId]
+  def exportGroupLibrary(commiter:PersonIdent, modId: ModificationId, actor:EventActor, reason:Option[String], includeSystem:Boolean = false) : Box[GitArchiveId]
   
   /**
    * Import the archive with the given ID in Rudder. 
@@ -146,25 +147,25 @@ trait ItemArchiveManager {
    * was required. 
    * 
    */
-  def importAll(archiveId:GitCommitId, actor:EventActor, reason:Option[String], includeSystem:Boolean = false) : Box[GitCommitId]
+  def importAll(archiveId:GitCommitId, modId: ModificationId, actor:EventActor, reason:Option[String], includeSystem:Boolean = false) : Box[GitCommitId]
 
-  def importRules(archiveId:GitCommitId, actor:EventActor, reason:Option[String], includeSystem:Boolean = false) : Box[GitCommitId]
+  def importRules(archiveId:GitCommitId, modId: ModificationId, actor:EventActor, reason:Option[String], includeSystem:Boolean = false) : Box[GitCommitId]
   
-  def importTechniqueLibrary(archiveId:GitCommitId, actor:EventActor, reason:Option[String], includeSystem:Boolean = false) : Box[GitCommitId]
+  def importTechniqueLibrary(archiveId:GitCommitId, modId: ModificationId, actor:EventActor, reason:Option[String], includeSystem:Boolean = false) : Box[GitCommitId]
   
-  def importGroupLibrary(archiveId:GitCommitId, actor:EventActor, reason:Option[String], includeSystem:Boolean = false) : Box[GitCommitId]
+  def importGroupLibrary(archiveId:GitCommitId, modId: ModificationId, actor:EventActor, reason:Option[String], includeSystem:Boolean = false) : Box[GitCommitId]
   
 
   /**
    * Import the item archive from HEAD (corresponding to last commit)
    */
-  def importHeadAll(actor:EventActor, reason:Option[String], includeSystem:Boolean = false) : Box[GitCommitId]
+  def importHeadAll(modId: ModificationId, actor:EventActor, reason:Option[String], includeSystem:Boolean = false) : Box[GitCommitId]
   
-  def importHeadRules(actor:EventActor, reason:Option[String], includeSystem:Boolean = false) : Box[GitCommitId]
+  def importHeadRules(modId: ModificationId, actor:EventActor, reason:Option[String], includeSystem:Boolean = false) : Box[GitCommitId]
   
-  def importHeadTechniqueLibrary(actor:EventActor, reason:Option[String], includeSystem:Boolean = false) : Box[GitCommitId]
+  def importHeadTechniqueLibrary(modId: ModificationId, actor:EventActor, reason:Option[String], includeSystem:Boolean = false) : Box[GitCommitId]
   
-  def importHeadGroupLibrary(actor:EventActor, reason:Option[String], includeSystem:Boolean = false) : Box[GitCommitId]
+  def importHeadGroupLibrary(modId: ModificationId, actor:EventActor, reason:Option[String], includeSystem:Boolean = false) : Box[GitCommitId]
   
   
   /**
@@ -321,7 +322,7 @@ trait GitDirectiveArchiver {
    * saved in git. Else, no modification in git are saved.
    */
   def archiveDirective(
-      directive                 : Directive
+      directive          : Directive
     , ptName             : TechniqueName
     , catIds             : List[ActiveTechniqueCategoryId]
     , variableRootSection: SectionSpec
@@ -334,10 +335,10 @@ trait GitDirectiveArchiver {
    * saved in git. Else, no modification in git are saved.
    */
   def deleteDirective(
-      directiveId     : DirectiveId
-    , ptName   : TechniqueName
-    , catIds   : List[ActiveTechniqueCategoryId]
-    , gitCommit: Option[(PersonIdent,Option[String])]
+      directiveId: DirectiveId
+    , ptName     : TechniqueName
+    , catIds     : List[ActiveTechniqueCategoryId]
+    , gitCommit  : Option[(PersonIdent,Option[String])]
   ) : Box[GitPath]
   
   /**

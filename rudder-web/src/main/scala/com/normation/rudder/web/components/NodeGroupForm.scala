@@ -44,18 +44,15 @@ import com.normation.rudder.services.policies.DependencyAndDeletionService
 import com.normation.rudder.batch.{AsyncDeploymentAgent,AutomaticStartDeployment}
 import com.normation.rudder.domain.eventlog.RudderEventActor
 import com.normation.rudder.authorization._
-
 import net.liftweb.http.js._
-import JsCmds._ // For implicits
+import JsCmds._
 import JE._
 import net.liftweb.common._
 import net.liftweb.http._
 import scala.xml._
 import net.liftweb.util.Helpers
 import net.liftweb.util.Helpers._
-
 import com.normation.rudder.domain.policies.GroupTarget
-
 import com.normation.rudder.web.model.{
   WBTextField, FormTracker, WBTextAreaField,WBSelectField,WBRadioField
 }
@@ -67,6 +64,8 @@ import com.normation.rudder.web.model.CurrentUser
 import com.normation.rudder.web.services.UserPropertyService
 import com.normation.rudder.web.components.popup.CreateCloneGroupPopup
 import com.normation.utils.HashcodeCaching
+import com.normation.eventlog.ModificationId
+import com.normation.utils.StringUuidGenerator
 
 object NodeGroupForm {
   
@@ -136,12 +135,13 @@ class NodeGroupForm(
   // the argument, and I need to change the object when it is created (from None to Some(x)
   private[this] var _nodeGroup = nodeGroup.map(x => x.copy())
   
-  private[this] val nodeGroupRepository = inject[NodeGroupRepository]
+  private[this] val nodeGroupRepository     = inject[NodeGroupRepository]
   private[this] val groupCategoryRepository = inject[NodeGroupCategoryRepository]
-  private[this] val nodeInfoService = inject[NodeInfoService]
-  private[this] val dependencyService = inject[DependencyAndDeletionService]
-  private[this] val asyncDeploymentAgent = inject[AsyncDeploymentAgent]
-  private[this] val userPropertyService = inject[UserPropertyService]
+  private[this] val nodeInfoService         = inject[NodeInfoService]
+  private[this] val dependencyService       = inject[DependencyAndDeletionService]
+  private[this] val asyncDeploymentAgent    = inject[AsyncDeploymentAgent]
+  private[this] val userPropertyService     = inject[UserPropertyService]
+  private[this] val uuidGen                 = inject[StringUuidGenerator]
   
   val categories = groupCategoryRepository.getAllNonSystemCategories
   
@@ -323,10 +323,11 @@ class NodeGroupForm(
       } else {
         JsRaw("$.modal.close();") &
         {
+          val modId = ModificationId(uuidGen.newUuid)
           (for {
-            deleted <- dependencyService.cascadeDeleteTarget(target, CurrentUser.getActor, crReasonsRemovePopup.map(_.is))
+            deleted <- dependencyService.cascadeDeleteTarget(target, modId, CurrentUser.getActor, crReasonsRemovePopup.map(_.is))
             deploy <- {
-              asyncDeploymentAgent ! AutomaticStartDeployment(RudderEventActor)
+              asyncDeploymentAgent ! AutomaticStartDeployment(modId, RudderEventActor)
               Full("Deployment request sent")
             }
           } yield {
@@ -570,7 +571,20 @@ class NodeGroupForm(
    * @return
    */
   private def createGroup(name : String, description : String, query : Query, isDynamic : Boolean, nodeList : List[NodeId], container: String ) : JsCmd = {
-    nodeGroupRepository.createNodeGroup(name, description, Some(query), isDynamic, nodeList.toSet, new NodeGroupCategoryId(container), true, CurrentUser.getActor, Some("Group created by user")) match {
+    val createGroup = nodeGroupRepository.createNodeGroup(
+                          name
+                        , description
+                        , Some(query)
+                        , isDynamic
+                        , nodeList.toSet
+                        , new NodeGroupCategoryId(container)
+                        , true
+                        , ModificationId(uuidGen.newUuid)
+                        , CurrentUser.getActor
+                        , Some("Group created by user")
+                      ) 
+    
+    createGroup match {
         case Full(x) => 
           _nodeGroup = Some(x.group)
           
@@ -602,13 +616,14 @@ class NodeGroupForm(
    */
   private def updateGroup(originalNodeGroup : NodeGroup, name : String, description : String, query : Query, isDynamic : Boolean, nodeList : List[NodeId], container:String, isEnabled : Boolean = true ) : JsCmd = {
     val newNodeGroup = new NodeGroup(originalNodeGroup.id, name, description, Some(query), isDynamic, nodeList.toSet, isEnabled, originalNodeGroup.isSystem)
+    val modId = ModificationId(uuidGen.newUuid)
     (for {
-      moved <- nodeGroupRepository.move(originalNodeGroup, NodeGroupCategoryId(container), CurrentUser.getActor, crReasons.map(_.is)) ?~! 
+      moved <- nodeGroupRepository.move(originalNodeGroup, NodeGroupCategoryId(container), modId, CurrentUser.getActor, crReasons.map(_.is)) ?~! 
                "Error when moving NodeGroup %s ('%s') to '%s'".format(originalNodeGroup.id, originalNodeGroup.name, container)
-      saved <- nodeGroupRepository.update(newNodeGroup, CurrentUser.getActor, crReasons.map(_.is)) ?~! 
+      saved <- nodeGroupRepository.update(newNodeGroup, modId, CurrentUser.getActor, crReasons.map(_.is)) ?~! 
                "Error when updating the group %s".format(originalNodeGroup.id)
       deploy <- {
-        asyncDeploymentAgent ! AutomaticStartDeployment(RudderEventActor)
+        asyncDeploymentAgent ! AutomaticStartDeployment(modId, RudderEventActor)
         Full("Deployment request sent")
       }
     } yield {
