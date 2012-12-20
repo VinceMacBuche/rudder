@@ -112,6 +112,7 @@ class CreateCloneGroupPopup(
               Nil
             )
           , NodeGroupCategoryId(piContainer.is)
+          , ModificationId(uuidGen.newUuid)
           , CurrentUser.getActor
           , Some("Node Group Category created by user from UI")
         ) match {

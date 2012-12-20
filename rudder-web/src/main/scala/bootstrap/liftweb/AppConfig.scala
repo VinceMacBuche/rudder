@@ -103,6 +103,10 @@ import com.normation.rudder.migration.EventLogsMigration_10_2
 import com.normation.rudder.migration.DefaultXmlEventLogMigration
 import com.normation.rudder.migration.XmlMigration_10_2
 import com.normation.rudder.migration.EventLogMigration_10_2
+import com.normation.rudder.repository.GitModificationRepository
+import com.normation.rudder.repository.squeryl.GitModificationSquerylRepository
+import com.normation.rudder.services.modification.ModificationService
+import com.normation.rudder.repository.ItemArchiveManager
 
 /**
  * Spring configuration for services
@@ -298,6 +302,8 @@ class AppConfig extends Loggable {
   
   
   ///// items archivers - services that allows to transform items to XML and save then on a Git FS /////
+  @Bean 
+  def gitModificationRepository = new GitModificationSquerylRepository(squerylDatasourceProvider)
   
   @Bean
   def gitRuleArchiver: GitRuleArchiver = new GitRuleArchiverImpl(
@@ -306,6 +312,7 @@ class AppConfig extends Loggable {
     , ruleSerialisation
     , rulesDirectoryName
     , prettyPrinter
+    , gitModificationRepository
   )
   
   @Bean
@@ -315,6 +322,7 @@ class AppConfig extends Loggable {
     , activeTechniqueCategorySerialisation
     , userLibraryDirectoryName
     , prettyPrinter
+    , gitModificationRepository
   )
   
   @Bean
@@ -324,6 +332,7 @@ class AppConfig extends Loggable {
     , activeTechniqueSerialisation
     , userLibraryDirectoryName
     , prettyPrinter
+    , gitModificationRepository
   )
   
   @Bean
@@ -333,6 +342,7 @@ class AppConfig extends Loggable {
     , directiveSerialisation
     , userLibraryDirectoryName
     , prettyPrinter
+    , gitModificationRepository
   )
   
   @Bean
@@ -342,6 +352,7 @@ class AppConfig extends Loggable {
     , nodeGroupCategorySerialisation
     , groupLibraryDirectoryName
     , prettyPrinter
+    , gitModificationRepository
   )
     
   @Bean
@@ -351,6 +362,7 @@ class AppConfig extends Loggable {
     , nodeGroupSerialisation
     , groupLibraryDirectoryName
     , prettyPrinter
+    , gitModificationRepository
   )
   
   @Bean
@@ -725,7 +737,9 @@ class AppConfig extends Loggable {
   def srvGrid = new SrvGrid
 
   @Bean
-  def eventListDisplayer = new EventListDisplayer(eventLogDetailsService, logRepository, ldapNodeGroupRepository, ldapDirectiveRepository, nodeInfoService)
+  def modificationService = new ModificationService(logRepository,gitModificationRepository,itemArchiveManager,uuidGen)
+  @Bean
+  def eventListDisplayer = new EventListDisplayer(eventLogDetailsService, logRepository, ldapNodeGroupRepository, ldapDirectiveRepository, nodeInfoService,modificationService)
   
   @Bean
   def fileManager = new FileManager(UPLOAD_ROOT_DIRECTORY)
