@@ -125,6 +125,7 @@ CREATE TABLE EventLog (
     creationDate timestamp with time zone NOT NULL DEFAULT 'now',
     severity integer,
     causeId integer,
+    modificationId text,
     principal varchar(64),
     reason text,
     eventType varchar(64),
@@ -238,4 +239,9 @@ CREATE TABLE MigrationEventLog(
 , migrationEndTime    timestamp with time zone 
 , migrationFileFormat integer
 , description         text
+);
+
+CREATE TABLE gitCommit(
+  gitcommit text PRIMARY KEY
+, modificationid text
 );
