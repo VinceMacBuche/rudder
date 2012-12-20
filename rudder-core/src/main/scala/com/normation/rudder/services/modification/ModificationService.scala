@@ -8,7 +8,7 @@ import com.normation.utils.StringUuidGenerator
 class ModificationService(
       eventLogRepository : EventLogRepository
     , gitModificationRepository : GitModificationRepository
-    , itemArchiverManager : ItemArchiveManager
+    , itemArchiveManager : ItemArchiveManager
     , uuidGen : StringUuidGenerator ) {
 
   def getCommitsfromEventLog(eventLog:EventLog) : Option[GitCommitId] = {
@@ -25,8 +25,16 @@ class ModificationService(
   
   def restoreToEventLog(eventLog:EventLog) = {
     getCommitsfromEventLog(eventLog) match {
-      case Some(commit) => itemArchiverManager.importAll(commit, ModificationId(uuidGen.newUuid), eventLog.principal, None, false)
+      case Some(commit) => itemArchiveManager.importAll(commit, ModificationId(uuidGen.newUuid), eventLog.principal, None, false)
       case None => Failure("could not restore eventLog %s".format(eventLog.eventDetails))
+    }
+  }
+  
+  def restoreBeforeEventLog(eventLog:EventLog) = {
+    getCommitsfromEventLog(eventLog) match {
+    case Some(commit) => val parentCommit = GitCommitId(commit.value+"^")
+        itemArchiveManager.importAll(parentCommit, ModificationId(uuidGen.newUuid), eventLog.principal, None, false)
+      case None => Failure("could not restore before eventLog %s".format(eventLog.eventDetails))
     }
   }
 }
