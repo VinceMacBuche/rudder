@@ -57,6 +57,7 @@ import com.normation.rudder.batch.ErrorStatus
 import com.normation.rudder.repository._
 import bootstrap.liftweb.LiftSpringApplicationContext.inject
 import com.normation.rudder.services.nodes.NodeInfoService
+import com.normation.rudder.services.modification.ModificationService
 
 /**
  * Used to display the event list, in the pending modification (AsyncDeployment), 
@@ -68,6 +69,7 @@ class EventListDisplayer(
     , nodeGroupRepository : NodeGroupRepository
     , directiveRepository : DirectiveRepository
     , nodeInfoService     : NodeInfoService
+    , modificationService : ModificationService
 ) extends Loggable {
   
   private[this] val xmlPretty = new scala.xml.PrettyPrinter(80, 2)
@@ -92,8 +94,25 @@ class EventListDisplayer(
         } &
         ".logId *" #> event.id.getOrElse(0).toString &
         ".logDatetime *" #> DateFormaterService.getFormatedDate(event.creationDate) &
-        ".logActor *" #> event.principal.name &
+        ".logActor *" #> event.principal.name & 
         ".logType *" #> S.?("rudder.log.eventType.names." + event.eventType.serialize) &
+        ".logRestoreAction *" #> {
+            if (event.canRollBack)
+              modificationService.getCommitsfromEventLog(event).map{ commit => 
+                SHtml.ajaxButton("Restore To", () => {
+                  modificationService.restoreToEventLog(event)
+                  Alert("restored to %s".format(commit.value) ) 
+                  }, ("class","restore") 
+                ) ++ SHtml.ajaxButton("Restore Before"
+                    , () => { 
+                      modificationService.restoreBeforeEventLog(event)
+                      Alert("restored before %s".format(commit.value))
+                      }
+                    , ("class","restore") )
+                  }.getOrElse(NodeSeq.Empty)
+                  else
+                    NodeSeq.Empty
+                    } &
         ".logDescription *" #> displayDescription(event) 
       })
      )(dataTableXml(gridName)) 
@@ -105,6 +124,8 @@ class EventListDisplayer(
     JsRaw("var %s;".format(jsGridName)) &
     OnLoad(
         JsRaw("""
+            $('.restore').button();
+            correctButtons();
           /* Event handler function */
           #table_var# = $('#%s').dataTable({
             "asStripClasses": [ 'color1', 'color2' ],
@@ -124,6 +145,7 @@ class EventListDisplayer(
               , { "sWidth": "35px" }
               , { "sWidth": "195px" }
               , { "sWidth": "220px" }
+              , { "sWidth": "200px" }
             ],
             "sDom": '<"dataTables_wrapper_top"fl>rt<"dataTables_wrapper_bottom"ip>'
           })
@@ -202,6 +224,7 @@ class EventListDisplayer(
             <th>Actor</th>
             <th>Event Type</th>
             <th>Description</th>
+            <th>Restore</th>
           </tr>
         </thead>
     
@@ -212,6 +235,7 @@ class EventListDisplayer(
             <td class="logActor">[actor of the event]</td>
             <td class="logType">[type of event]</td>
             <td class="logDescription">[some user readable info]</td>
+            <td class="logRestoreAction" style="text-align:center;">[some action to restore configuration]</td>
           </tr>
         </tbody>
       </table>
