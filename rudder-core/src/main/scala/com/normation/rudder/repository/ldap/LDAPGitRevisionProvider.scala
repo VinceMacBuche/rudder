@@ -74,13 +74,13 @@ class LDAPGitRevisionProvider(
           "to use where found, init to last available from Git repository")
         val id = getAvailableRevTreeId
         setCurrentRevTreeId(id)
-        gitRepo.db.resolve(refPath)
+        id
       case f: Failure =>
         logger.error("Error when trying to read persisted version of the current technique " +
           "reference library revision to use. Use the last available from Git.", f)
         val id = getAvailableRevTreeId
         setCurrentRevTreeId(id)
-        gitRepo.db.resolve(refPath)
+        id
     }
   }
 
@@ -95,7 +95,7 @@ class LDAPGitRevisionProvider(
     }
   }
 
-  override def currentRevTreeId = getAvailableRevTreeId
+  override def currentRevTreeId = currentId
 
   override def setCurrentRevTreeId(id: ObjectId): Unit = {
     ldap.foreach { con =>

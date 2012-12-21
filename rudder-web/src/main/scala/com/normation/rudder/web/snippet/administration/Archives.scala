@@ -267,7 +267,7 @@ class Archives extends DispatchSnippet with Loggable {
     def buildCommitIdList : List[(Option[GitCommitId], String )] = {
       val baseOptions: List[(Option[GitCommitId], String )] = 
         ( None, "Choose an archive to restore...") ::
-        ( Some(GitCommitId(gitRevisionProvider.getAvailableRevTreeId.name)) , "Latest Git commit") ::
+        ( Some(GitCommitId("HEAD")) , "Latest Git commit") ::
         Nil
       
       //and perhaps we have also some dates/rev tags
@@ -296,8 +296,7 @@ class Archives extends DispatchSnippet with Loggable {
     } &
     ("#"+archiveDateSelectId) #> {
       //we have at least "Choose an archive to restore..." and "get archive from current Git HEAD"
-      SHtml.selectObj[Option[GitCommitId]](buildCommitIdList, Full(selectedCommitId), { id => logger.warn(id)
-        selectedCommitId = id}, ("id" -> archiveDateSelectId) )
+      SHtml.selectObj[Option[GitCommitId]](buildCommitIdList, Full(selectedCommitId), { id => selectedCommitId = id}, ("id" -> archiveDateSelectId) )
     } &
     ("#"+restoreButtonId) #> { 
       SHtml.ajaxSubmit(restoreButtonName, restore _, ("id" -> restoreButtonId), ("disabled" -> "disabled") ) ++ 
