@@ -176,7 +176,7 @@ class Archives extends DispatchSnippet with Loggable {
     , archiveListFunction       : () => Box[Map[DateTime,GitArchiveId]]
     , restoreButtonId           : String               //input button id to restore an archive
     , restoreButtonName         : String               //what is displayed on the button to the user
-    , restoreFunction           : (GitCommitId, EventActor, Option[String], Boolean) => Box[GitCommitId] //the actual logic to execute the action
+    , restoreFunction           : (GitCommitId, PersonIdent, EventActor, Option[String], Boolean) => Box[GitCommitId] //the actual logic to execute the action
     , restoreErrorMessage       : String               //error message to display to the user
     , restoreSuccessDebugMessage: String               //debug log - the string param is the archive id
     , downloadButtonId          : String               //input button id to download the zip of an archive
@@ -243,7 +243,11 @@ class Archives extends DispatchSnippet with Loggable {
       S.clearCurrentNotices
       selectedCommitId match {
         case None    => error(Empty, "A valid archive must be chosen")
-        case Some(commit) => restoreFunction(commit, CurrentUser.getActor, Some("User requested archive restoration"), false) match {
+        case Some(commit) => (for {
+           commiter <- personIdentService.getPersonIdentOrDefault(CurrentUser.getActor.name)
+           archive <- restoreFunction(commit, commiter, CurrentUser.getActor, Some("User requested archive restoration"), false)
+        } yield {
+          archive }  ) match {
           case eb:EmptyBox => error(eb, restoreErrorMessage)
           case Full( _ )   => success(restoreSuccessDebugMessage, noElements)
         }
@@ -292,7 +296,8 @@ class Archives extends DispatchSnippet with Loggable {
     } &
     ("#"+archiveDateSelectId) #> {
       //we have at least "Choose an archive to restore..." and "get archive from current Git HEAD"
-      SHtml.selectObj[Option[GitCommitId]](buildCommitIdList, Full(selectedCommitId), { id => selectedCommitId = id}, ("id" -> archiveDateSelectId) )
+      SHtml.selectObj[Option[GitCommitId]](buildCommitIdList, Full(selectedCommitId), { id => logger.warn(id)
+        selectedCommitId = id}, ("id" -> archiveDateSelectId) )
     } &
     ("#"+restoreButtonId) #> { 
       SHtml.ajaxSubmit(restoreButtonName, restore _, ("id" -> restoreButtonId), ("disabled" -> "disabled") ) ++ 

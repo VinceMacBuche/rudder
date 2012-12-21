@@ -135,6 +135,8 @@ object GitFindUtils extends Loggable {
     } else {
       val rw = new RevWalk(db)
       val id = rw.parseTree(tree).getId
+      logger.info(tree)
+      logger.info(revString)
       rw.dispose
       Full(id)
     }

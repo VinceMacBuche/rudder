@@ -67,19 +67,20 @@ class LDAPGitRevisionProvider(
     } yield {
       refLib
     }) match {
-      case Full(id) => ObjectId.fromString(id)
+      case Full(id) => logger.info(id)
+        ObjectId.fromString(id)
       case Empty =>
         logger.info("No persisted version of the current technique reference library revision " +
           "to use where found, init to last available from Git repository")
         val id = getAvailableRevTreeId
         setCurrentRevTreeId(id)
-        id
+        gitRepo.db.resolve(refPath)
       case f: Failure =>
         logger.error("Error when trying to read persisted version of the current technique " +
           "reference library revision to use. Use the last available from Git.", f)
         val id = getAvailableRevTreeId
         setCurrentRevTreeId(id)
-        id
+        gitRepo.db.resolve(refPath)
     }
   }
 
@@ -94,7 +95,7 @@ class LDAPGitRevisionProvider(
     }
   }
 
-  override def currentRevTreeId = currentId
+  override def currentRevTreeId = getAvailableRevTreeId
 
   override def setCurrentRevTreeId(id: ObjectId): Unit = {
     ldap.foreach { con =>

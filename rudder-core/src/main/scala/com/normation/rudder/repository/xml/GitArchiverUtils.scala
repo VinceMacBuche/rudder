@@ -178,6 +178,18 @@ trait GitArchiverFullCommitUtils extends Loggable {
     }
   }
   
+  
+  def commitOldCommitAtHead(commiter:PersonIdent, commitMessage:String, commit:GitCommitId) = {
+    tryo {
+      val rm = gitRepo.git.rm.addFilepattern(".").call
+      logger.info(rm)
+      val checkout = gitRepo.git.checkout.setStartPoint(commit.value).addPath(".").call
+      logger.info(checkout)
+      val newCommit = gitRepo.git.commit.setCommitter(commiter).setMessage(commitMessage).call
+      logger.info(newCommit)
+      newCommit
+    }
+  } 
   /**
    * List tags and their date for that use of commitFullGitPathContentAndTag
    * The DateTime is the one from the name, which may differ from the 
