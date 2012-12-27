@@ -173,7 +173,7 @@ trait GitArchiverFullCommitUtils extends Loggable {
       val tagCommit = gitRepo.git.tag.setMessage(commitMessage).
         setName(path.value).
         setTagger(commiter).
-        setObjectId(commit).call
+        setObjectId(commit).call()
       GitArchiveId(path, GitCommitId(commit.getName), commiter)
     }
   }
