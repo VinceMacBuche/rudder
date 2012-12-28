@@ -245,7 +245,7 @@ class Archives extends DispatchSnippet with Loggable {
         case None    => error(Empty, "A valid archive must be chosen")
         case Some(commit) => (for {
            commiter <- personIdentService.getPersonIdentOrDefault(CurrentUser.getActor.name)
-           archive <- restoreFunction(commit, commiter, CurrentUser.getActor, Some("User requested archive restoration"), false)
+           archive <- restoreFunction(commit, commiter, CurrentUser.getActor, Some("User requested archive restoration to commit %s".format(commit.value)), false)
         } yield {
           archive }  ) match {
           case eb:EmptyBox => error(eb, restoreErrorMessage)

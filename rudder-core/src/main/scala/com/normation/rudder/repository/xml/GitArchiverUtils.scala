@@ -181,12 +181,11 @@ trait GitArchiverFullCommitUtils extends Loggable {
   
   def commitOldCommitAtHead(commiter:PersonIdent, commitMessage:String, commit:GitCommitId) = {
     tryo {
-      val rm = gitRepo.git.rm.addFilepattern("rules/").addFilepattern("groups/").addFilepattern("directives/").addFilepattern("techniques/").addFilepattern("shared-files/").addFilepattern("configuration-repository/")
+      val rm = gitRepo.git.rm.addFilepattern("rules/").addFilepattern("groups/").addFilepattern("directives/").addFilepattern("techniques/")
             val rmbis = rm.call()
  val status = gitRepo.git.status().call()
  logger.info("rm is %s, entryCount is %d, status is %s".format(rm,rmbis.getEntryCount(),status.getRemoved()))
-      //gitRepo.git.commit.setCommitter(commiter).setMessage("rm all files").call
-      val checkout = gitRepo.git.checkout.setStartPoint(commit.value).addPath("rules/").addPath("groups/").addPath("directives/").addPath("techniques/").addPath("shared-files/").setCreateBranch(true).setName("master")
+      val checkout = gitRepo.git.checkout.setStartPoint(commit.value).addPath("rules/").addPath("groups/").addPath("directives/").addPath("techniques/").setCreateBranch(true).setName("master")
          logger.info("checkout to commit %s, checkout is %s, result is %s, call is %s".format(commit.value, checkout, checkout.getResult(),checkout.call()))
       val newCommit = gitRepo.git.commit.setCommitter(commiter).setMessage(commitMessage).call
       logger.info(newCommit)
