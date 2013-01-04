@@ -47,10 +47,10 @@ class GitModificationSquerylRepository(
              where(entry.ModificationId === modificationId.value)
           select(entry.id)
               )
-       if (q.size == 1)
-       Full(Some((GitCommitId(q.single))))
-       else
-         Full(None)
+       if (q.size <= 1)
+         Full(q.headOption.map(GitCommitId))
+       else 
+         Failure("Multiple commits for a modification, this should not be possible")
        }
   } catch {
     case e : Exception => 
