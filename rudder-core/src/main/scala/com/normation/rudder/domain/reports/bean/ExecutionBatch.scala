@@ -106,7 +106,7 @@ object ConfigurationExecutionBatch {
  * The execution batch for a rule, still a lot of intelligence to add within
  * 
  */
-class ConfigurationExecutionBatch( 
+case class ConfigurationExecutionBatch( 
     val ruleId                  : RuleId
   , val directiveExpectedReports: Seq[DirectiveExpectedReports]
   , val serial                  : Int

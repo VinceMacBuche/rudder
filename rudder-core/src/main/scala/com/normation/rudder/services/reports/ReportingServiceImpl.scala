@@ -158,9 +158,10 @@ class ReportingServiceImpl(
     
     // look in the configuration
     var expectedConfigurationReports = confExpectedRepo.findExpectedReports(ruleId, beginDate, endDate)
-        
+
     for (expected <- expectedConfigurationReports) {
-      result ++= createBatchesFromConfigurationReports(expected, expected.beginDate, expected.endDate)
+          val end = if (endDate.isDefined) endDate else expected.endDate
+      result ++= createBatchesFromConfigurationReports(expected, beginDate.getOrElse(expected.beginDate), end)
     }
 
     result
@@ -255,23 +256,29 @@ class ReportingServiceImpl(
   private def createBatchesFromConfigurationReports(expectedConfigurationReports : RuleExpectedReports, beginDate : DateTime, endDate : Option[DateTime]) : Seq[ExecutionBatch] = {
     val batches = mutable.Buffer[ExecutionBatch]()
     
+    def fillWithEmptyBatches = ()
+    
     // Fetch the reports corresponding to this rule, and filter them by nodes
     val reports = reportsRepository.findReportsByRule(expectedConfigurationReports.ruleId, Some(expectedConfigurationReports.serial), Some(beginDate), endDate).filter( x => 
             expectedConfigurationReports.nodeIds.contains(x.nodeId)  )  
 
-    for {
-      (rule,date) <- reports.map(x => (x.ruleId ->  x.executionTimestamp)).toSet[(RuleId, DateTime)].toSeq
+    val receivedReports = for {
+      (rule,date)     <- reports.map(x => (x.ruleId ->  x.executionTimestamp)).toSet[(RuleId, DateTime)].toSeq
+      filteredReports = reports.filter(x => x.executionTimestamp == date)
+      filteredNodes   = filteredReports.map(_.nodeId).distinct
     } yield {
       new ConfigurationExecutionBatch(
           rule,
           expectedConfigurationReports.directiveExpectedReports,
           expectedConfigurationReports.serial,
           date,
-          reports.filter(x => x.executionTimestamp == date), // we want only those of this run
-          expectedConfigurationReports.nodeIds,
+          filteredReports, // we want only those of this run
+          filteredNodes,
           expectedConfigurationReports.beginDate, 
           expectedConfigurationReports.endDate)
     }
+    
+    receivedReports.sortWith((exec1,exec2) => exec1.executionTime.isBefore(exec2.executionTime))
   }
   
   
