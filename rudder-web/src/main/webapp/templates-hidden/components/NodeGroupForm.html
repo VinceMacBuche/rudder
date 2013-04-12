@@ -43,6 +43,59 @@
 </component:staticBody>
 
 <component:body>
-<!--  TODO!  -->
+<div id="GroupTabs">
+  <ul id="groupTabMenu">
+    <li><a href="#groupParametersTab">Group parameters</a></li>
+  </ul>
+  
+  <div id="groupParametersTab">
+
+       <div class="inner-portlet">
+         <div>
+           <div class="inner-portlet-header">
+             Group details
+           </div>
+           <div class="inner-portlet-content" style="display: inline-block">
+             <group:notifications />
+             <hr class="spacer"/>
+             <group:name/>
+             <hr class="spacer"/>
+             <group:container/>
+             <hr class="spacer"/>
+             <group:static/>
+             <hr class="spacer"/>
+             <group:description/>
+             <hr class="spacer"/>
+             <group:rudderID/>
+             <hr class="spacer"/>
+             <fieldset class="searchNodes"><legend>Group criteria</legend>
+               <div id="SearchNodes">
+                 <group:showGroup />
+               </div>
+             </fieldset>
+<!--
+             <lift:authz role="group_edit">
+               <group:reason />
+             </lift:authz>
+-->
+             <div >
+               <div class="margins" align="right" style="overflow:hidden;display:block;">
+                 <div style="float:left" align="left">
+                 <lift:authz role="group_write"><group:clone/></lift:authz>
+                 <lift:authz role="group_write"><group:delete/></lift:authz>
+               </div>
+               <div style="float:right" align="right">
+                 <group:save/>
+               </div>
+             </div>
+           </div>
+        </div>
+      </div>
+     </div>
+<!--
+    <group:removeForm/>
+-->
+  </div>   
+</div>
 </component:body>
 </xml:group>
