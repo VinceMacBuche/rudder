@@ -212,9 +212,7 @@ trait WoNodeGroupRepository {
    *
    * return the newly created server group
    */
-  def createNodeGroup( name:String, description : String, q: Option[Query],
-        isDynamic : Boolean, srvList : Set[NodeId], into: NodeGroupCategoryId,
-                       isEnabled : Boolean, modId: ModificationId, actor:EventActor, why: Option[String]): Box[AddNodeGroupDiff]
+  def create(group: NodeGroup, into: NodeGroupCategoryId, modId: ModificationId, actor:EventActor, why: Option[String]): Box[AddNodeGroupDiff]
 
 
   /**

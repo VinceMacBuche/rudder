@@ -632,22 +632,22 @@ class WoLDAPNodeGroupRepository(
     }
   }
 
-  override def createNodeGroup(name: String, description: String, q: Option[Query], isDynamic: Boolean, srvList: Set[NodeId], into: NodeGroupCategoryId, isEnabled : Boolean, modId: ModificationId, actor:EventActor, reason:Option[String]): Box[AddNodeGroupDiff] = {
+  override def create(nodeGroup: NodeGroup, into: NodeGroupCategoryId, modId: ModificationId, actor:EventActor, reason:Option[String]): Box[AddNodeGroupDiff] = {
     for {
       con           <- ldap
-      exists        <- if (nodeGroupExists(con, name)) Failure("Cannot create a group with name %s : there is already a group with the same name".format(name))
+      exists        <- if (nodeGroupExists(con, nodeGroup.name)) Failure("Cannot create a group with name %s : there is already a group with the same name".format(nodeGroup.name))
                        else Full(Unit)
       categoryEntry <- getCategoryEntry(con, into) ?~! "Entry with ID '%s' was not found".format(into)
-      uuid          = uuidGen.newUuid
-      nodeGroup     = NodeGroup(NodeGroupId(uuid), name, description, q, isDynamic, srvList, isEnabled, false)
-      entry         = rudderDit.GROUP.groupModel(uuid,
-                                categoryEntry.dn,
-                                name,
-                                description,
-                                q,
-                                isDynamic,
-                                srvList,
-                                isEnabled)
+      entry         =  rudderDit.GROUP.groupModel(
+                           nodeGroup.id.value
+                         , categoryEntry.dn
+                         , nodeGroup.name
+                         , nodeGroup.description
+                         , nodeGroup.query
+                         , nodeGroup.isDynamic
+                         , nodeGroup.serverList
+                         , nodeGroup.isEnabled
+                       )
       result        <- groupLibMutex.writeLock { con.save(entry, true) }
       diff          <- diffMapper.addChangeRecords2NodeGroupDiff(entry.dn, result)
       loggedAction  <- actionLogger.saveAddNodeGroup(modId, principal = actor, addDiff = diff, reason = reason )

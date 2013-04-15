@@ -271,18 +271,16 @@ class CreateCategoryOrGroupPopup(
             , value      = "Linux"
             )
         val query = Some(groupGenerator.flatMap(_.query).getOrElse(Query(NodeReturnType,And,Seq(defaultLine))))
-
-        woNodeGroupRepository.createNodeGroup(
-          piName.is,
-          piDescription.is,
-          query,
-          {piStatic.is match { case "dynamic" => true ; case _ => false } },
-          groupGenerator.map(_.serverList).getOrElse(Set[NodeId]()),
-          NodeGroupCategoryId(piContainer.is),
-          true,
-          ModificationId(uuidGen.newUuid),
-          CurrentUser.getActor,
-          piReasons.map(_.is)
+        val isDynamic = piStatic.is match { case "dynamic" => true ; case _ => false }
+        val srvList =  groupGenerator.map(_.serverList).getOrElse(Set[NodeId]())
+        val nodeId = NodeGroupId(uuidGen.newUuid)
+        val nodeGroup = NodeGroup(nodeId,piName.is,piDescription.is,query,isDynamic,srvList,true)
+        woNodeGroupRepository.create(
+            nodeGroup
+          , NodeGroupCategoryId(piContainer.is)
+          , ModificationId(uuidGen.newUuid)
+          , CurrentUser.getActor
+          , piReasons.map(_.is)
         ) match {
           case Full(x) =>
             closePopup() &

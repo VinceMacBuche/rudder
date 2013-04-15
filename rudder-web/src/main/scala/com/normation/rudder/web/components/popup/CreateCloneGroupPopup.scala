@@ -130,18 +130,19 @@ class CreateCloneGroupPopup(
         }
       } else {
         // we are creating a group
+        val query = nodeGroup.map(x => x.query).getOrElse(groupGenerator.flatMap(_.query))
         val parentCategoryId = NodeGroupCategoryId(piContainer.is)
-        woNodeGroupRepository.createNodeGroup(
-          piName.is,
-          piDescription.is,
-          nodeGroup.map(x => x.query).getOrElse(groupGenerator.flatMap(_.query)),
-          {piStatic.is match { case "dynamic" => true ; case _ => false } },
-          nodeGroup.map(x => x.serverList).getOrElse(Set[NodeId]()),
-          parentCategoryId,
-          nodeGroup.map(x => x.isEnabled).getOrElse(true),
-          ModificationId(uuidGen.newUuid),
-          CurrentUser.getActor,
-          piReasons.map(_.is)
+        val isDynamic = piStatic.is match { case "dynamic" => true ; case _ => false }
+        val srvList =  nodeGroup.map(x => x.serverList).getOrElse(Set[NodeId]())
+        val nodeId = NodeGroupId(uuidGen.newUuid)
+        val clone = NodeGroup(nodeId,piName.is,piDescription.is,query,isDynamic,srvList,true)
+
+        woNodeGroupRepository.create(
+            clone
+          , parentCategoryId
+          , ModificationId(uuidGen.newUuid)
+          , CurrentUser.getActor
+          , piReasons.map(_.is)
         ) match {
           case Full(x) =>
             closePopup() &
