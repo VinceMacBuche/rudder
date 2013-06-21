@@ -35,9 +35,7 @@
 package bootstrap.liftweb
 
 import java.io.File
-
 import scala.collection.JavaConversions.seqAsJavaList
-
 import org.springframework.context.annotation.{ Bean, Configuration, ImportResource }
 import org.springframework.core.io.{ ClassPathResource => CPResource, FileSystemResource => FSResource, Resource }
 import org.springframework.security.authentication.AuthenticationProvider
@@ -45,14 +43,15 @@ import org.springframework.security.authentication.dao.DaoAuthenticationProvider
 import org.springframework.security.authentication.encoding._
 import org.springframework.security.core.GrantedAuthority
 import org.springframework.security.core.userdetails.{ UserDetails, UserDetailsService, UsernameNotFoundException }
-
 import com.normation.authorization.Rights
 import com.normation.rudder.authorization.{ AuthzToRights, NoRights }
 import com.normation.rudder.domain.logger.ApplicationLogger
 import com.normation.utils.HashcodeCaching
-
 import bootstrap.liftweb._
 import net.liftweb.common.Loggable
+import org.springframework.security.web.authentication.www.BasicAuthenticationFilter
+import org.springframework.security.authentication.AuthenticationManager
+import org.springframework.security.authentication.ProviderManager
 
 /**
  * Spring configuration for user authentication.
@@ -73,6 +72,8 @@ class AppConfigAuth extends Loggable {
   val JVM_AUTH_FILE_KEY = "rudder.authFile"
   val DEFAULT_AUTH_FILE_NAME = "demo-rudder-users.xml"
 
+  @Bean def authManager: ProviderManager = new ProviderManager(List(demoAuthenticationProvider))
+  @Bean def basicFilter : BasicAuthenticationFilter = new BasicAuthenticationFilter(authManager)
   @Bean def demoAuthenticationProvider : AuthenticationProvider = {
 
     val resource = System.getProperty(JVM_AUTH_FILE_KEY) match {

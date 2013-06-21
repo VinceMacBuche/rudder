@@ -395,7 +395,7 @@ object RudderConfig extends Loggable {
   val restTechniqueReload = new RestTechniqueReload(techniqueRepositoryImpl, uuidGen)
   val restArchiving = new RestArchiving(itemArchiveManagerImpl,personIdentServiceImpl, uuidGen)
   val restGetGitCommitAsZip = new RestGetGitCommitAsZip(gitRepo)
-
+  val restAuth = new RestAuth()
   val restRules = new RestRuleManagement(roRuleRepository,woRuleRepository,ruleTargetService,uuidGen,asyncDeploymentAgent)
 
   //////////////////////////////////////////////////////////////////////////////////////////

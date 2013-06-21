@@ -46,7 +46,9 @@ along with this program. If not, see <http://www.gnu.org/licenses/agpl.html>.
     <http pattern="/images/**" security="none"/>
     <http pattern="/javascript/**" security="none"/>
 
-
+    <http pattern="/api/**" use-expressions="true">
+    	     <custom-filter position="FIRST" ref="basicFilter" />
+    	     </http>       
     <http use-expressions="true">
         
         <session-management session-authentication-strategy-ref="sas"/>
@@ -58,9 +60,8 @@ along with this program. If not, see <http://www.gnu.org/licenses/agpl.html>.
         <!-- Start comment -->
         
         <intercept-url pattern="/secure/**" access="isAuthenticated()" />
-        
+                <intercept-url pattern="/api/auth" access="isAuthenticated()"/> 
         <!--  If the ${rudder.rest.allowNonAuthenticatedUser} is true, REST API is open to anybody -->
-        <intercept-url pattern="/api/**" access="isAuthenticated() or T(bootstrap.liftweb.RudderConfig).RUDDER_REST_ALLOWNONAUTHENTICATEDUSER()" />
         
         <!-- End comment -->
     
@@ -77,6 +78,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/agpl.html>.
 <!--        <remember-me />-->
 
     </http>
+
 
     <authentication-manager>
         <authentication-provider ref="demoAuthenticationProvider"/>
