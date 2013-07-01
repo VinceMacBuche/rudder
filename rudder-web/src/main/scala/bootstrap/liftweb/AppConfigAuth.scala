@@ -52,6 +52,22 @@ import net.liftweb.common.Loggable
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter
 import org.springframework.security.authentication.AuthenticationManager
 import org.springframework.security.authentication.ProviderManager
+import org.springframework.security.web.authentication.www.BasicAuthenticationEntryPoint
+import org.springframework.security.web.AuthenticationEntryPoint
+import javax.servlet.http.HttpServletRequest
+import org.springframework.security.core.AuthenticationException
+import javax.servlet.http.HttpServletResponse
+import org.springframework.security.core.Authentication
+import net.liftweb.actor.LiftActor
+import scala.collection.mutable. { Map => MutMap }
+import net.liftweb.common.Box
+import net.liftweb.common.Failure
+import net.liftweb.common.Full
+import java.util.Collection
+import org.springframework.web.filter.GenericFilterBean
+import javax.servlet.ServletRequest
+import javax.servlet.ServletResponse
+import javax.servlet.FilterChain
 
 /**
  * Spring configuration for user authentication.
@@ -72,7 +88,8 @@ class AppConfigAuth extends Loggable {
   val JVM_AUTH_FILE_KEY = "rudder.authFile"
   val DEFAULT_AUTH_FILE_NAME = "demo-rudder-users.xml"
 
-  @Bean def authManager: ProviderManager = new ProviderManager(List(demoAuthenticationProvider))
+
+  @Bean def authManager : ProviderManager = new ProviderManager(List(demoAuthenticationProvider))
   @Bean def basicFilter : BasicAuthenticationFilter = new BasicAuthenticationFilter(authManager)
   @Bean def demoAuthenticationProvider : AuthenticationProvider = {
 
@@ -107,6 +124,81 @@ class AppConfigAuth extends Loggable {
         throw new javax.servlet.UnavailableException("Error when triyng to parse user file '%s', aborting.".format(resource.getURL.toString))
     }
   }
+}
+
+
+class RudderApiEntryPoint extends AuthenticationEntryPoint with Loggable {
+
+  def  commence(request: HttpServletRequest, response: HttpServletResponse, authException : AuthenticationException) : Unit = {
+    ()
+  }
+}
+
+class RudderApiAuthProvider extends AuthenticationProvider with Loggable {
+
+  def  authenticate( authentication: Authentication ) : Authentication = authentication
+
+
+  def supports( authentication : Class[_] ): Boolean = true
+
+}
+
+class RudderApiAuthentication(id : String, user : RudderUserDetail) extends Authentication {
+
+  private[this] var auth : Boolean = false
+
+  def getAuthorities() : Collection[_ <: GrantedAuthority] = user.getAuthorities
+
+  def  getCredentials() : Object = id
+
+  def getDetails() : Object = user
+
+  def getPrincipal() : Object = user
+
+  def isAuthenticated() : Boolean  = auth
+
+  def setAuthenticated( isAuthenticated : Boolean ) : Unit = auth = isAuthenticated
+
+  def getName() :String =  user.getUsername
+
+}
+
+class RudderApiUserService extends /*LiftActor with*/ Loggable {
+
+
+  private[this] val userMap  : MutMap[String,RudderUserDetail] = MutMap()
+
+  private[this] def findByUser(user : RudderUserDetail) = {
+    val mapByUser = userMap.map( _.swap )
+    mapByUser.get(user)
+  }
+
+  def findUser(key:String) : Box[RudderUserDetail] = {
+    userMap.get(key) match {
+      case Some(user) => Full(user)
+      case None => Failure(s"User not found for id ${key}")
+    }
+  }
+
+  def addUser(key : String, user : RudderUserDetail) = {
+   findByUser(user) match {
+     // User was already logged in, remove that token.
+     case Some(id) =>
+       logger.debug(s"User ${user.login} was already logged in with token ${id}, replacing with new id ${key}")
+       userMap -= id
+     case None =>
+       logger.debug(s"User ${user.login} was not logger yet, linking it to new id ${key}")
+   }
+
+   userMap += ((key,user))
+
+  }
+}
+
+class RudderApiFilter extends GenericFilterBean {
+
+  def doFilter (request : ServletRequest,  response : ServletResponse, chain : FilterChain ) : Unit = ()
+
 }
 
 /**

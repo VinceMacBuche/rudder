@@ -47,7 +47,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/agpl.html>.
     <http pattern="/javascript/**" security="none"/>
 
     <http pattern="/api/**" use-expressions="true">
-    	     <custom-filter position="FIRST" ref="basicFilter" />
+    <http-basic/>
     	     </http>       
     <http use-expressions="true">
         
@@ -60,7 +60,6 @@ along with this program. If not, see <http://www.gnu.org/licenses/agpl.html>.
         <!-- Start comment -->
         
         <intercept-url pattern="/secure/**" access="isAuthenticated()" />
-                <intercept-url pattern="/api/auth" access="isAuthenticated()"/> 
         <!--  If the ${rudder.rest.allowNonAuthenticatedUser} is true, REST API is open to anybody -->
         
         <!-- End comment -->

@@ -12,6 +12,7 @@ import org.springframework.security.authentication.AuthenticationProvider
 import bootstrap.liftweb.RudderInMemoryUserDetailsService
 import bootstrap.liftweb.AppConfigAuth
 import net.liftweb.common.EmptyBox
+import com.normation.rudder.web.model.CurrentUser
 
 class RestAuth extends RestHelper with Loggable {
   serve( "api" / "auth" prefix {
@@ -24,7 +25,8 @@ class RestAuth extends RestHelper with Loggable {
       //            logger.info(authprov.loadUserByUsername(username))
         //  val user = authprov.loadUserByUsername(username)
           //if (user.password == pass)
-          Full ("YOU GOT IT BRO!")
+          CurrentUser.get.get.getUsername
+          Full (   CurrentUser.get.get.getUsername)
           //else Failure("password error")
         } catch { case e:Exception => Failure("wrong username") }
 
