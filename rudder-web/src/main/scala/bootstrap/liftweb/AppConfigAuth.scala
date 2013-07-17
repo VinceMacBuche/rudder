@@ -244,8 +244,8 @@ class RestAuthenticationFilter(
                 if(principal.isEnabled) {
                   //cool, build an authentication token from it
                   val userDetails = RudderUserDetail(
-                      principal.token.value
-                    , principal.id.value
+                      principal.id.value
+                    , principal.token.value
                     , RoleApiAuthority.apiRudderRights
                     , Seq(RoleApiAuthority)
                   )
