@@ -24,6 +24,9 @@ class AggregationTest extends Specification {
   private implicit def str2nodeId(s:String) = NodeId(s)
   private implicit def tuple2ToInterval(t2: Tuple2[DateTime, DateTime]) : Interval = new Interval(t2._1, t2._2)
 
+  val aggregation = new SplitMergeAggregatedReport()
+  val initialization = new InitializeAggregatedReport()
+  
   val now = DateTime.now()
 
   val report: Reports  = ResultSuccessReport(now, "cr", "policy", "one", 12, "component", "value",now, "message")
@@ -82,7 +85,6 @@ class AggregationTest extends Specification {
     , Some(42)
   )
 
-  val dummyAgregation = new AggregationService(null, null, null, null, null,0,0)
 
   val ending : AggregatedReport = AggregatedReport (
       key
@@ -97,7 +99,7 @@ class AggregationTest extends Specification {
 
   "Aggregation" should {
 
-    val (begin,reports,end) = dummyAgregation.splitConflict(baseReport, reportToAdd)
+    val (begin,reports,end) = aggregation.splitConflict(baseReport, reportToAdd)
     "have a beginning" in {
 
       begin === Some(begining)
@@ -114,13 +116,13 @@ class AggregationTest extends Specification {
   }
 
   "Reports" should {
-    val result = dummyAgregation.createAggregatedReportsFromReports(Seq(report), Seq(expectedReport))
+    val result = initialization.fromExecutionReports(Seq(report), Seq(expectedReport))
     result.head === reportToAdd
   }
 
   "Merge" should {
-    val (toSave,toDelete) = dummyAgregation.mergeAggregatedReports(Seq(baseReport), Seq(reportToAdd))
-    val (toSave2,toDelete2) = dummyAgregation.mergeAggregatedReports(Seq(beforebaseReport,baseReport), Seq(reportToAdd))
+    val (toSave,toDelete) = aggregation.mergeAggregatedReports(Seq(baseReport), Seq(reportToAdd))
+    val (toSave2,toDelete2) = aggregation.mergeAggregatedReports(Seq(beforebaseReport,baseReport), Seq(reportToAdd))
     println(toSave2)
 
     "save must have 3 elements to save " in {
@@ -139,7 +141,7 @@ class AggregationTest extends Specification {
   }
 
     "MergeOne" should {
-    val (toSave,toDelete,_) = dummyAgregation.mergeOneAggregatedReport(Seq(baseReport), reportToAdd)
+    val (toSave,toDelete,_) = aggregation.mergeOneAggregatedReport(Seq(baseReport), reportToAdd)
 
     "have 3 elements to save " in {
 

@@ -61,13 +61,14 @@ import com.normation.rudder.reports.aggregation.AggregationConstants.AGGREGATION
  * interval of same criticity together.
  */
 class AggregationService(
-    expectedReportRepository : RuleExpectedReportsRepository
-  , reportsRepository        : ReportsRepository
-  , reportingService         : ReportingService
+    expectedReportRepository   : RuleExpectedReportsRepository
+  , reportsRepository          : ReportsRepository
   , aggregatedReportsRepository: AggregatedReportsRepository
-  , updatesEntriesRepository : AggregationStatusRepository
-  , reportDelay : Int // in hours
-  , maxDays : Int // in days
+  , updatesEntriesRepository   : AggregationStatusRepository
+  , splitMerge                 : SplitMergeAggregatedReport
+  , initializeAggregatedReport : InitializeAggregatedReport
+  , reportDelay                : Int // in hours
+  , maxDays                    : Int // in days
 ) extends Loggable {
   import AggregationConstants._
 
@@ -79,17 +80,6 @@ class AggregationService(
 
 
 
-  def createAggregatedReportsFromReports (reports : Seq[Reports],expectedReports : Seq[LinearisedExpectedReport]  ) = {
-    reports.groupBy(_.executionTimestamp).flatMap{
-      case (executionTimeStamp,reports) =>
-        val headReport = reports.head
-        val (expected, unexpected) =  reports.partition(report => expectedReports.exists(_.serial == report.serial))
-        val expectedAggregated = expected.map(report => AggregatedReport( report, ReportType(report), 1))
-        val unexpectedAggregated = unexpected.map(report => AggregatedReport(report, UnknownReportType, 1))
-
-        unexpectedAggregated ++ expectedAggregated
-    }.toSeq
-  }
 
   def newAggregationfromReports (reports:Seq[Reports]) : (Seq[AggregatedReport],Seq[AggregatedReport])= {
 
@@ -102,7 +92,7 @@ class AggregationService(
           case eb:EmptyBox => //logger.error("couldn't not fetch expected Reports")
           Seq()
           case Full(expectedReports) =>
-            val linearisedExpectedReports = expectedReports.flatMap(lineariseExpectedReport(_)).distinct
+            val linearisedExpectedReports = expectedReports.flatMap(splitMerge.lineariseExpectedReport(_)).distinct
             //linearisedExpectedReports.foreach(//logger.warn(_))
             val expectedMap = linearisedExpectedReports.groupBy( _.key )
             reportsByRule.groupBy( ReportKey(_) ).map {
@@ -116,7 +106,7 @@ class AggregationService(
                   case Some(expectedReports) =>
 
                     //logger.info(s"found ${expectedReports.size} expected for reportKey ${key}")
-                    val ReportsToAdd = createAggregatedReportsFromReports(reports,expectedReports)
+                    val ReportsToAdd = initializeAggregatedReport.fromExecutionReports(reports,expectedReports)
                     //assert(false)
                     val linearisedAggregated = expectedMap.get(key).getOrElse(Seq()).map{base =>
                       AggregatedReport (
@@ -129,12 +119,12 @@ class AggregationService(
                         , None
                     ) }
                     logger.info (s"Merge One started, expected : ${linearisedAggregated.size}, ${ReportsToAdd.size}")
-                    val merged = mergeAggregatedReports(linearisedAggregated, ReportsToAdd)
+                    val merged = splitMerge.mergeAggregatedReports(linearisedAggregated, ReportsToAdd)
                     logger.info (s"Merge One ended, merge size : ${merged._1.size}, ${merged._2.size}")
 
                     aggregatedReportsRepository.getAggregatedReportsByDate(ruleId, firstExecutionTimeStamp, lastExecutionTimeStamp) match {
                       case Full(aggregated) => logger.info(s"merge 2 start, ${aggregated.size}")
-                        val newMerge = mergeAggregatedReports(aggregated, merged._1)
+                        val newMerge = splitMerge.mergeAggregatedReports(aggregated, merged._1)
                         logger.info(s"merge 2 end ${newMerge._1.size}, ${newMerge._2.size}")
                         newMerge
                       case eb:EmptyBox => logger.error(s"could not get aggregatedReport")
@@ -232,6 +222,23 @@ class AggregationService(
   , @Column("expected") expected : Int
 */
 
+}
+
+class InitializeAggregatedReport {
+  def fromExecutionReports (reports : Seq[Reports],expectedReports : Seq[LinearisedExpectedReport]  ) = {
+    reports.groupBy(_.executionTimestamp).flatMap{
+      case (executionTimeStamp,reports) =>
+        val headReport = reports.head
+        val (expected, unexpected) =  reports.partition(report => expectedReports.exists(_.serial == report.serial))
+        val expectedAggregated = expected.map(report => AggregatedReport( report, ReportType(report), 1))
+        val unexpectedAggregated = unexpected.map(report => AggregatedReport(report, UnknownReportType, 1))
+
+        unexpectedAggregated ++ expectedAggregated
+    }.toSeq
+  }
+}
+
+class SplitMergeAggregatedReport {  
 
   def remergeConflict (baseSeq : Seq[AggregatedReport], reportsToMerge : Seq[AggregatedReport], beforeMerge : Option[AggregatedReport], afterMerge : Option[AggregatedReport]) : (Seq[AggregatedReport],Seq[AggregatedReport],Seq[AggregatedReport])= {
     def shouldRemoveBound (bound : Option[AggregatedReport] ) : Boolean = {
@@ -294,7 +301,7 @@ class AggregationService(
       }
 
       //logger.info("test")
-      baseSeq.filter(baseReport => (baseReport.interval.getStart isBefore (updatedReport.interval.getEnd plusMinutes AGGREGATION_INTERVAL))&& (baseReport.interval.getStart after reportToMerge.interval.getEnd) ) match {
+      baseSeq.filter(baseReport => (baseReport.interval.getStart isBefore (updatedReport.interval.getEnd plusMinutes AGGREGATION_INTERVAL))&& (baseReport.interval.getStart isAfter reportToMerge.interval.getEnd) ) match {
         case mergeReports  =>
         val updatedReportAgain = afterMerge match {
           case Some(afterReport) =>
