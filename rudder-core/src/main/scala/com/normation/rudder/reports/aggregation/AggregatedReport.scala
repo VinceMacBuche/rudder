@@ -45,89 +45,126 @@ import com.normation.inventory.domain.NodeId
 import com.normation.rudder.domain.policies.DirectiveId
 import com.normation.rudder.domain.policies.RuleId
 import net.liftweb.common.Loggable
+import com.normation.utils.HashcodeCaching
+
+
+/**
+ * AggregatedReport are the "normalized" description of
+ * what happened for a given node, for the value of a 
+ * component of a directive of a rule. 
+ * 
+ * Hypothesys: for a given time, for a given AggregatedReportKey,
+ * we have AT MOST one aggregatedReport (else, that means that
+ * we missed an aggregation somehow). 
+ * 
+ */
 
 
 
-case class AggregatedReport (
+/**
+ * This is the report key (that's the most precise
+ * targeting of a report).
+ *  
+ * Notice that its the same key for an aggregated report or
+ * a run report. 
+ * 
+ * Notice that the "id" is not in the key, because the idea
+ * is a database thing, not a semantic one. 
+ */
+case class ReportKey(
     nodeId      : NodeId
   , ruleId      : RuleId
-  , beginSerial : Int
-  , endSerial   : Int
   , directiveId : DirectiveId
   , component   : String
   , keyValue    : String
-  , state       : ReportType
+) extends HashcodeCaching
+
+object ReportKey {
+  def apply(entry : Reports) : ReportKey =
+    ReportKey(entry.nodeId, entry.ruleId, entry.directiveId, entry.component, entry.keyValue)
+}
+
+//a case class for serials
+case class SerialInterval(beginingSerial: Int, endingSerial: Int)
+
+object SerialInterval {
+  def apply(serial: Int) = new SerialInterval(serial, serial)
+}
+
+
+case class AggregatedReport (
+    key         : ReportKey
+  , received    : Int   
+  , status      : ReportType
+  , interval    : Interval
   , message     : String
-  , startDate   : DateTime
-  , endDate     : DateTime
-  , received    : Int
-  , expected    : Int
-  , id          : Long
+  , serials     : SerialInterval
+  , storageId   : Option[Long]
 ) extends Loggable {
-  val interval  : Interval = {
-    if (startDate .isAfter( endDate))
-      logger.error(s"$startDate is over $endDate")
 
-    new Interval(startDate,endDate plus(1))
-  }
-
+  if(storageId == Some(0L)) 
+    throw new IllegalArgumentException("Storage ID can't be some (0)")
+  
   def toSquerylEntity : AggregatedSquerylReport = {
     AggregatedSquerylReport(
-        nodeId.value
-      , ruleId.value
-      , beginSerial
-      , endSerial
-      , directiveId.value
-      , component
-      , keyValue
-      , state.severity
+        key.nodeId.value
+      , key.ruleId.value
+      , serials.beginingSerial
+      , serials.endingSerial
+      , key.directiveId.value
+      , key.component
+      , key.keyValue
+      , status.severity
       , message
-      , toTimeStamp(startDate)
-      , toTimeStamp(endDate)
+      , toTimeStamp(interval.getStart)
+      , toTimeStamp(interval.getEnd)
       , received
-      , expected
-      , id
+      , storageId.getOrElse(0L)
     )
   }
 }
 
 object AggregatedReport {
 
-  def apply (report : Reports, reportType : ReportType, received:Int, expected:Int) : AggregatedReport = {
+  def apply(report: Reports, reportType: ReportType, received: Int) : AggregatedReport = {
     AggregatedReport(
-        report.nodeId
-      , report.ruleId
-      , report.serial
-      , report.serial
-      , report.directiveId
-      , report.component
-      , report.keyValue
-      , reportType
-      , report.message
-      , report.executionTimestamp
-      , report.executionTimestamp
+        ReportKey(
+            report.nodeId
+          , report.ruleId
+          , report.directiveId
+          , report.component
+          , report.keyValue
+        )
       , received
-      , expected
-      , 0
+      , reportType
+      , new Interval(
+            report.executionTimestamp
+          , report.executionTimestamp
+        )
+      , report.message
+      , SerialInterval(report.serial, report.serial)
+      , None
     )
   }
 
-    def apply (report : AggregatedSquerylReport) : AggregatedReport = {
+  def apply(report : AggregatedSquerylReport) : AggregatedReport = {
     AggregatedReport(
-        NodeId(report.nodeId)
-      , RuleId(report.ruleId)
-      , report.beginSerial
-      , report.endSerial
-      , DirectiveId(report.directiveId)
-      , report.component
-      , report.keyValue
-      , ReportType(report.state)
-      , report.message
-      , new DateTime(report.startTime)
-      , new DateTime(report.endTime)
+        ReportKey(
+            NodeId(report.nodeId)
+          , RuleId(report.ruleId)
+          , DirectiveId(report.directiveId)
+          , report.component
+          , report.keyValue
+        )
       , report.received
-      , report.expected
-      , report.id
+      , ReportType(report.state)
+      , new Interval(
+            new DateTime(report.startTime)
+          , new DateTime(report.endTime)
+        )
+      , report.message
+      , SerialInterval(report.beginSerial, report.endSerial)
+      , if(report.id == 0) None else Some(report.id)
     )
   }
 }

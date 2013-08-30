@@ -7,7 +7,7 @@ import com.normation.rudder.domain.reports.bean.Reports
 import com.normation.rudder.domain.policies._
 import com.normation.inventory.domain.NodeId
 import com.normation.rudder.domain.reports.bean.ResultSuccessReport
-import org.joda.time.DateTime
+import org.joda.time.{ DateTime, Interval }
 import com.normation.rudder.domain.reports.bean.SuccessReportType
 import java.sql.Timestamp
 
@@ -22,109 +22,76 @@ class AggregationTest extends Specification {
   private implicit def str2DirectiveId(s:String) = DirectiveId(s)
   private implicit def str2RuleId(s:String) = RuleId(s)
   private implicit def str2nodeId(s:String) = NodeId(s)
+  private implicit def tuple2ToInterval(t2: Tuple2[DateTime, DateTime]) : Interval = new Interval(t2._1, t2._2)
 
   val now = DateTime.now()
 
   val report: Reports  = ResultSuccessReport(now, "cr", "policy", "one", 12, "component", "value",now, "message")
-
+  val key = ReportKey(report)
+  val msg = ""
+  val serials = SerialInterval(12,12)
+  
   val expectedReport = LinearisedExpectedReport(
-    NodeId("one")       : NodeId
-  , DirectiveId("policy")  : DirectiveId
-  , RuleId("cr")       : RuleId
-  , 12       : Int
-  , "component"    : String
-  , 1  : Int
-  , "value"     : String
-  , now minusMinutes(10)    : DateTime
-  , now plusMinutes(10)      : DateTime
-)
-  val reportToAdd : AggregatedReport = AggregatedReport(report,SuccessReportType,1,1)
+      key
+    , serial = 12 
+    , cardinality = 1  
+    , startDate = now minusMinutes(10)
+    , endDate = now plusMinutes(10)
+  )
+  
+  val reportToAdd : AggregatedReport = AggregatedReport(report, SuccessReportType, 1)
 
 
-    val baseReport : AggregatedReport = AggregatedReport (
-    NodeId("one")
-  , RuleId("cr")
-  , 12
-  , 12
-  , DirectiveId("policy")
-  , "component"
-  , "value"
-  , SuccessReportType
-  , ""
-  , now.minusMinutes(5)
-  , now.plusMinutes(5)
-  , 0
-  , 1
-  , 42
-)
+  val baseReport : AggregatedReport = AggregatedReport (
+      key
+    , 0
+    , SuccessReportType
+    , (now.minusMinutes(5), now.plusMinutes(5))
+    , msg
+    , serials
+    , Some(42)
+  )
+  
   val beforebaseReport : AggregatedReport = AggregatedReport (
-    NodeId("one")
-  , RuleId("cr")
-  , 12
-  , 12
-  , DirectiveId("policy")
-  , "component"
-  , "value"
-  , SuccessReportType
-  , ""
-  , now.minusMinutes(15)
-  , now.minusMinutes(5)
-  , 1
-  , 1
-  , 41
-)
+      key
+    , 1
+    , SuccessReportType
+    , (now.minusMinutes(15), now.minusMinutes(5))
+    , msg
+    , serials
+    , Some(41)
+  )
 
   val beginning2 : AggregatedReport = AggregatedReport (
-    NodeId("one")
-  , RuleId("cr")
-  , 12
-  , 12
-  , DirectiveId("policy")
-  , "component"
-  , "value"
-  , SuccessReportType
-  , ""
-  , now.minusMinutes(15)
-  , now
-  , 1
-  , 1
-  , 41
-)
+      key
+    , 1
+    , SuccessReportType
+    , (now.minusMinutes(15), now)
+    , msg
+    , serials
+    , Some(41)
+  )
 
   val begining : AggregatedReport = AggregatedReport (
-    NodeId("one")
-  , RuleId("cr")
-  , 12
-  , 12
-  , DirectiveId("policy")
-  , "component"
-  , "value"
-  , SuccessReportType
-  , ""
-  , now.minusMinutes(5)
-  , now
-  , 0
-  , 1
-  , 42
-)
+      key
+    , 0
+    , SuccessReportType
+    , (now.minusMinutes(5), now)
+    , msg
+    , serials
+    , Some(42)
+  )
 
   val dummyAgregation = new AggregationService(null, null, null, null, null,0,0)
 
   val ending : AggregatedReport = AggregatedReport (
-    NodeId("one")
-  , RuleId("cr")
-  , 12
-  , 12
-  , DirectiveId("policy")
-  , "component"
-  , "value"
-  , SuccessReportType
-  , ""
-  , now
-  , now.plusMinutes(5)
-  , 0
-  , 1
-  , 0
+      key
+    , 0
+    , SuccessReportType
+    , (now, now.plusMinutes(5))
+    , msg
+    , serials
+    , None
  )
 
 

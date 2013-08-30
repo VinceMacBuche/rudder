@@ -21,5 +21,21 @@ object AggregationConstants {
   val DATETIME_FORMAT = "yyyy-MM-dd"
   val DATETIME_PARSER = DateTimeFormat.forPattern(DATETIME_FORMAT)
 
+  /**
+   * The expected time between two execution of the agent on a given machine.
+   * It's just expected, as a user can clearly start cf-agent at any time, and
+   * two runs may have more than that intervalle between run (pathological 
+   * example: if a run takes more than RUN_INTERVALL to finished, then the time
+   * between that one and the precedent is more than RUN_INTERVALL).
+   * 
+   * Time is in seconds
+   */
+  val RUN_INTERVAL : Int = 5*60
+  
+  /**
+   * Duration is in seconds
+   */
+  val AGGREGATION_INTERVAL : Int = RUN_INTERVAL + RUN_INTERVAL / 2
+  
   implicit def toTimeStamp(d:DateTime) : Timestamp = new Timestamp(d.getMillis)
 }

@@ -121,9 +121,9 @@ class AggregatedReportsJdbcRepository(
   }
 
   def deleteAggregatedReports(reports : Seq[AggregatedReport]) : Seq[Int] = {
-    val toDelete = reports.filter(_.id != 0)
+    val toDelete = reports.filter(_.storageId != None)
     sessionProvider.ourTransaction {
-        toDelete.map(report => Reportings.reports.deleteWhere(line => line.id === report.id) )
+        toDelete.map(report => Reportings.reports.deleteWhere(line => line.id === report.storageId.getOrElse(0L) ) )
 
     }
   }
@@ -138,7 +138,6 @@ class AggregatedReportsJdbcRepository(
             , entry.endSerial := report.endSerial
             , entry.state     := report.state
             , entry.received  := report.received
-            , entry.expected  := report.expected
           )
         )
       )
@@ -152,8 +151,8 @@ class AggregatedReportsJdbcRepository(
    */
   def saveAggregatedReports(reports : Seq[AggregatedReport]) : Unit = {
     sessionProvider.ourTransaction {
-        val updated = updateAggregatedReports(reports.filter(x => x.id != 0))
-        val created = createAggregatedReports(reports.filter(x => x.id == 0))
+        val updated = updateAggregatedReports(reports.filter(x => x.storageId != None))
+        val created = createAggregatedReports(reports.filter(x => x.storageId == None))
 
     }
   }
@@ -236,7 +235,7 @@ class AggregatedReportsJdbcRepository(
       val start = toTimeStamp(beginDate)
       val end = toTimeStamp(endDate)
 
-      val reportsId = reports.map(x => x.id)
+      val reportsId = reports.map(x => x.storageId)
 
       tryo ( sessionProvider.ourTransaction {
         val q = from(Reportings.reports)(entry =>
@@ -248,7 +247,7 @@ class AggregatedReportsJdbcRepository(
           select(entry.id)
         )
 
-        (Seq[Long]() ++ q.toList).exists(id => !reports.map(_.id).contains(id))
+        (Seq[Long]() ++ q.toList).exists(id => !reports.map(_.storageId).contains(id))
       } ) ?~! "Error when trying to get report information for rule '%s' from date '%s' to date '%s'".format(ruleId, beginDate, endDate)
     }
   }
@@ -278,7 +277,6 @@ case class AggregatedSquerylReport (
   , @Column("starttime")   startTime   : Timestamp
   , @Column("endtime")     endTime     : Timestamp
   , @Column("received")    received    : Int
-  , @Column("expected")    expected    : Int
   , @Column("id")          id          : Long = 0L
 ) extends KeyedEntity[Long] {
 }
