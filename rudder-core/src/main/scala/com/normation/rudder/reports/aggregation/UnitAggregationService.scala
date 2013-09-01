@@ -34,19 +34,21 @@
 
 package com.normation.rudder.reports.aggregation
 
-import scala.collection.SortedMap
+import scala.Option.option2Iterable
 import scala.collection.SortedSet
+
 import org.joda.time.DateTime
 import org.joda.time.Interval
-import com.normation.rudder.reports.aggregation.AggregationConstants._
-import scala.collection.Iterator
-import com.normation.rudder.domain.reports.bean.ReportType
-import com.normation.rudder.batch.AggregateReports
-import net.liftweb.common.Loggable
-import com.normation.rudder.domain.reports.bean.Reports
+
 import com.normation.rudder.domain.reports.RuleExpectedReports
-import net.liftweb.common.Box
+import com.normation.rudder.domain.reports.bean.ReportType
 import com.normation.rudder.domain.reports.bean.UnknownReportType
+import com.normation.rudder.reports.aggregation.AggregationConstants.AGGREGATION_INTERVAL
+import com.normation.rudder.reports.aggregation.AggregationConstants.RESOLUTION
+import com.normation.rudder.reports.aggregation.AggregationConstants.RUN_INTERVAL
+import com.normation.rudder.reports.aggregation.AggregationConstants.coincide
+
+import net.liftweb.common.Loggable
 
 /**
  * Representation of the moment when an agent ran
@@ -56,7 +58,7 @@ final case class AgentExecution(timestamp: DateTime)
 /**
  * Agent report, with only the interesting parts for us
  */
-final case class RunReport(timestamp: DateTime, status: ReportType, serial: Int)
+final case class ExecutionReport(timestamp: DateTime, status: ReportType, serial: Int)
 
 
 /**
@@ -66,12 +68,13 @@ final case class RunReport(timestamp: DateTime, status: ReportType, serial: Int)
  * - only interval and optional existing db key
  */
 final case class AR(
-    interval : Interval
-  , status   : ReportType
-  , storageId: Option[Long]
+    interval  : Interval
+  , status    : ReportType
+  , storageId : Option[Long]
+  , nbReceived: Int
 ) {
 
-  val startPoint = ARStart(interval.getStart, status, storageId)
+  val startPoint = ARStart(interval.getStart, status, storageId, nbReceived)
   val endGap = Gap(interval.getEnd)
 }
 
@@ -89,18 +92,17 @@ final case class ExecutionSequence private (instants: SortedSet[DateTime]) {
   if(instants.isEmpty) throw new IllegalArgumentException("An execution sequence can not be empty")
 
   val intervals: Seq[Interval] = instants.toSeq.sliding(2).map { s =>
-          //we are building the intrvalle for the first, the second is the
-          //end edge
-          val start = s(0)
-          val end = if(s.size == 2) s(1) else s(0)
+    //we are building interval for the first, the second is the end edge
+    val start = s(0)
+    val end = if(s.size == 2) s(1) else s(0)
 
-          //take care of the case where the next known run is
-          //too far away, for example because the node was down
-          //for a period of time
-          val maxEnd = start.plusSeconds(AGGREGATION_INTERVAL)
-          val normalizedEnd = if(end.isAfter(maxEnd)) maxEnd else end
+    //take care of the case where the next known run is
+    //too far away, for example because the node was down
+    //for a period of time
+    val maxEnd = start.plusSeconds(AGGREGATION_INTERVAL)
+    val normalizedEnd = if(end.isAfter(maxEnd)) maxEnd else end
 
-          new Interval(start, normalizedEnd)
+    new Interval(start, normalizedEnd)
   }.toSeq
 
 }
@@ -117,18 +119,19 @@ object ExecutionSequence {
  * an aggregating report of the given type.
  */
 sealed trait StartingTime {
-  val start: DateTime
+  val dateTime: DateTime
   def withStart(t: DateTime) : StartingTime
 }
-final case class Gap(start: DateTime) extends StartingTime {
+final case class Gap(dateTime: DateTime) extends StartingTime {
   override def withStart(t: DateTime) = Gap(t)
 }
 final case class ARStart(
-    start    : DateTime
-  , status   : ReportType
-  , storageId: Option[Long]
+    dateTime  : DateTime
+  , status    : ReportType
+  , storageId : Option[Long]
+  , nbReceived: Int
 ) extends StartingTime {
-  override def withStart(t: DateTime) = this.copy(start = t)
+  override def withStart(t: DateTime) = this.copy(dateTime = t)
 }
 
 /**
@@ -146,22 +149,30 @@ case class AggregatedReports private ( intervalStarts: SortedSet[StartingTime] )
    * Does a startingtime exists for that datetime ?
    */
   def isDefinedAt(t: DateTime) : Boolean = {
-    intervalStarts.map( _.start ).contains(t)
+    intervalStarts.map( _.dateTime ).contains(t)
   }
 
   /**
-   * Get the starting point that contains
+   * Return the interval containing
    * the given time.
-   * If a starting point as the same date, it's
-   * that one that is returned.
+   * Interval are inclusive at start point and
+   * exclusive at end point.
+
    * If t if before the first starting point,
    * a new Gap is created starting at that point.
+   *
+   * If t is after the last point, a new Gap is
+   * created at t+1 millisecond, and use as end point.
    */
-  def getPreviousStartingPoint(t: DateTime) : StartingTime = {
+  def getInvervalContaining(t: DateTime) : (StartingTime, StartingTime) = {
+    val init : (StartingTime, StartingTime) = (Gap(t), Gap(t.plusMillis(1)))
 
-    ((Gap(t):StartingTime)/:intervalStarts)( (previous, current) =>
-      if(current.start.isAfter(t)) previous
-      else current
+    (init/:intervalStarts)( (previous, current) =>
+      if(current.dateTime.isBefore(t)) {
+        (current, previous._2)
+      } else if(previous._2 == init._2) { //we just croos t
+        (previous._2, current)
+      } else previous
     )
   }
 
@@ -169,7 +180,7 @@ case class AggregatedReports private ( intervalStarts: SortedSet[StartingTime] )
    * Add or replace the starting point with the same datetime
    */
   def replace(point: StartingTime) : AggregatedReports = {
-    new AggregatedReports(intervalStarts.filterNot( _.start == point.start) + point)
+    new AggregatedReports(intervalStarts.filterNot( _.dateTime == point.dateTime) + point)
   }
 
   /**
@@ -183,12 +194,12 @@ case class AggregatedReports private ( intervalStarts: SortedSet[StartingTime] )
    */
   def normalizeWith(execSeq: ExecutionSequence) : AggregatedReports = {
     val normalized = intervalStarts.map { t =>
-      if(execSeq.instants.contains(t.start)) t
-      else execSeq.instants.find(i => coincide(t.start, i)) match {
+      if(execSeq.instants.contains(t.dateTime)) t
+      else execSeq.instants.find(i => coincide(t.dateTime, i)) match {
         case Some(i) => t.withStart(i)
         case None =>
           val i = (execSeq.instants.toSeq
-            .map(i => (i, Math.abs(t.start.getMillis - i.getMillis) ))
+            .map(i => (i, Math.abs(t.dateTime.getMillis - i.getMillis) ))
             .sortBy( _._2 )
             .head._1
           )
@@ -201,7 +212,9 @@ case class AggregatedReports private ( intervalStarts: SortedSet[StartingTime] )
 }
 
 object AggregatedReports extends Loggable {
-  implicit def startingTimeOrdering: Ordering[StartingTime] = Ordering.fromLessThan(_.start isBefore _.start)
+  implicit def startingTimeOrdering: Ordering[StartingTime] = Ordering.fromLessThan(_.dateTime isBefore _.dateTime)
+
+  def apply(startingTimes: Iterable[StartingTime]): AggregatedReports = AggregatedReports(SortedSet() ++ startingTimes)
 
   def apply(reports: Seq[AR]) : AggregatedReports = {
 
@@ -247,7 +260,7 @@ object AggregatedReports extends Loggable {
       }
     }.toSeq
 
-    AggregatedReports(SortedSet() ++ seq)
+    AggregatedReports(seq)
   }
 }
 
@@ -286,7 +299,69 @@ object AggregatedReports extends Loggable {
  * 6/ merge contiguous interval with compatible status
  *
  */
-class UnitAggregationService {
+class UnitAggregationService extends Loggable {
+
+  def updateAggregatedReports(
+      //the new execution reports to aggregate
+      //TODO: should be a seq or a set ?
+      newExecutionReports: Seq[ExecutionReport]
+      //expected reports on the interval
+    , expectedReports: Seq[RuleExpectedReports]
+      //a set of know agent run for the processed node
+    , agentExecutions: Set[AgentExecution]
+      //a set of existing aggregation reports for the
+      //interval of new reports.
+    , existingAggregationReports: Set[AR]
+  ): Set[AR] = {
+
+    //just to be sure, add all execution timestamp to the know agent run.
+    val allRuns = agentExecutions ++ newExecutionReports.map(r => AgentExecution(r.timestamp))
+
+    val execSeq = buildExecutionSequence(allRuns)
+    val existingReports = normalizeExistingAggregatedReport(existingAggregationReports, execSeq)
+    val newReports = createNewAggregatedReports(newExecutionReports, expectedReports, execSeq)
+
+    //now, start split/merge with split:
+    val splittedExisting = splitExisting(existingReports, newReports)
+    //now merge phase 1: update status with new reports
+    val mergedReports = mergeUpdateStatus(splittedExisting, newReports)
+
+    //and merge phase 2: extends interval of aggregated reports
+    val extendedReports = extendsInterval(mergedReports)
+
+    //finally, transform back our aggregatedReports datastructure to AR
+    //last report is built with an interval of lengh 0
+    val points = extendedReports.intervalStarts.toSeq
+
+    if(points.isEmpty) Set()
+    else {
+      val even = if(points.size%2 == 0) points else points.dropRight(1)
+
+      val allButTheLast = even.sliding(2).toSeq.flatMap { s => //s.size == 2
+        //we are building the AR for the first point, the second only give the end
+        toAR(s(0), s(1).dateTime)
+      }
+
+      val last = points.last
+
+      Set() ++ allButTheLast ++ toAR(last, last.dateTime).toSeq
+    }
+  }
+
+  ////////////////////////////
+  // Implementation details //
+  ////////////////////////////
+  /**
+   * From a starting point and an ending date, build a aggregated reports
+   */
+  def toAR(start: StartingTime, end: DateTime) : Option[AR] = {
+    start match {
+      case Gap(_) => None
+      case ARStart(t, status, storageId, nbReports) =>
+        Some(AR(new Interval(t, end), status, storageId, nbReports))
+    }
+  }
+
 
   /**
    * Build the sequence of execution interval
@@ -318,17 +393,17 @@ class UnitAggregationService {
   }
 
   /**
-   * Build new expected reports.
+   * Build new aggregated reports.
    * They are normalized (and aligned) with execSeq by construction.
    *
    * Hypothesis:
    * - expected reports are sorted by beginDate asc
-   * - both expected reports and execSeq endpoints are over each runReport timestamp
+   * - both expected reports and execSeq endpoints are over each executionReport timestamp
    *   (i.e: we actually got all the date we needed to work)
    */
-  def createNewAggregatedReports(runReports: Seq[RunReport], expectedReports: Seq[RuleExpectedReports], execSeq: ExecutionSequence) : Seq[AR] = {
+  def createNewAggregatedReports(executionReports: Seq[ExecutionReport], expectedReports: Seq[RuleExpectedReports], execSeq: ExecutionSequence) : Seq[AR] = {
 
-    def createOne(report: RunReport) : AR = {
+    def createOne(report: ExecutionReport) : AR = {
       //find the corresponding expected report
       val status = for {
         //no expected means that the report was not exepected :)
@@ -356,27 +431,31 @@ class UnitAggregationService {
         case Some(i) => i
       }
 
+      //create a new aggregated report.
       AR(
           interval
         , status.getOrElse(UnknownReportType)
         , None
+        , 1
       )
     }
 
-    runReports.map(createOne(_))
+    executionReports.map(createOne(_))
   }
 
 
   /**
-   * That method add new startpoint where needed in existing reports
+   * That method add new startpoint where needed in existing reports.
+   * New report are created without a storageId, but keep the
+   * number of received reports and status
    */
   def splitExisting(aggregatedReports: AggregatedReports, newReports: Seq[AR]): AggregatedReports = {
-    (aggregatedReports/:newReports.flatMap(r => Seq(r.startPoint.start, r.endGap.start))){ case (agg, instant) =>
+    (aggregatedReports/:newReports.flatMap(r => Seq(r.startPoint.dateTime, r.endGap.dateTime))){ case (agg, instant) =>
       if(agg.isDefinedAt(instant)) agg
       else {
-        val newPoint = agg.getPreviousStartingPoint(instant) match {
-          case Gap(_) => Gap(instant)
-          case ARStart(start, status, _) => ARStart(instant, status, None)
+        val newPoint = agg.getInvervalContaining(instant) match {
+          case (Gap(_), _) => Gap(instant)
+          case (ARStart(start, status, _, i) , _) => ARStart(instant, status, None, i)
         }
         agg.replace(newPoint)
       }
@@ -387,9 +466,95 @@ class UnitAggregationService {
    * Merge new aggregated report with existing one.
    * Hypothesis: a splitExisting was done, so that each aggregated report has
    * exactly both its start point and its end point defined as a point of
-   * the aggregated reoport.
+   * the aggregated report.
    */
-  def mergeUpdateStatus() = ???
+  def mergeUpdateStatus(aggregatedReports: AggregatedReports, newReports: Seq[AR]): AggregatedReports = {
+    def areAligned(): Unit = {
+      //check hypothesis
+      val nonOk = newReports.flatMap { case report =>
+        val existing = aggregatedReports.getInvervalContaining(report.interval.getStart)
+        if(  existing._1.dateTime != report.interval.getStart
+          || existing._2.dateTime != report.interval.getEnd
+        ) {
+          Some("TODO: error message about report not aligned with existing aggregated report")
+        } else {
+          None
+        }
+      }
+      if(nonOk.nonEmpty) {
+        throw new IllegalArgumentException("Found some non aligned report between existing aggregated reports and new one: " + nonOk.mkString("; "))
+      }
+    }
+
+    areAligned()
+
+    //now, actually merge things
+    //new reports may not be in any order, that does not matter
+    (aggregatedReports/: newReports) { case (aggregated, report) =>
+      val existing = aggregated.getInvervalContaining(report.startPoint.dateTime)
+      aggregated.replace(unitMerge(existing._1, report))
+    }
+  }
+
+  /**
+   * Merge an existing aggregated report with a new one.
+   * It's the core of the algorithme, where status updates
+   * happen!
+   *
+   * Hypothesis: start time of new and old reports match
+   * (end time is not taken into account, it must have been
+   * checked before).
+   */
+  def unitMerge(existingAggregatedReport: StartingTime, newReport: AR) : StartingTime = {
+    existingAggregatedReport match {
+      case Gap(t) => ARStart(t, newReport.status, newReport.storageId, newReport.nbReceived)
+      case r@ARStart(t, status, storageId, nbReceived) =>
+        val total = nbReceived+newReport.nbReceived
+        if(total == 0) {
+          // ??? well, does it makes sense.
+          r
+        } else if(total > 1) {
+          //thats an unknown status. For a given key, we should always have exactly 0 or 1
+          //report for a given time.
+          ARStart(t, UnknownReportType, storageId, nbReceived+newReport.nbReceived)
+        } else { // total == 1
+          //the report with one received report is the good status
+          val newStatus = if(nbReceived == 0) newReport.status else status
+          ARStart(t, newStatus, storageId, 1)
+        }
+    }
+  }
+
+
+  /**
+   * Merge contiguous aggregated reports with the same status
+   */
+  def extendsInterval(aggregatedReports: AggregatedReports): AggregatedReports = {
+    if(aggregatedReports.intervalStarts.isEmpty) aggregatedReports
+    else {
+      val init = (Seq[StartingTime](), Option.empty[StartingTime])
+      val (reports, last) = (init /: aggregatedReports.intervalStarts){ case ((processed, optCurrent), nextReport) =>
+          optCurrent match {
+            case None => (processed, Some(nextReport))
+            case Some(current) => //does current and next are meageable ?
+              (current, nextReport) match {
+                case ( Gap(t), Gap(_) ) => //extends gap
+                  (processed, Some(Gap(t)))
+                case ( r@ARStart(t1, status1, storageId1, nb1), ARStart(t2, status2, storageId2, nb2) ) =>
+                  if(status1 == status2 && nb1 == nb2) { //extend ! Try to keep existing storageId if at least one defined
+                    (processed, Some(r.copy(storageId = storageId1.orElse(storageId2))) )
+                  } else { //don't extend
+                    (processed :+ current, Some(nextReport))
+                  }
+                case (_,_) => //not homogeneous, don't extend
+                  (processed :+ current, Some(nextReport))
+              }
+          }
+      }
+      val newStartingPoints = reports ++ last.toSeq
+      AggregatedReports(newStartingPoints)
+    }
+  }
 
 }
 
