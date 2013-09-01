@@ -54,18 +54,21 @@ import com.normation.rudder.services.reports.ReportingService
 import com.normation.rudder.domain.reports.bean.ReportType._
 import com.normation.rudder.domain.reports.RuleExpectedReports
 
+import com.normation.rudder.reports.aggregation.AggregationConstants.AGGREGATION_INTERVAL
+
 /**
  * That service contains most of the logic to merge
  * interval of same criticity together.
  */
 class AggregationService(
-    expectedReportRepository : RuleExpectedReportsRepository
-  , reportsRepository        : ReportsRepository
-  , reportingService         : ReportingService
+    expectedReportRepository   : RuleExpectedReportsRepository
+  , reportsRepository          : ReportsRepository
   , aggregatedReportsRepository: AggregatedReportsRepository
-  , updatesEntriesRepository : AggregationStatusRepository
-  , reportDelay : Int // in hours
-  , maxDays : Int // in days
+  , updatesEntriesRepository   : AggregationStatusRepository
+  , splitMerge                 : SplitMergeAggregatedReport
+  , initializeAggregatedReport : InitializeAggregatedReport
+  , reportDelay                : Int // in hours
+  , maxDays                    : Int // in days
 ) extends Loggable {
   import AggregationConstants._
 
@@ -76,19 +79,7 @@ class AggregationService(
 //  }
 
 
-  val reportInterval : Int = 5
 
-  def createAggregatedReportsFromReports (reports : Seq[Reports],expectedReports : Seq[LinearisedExpectedReport]  ) = {
-    reports.groupBy(_.executionTimestamp).flatMap{
-      case (executionTimeStamp,reports) =>
-        val headReport = reports.head
-        val (expected, unexpected) =  reports.partition(report => expectedReports.exists(_.serial == report.serial))
-        val expectedAggregated = expected.map(report => AggregatedReport( report, ReportType(report), 1, 1))
-        val unexpectedAggregated = unexpected.map(report => AggregatedReport(report, UnknownReportType, 1 , 1))
-
-        unexpectedAggregated ++ expectedAggregated
-    }.toSeq
-  }
 
   def newAggregationfromReports (reports:Seq[Reports]) : (Seq[AggregatedReport],Seq[AggregatedReport])= {
 
@@ -101,46 +92,39 @@ class AggregationService(
           case eb:EmptyBox => //logger.error("couldn't not fetch expected Reports")
           Seq()
           case Full(expectedReports) =>
-            val linearisedExpectedReports = expectedReports.flatMap(lineariseExpectedReport(_)).distinct
+            val linearisedExpectedReports = expectedReports.flatMap(splitMerge.lineariseExpectedReport(_)).distinct
             //linearisedExpectedReports.foreach(//logger.warn(_))
-            val expectedMap = linearisedExpectedReports.groupBy(ReportKey(_))
-            reportsByRule.groupBy(ReportKey(_)).map {
+            val expectedMap = linearisedExpectedReports.groupBy( _.key )
+            reportsByRule.groupBy( ReportKey(_) ).map {
               case (key,reports) =>
                 //logger.info(s"found ${reports.size} for reportKey ${key}")
                 expectedMap.get(key) match {
                   // There is no expected report => Map to UnexpectedReport
                   case None =>
                     //logger.info(s"no expected for reportKey ${key}")
-                    (reports.groupBy(_.executionTimestamp).map{ case (_,reports) => AggregatedReport(reports.head,UnknownReportType,reports.size,reports.size)}.toSeq, Seq())
+                    (reports.groupBy(_.executionTimestamp).map{ case (_,reports) => AggregatedReport(reports.head,UnknownReportType,reports.size)}.toSeq, Seq())
                   case Some(expectedReports) =>
 
                     //logger.info(s"found ${expectedReports.size} expected for reportKey ${key}")
-                    val ReportsToAdd = createAggregatedReportsFromReports(reports,expectedReports)
+                    val ReportsToAdd = initializeAggregatedReport.fromExecutionReports(reports,expectedReports)
                     //assert(false)
                     val linearisedAggregated = expectedMap.get(key).getOrElse(Seq()).map{base =>
                       AggregatedReport (
-                          base.nodeId
-                        , base.ruleId
-                        , base.serial
-                        , base.serial
-                        , base.directiveId
-                        , base.component
-                        , base.keyValue
+                          base.key
+                        , 0
                         , SuccessReportType
+                        , new Interval(base.startDate, base.endDate)
                         , ""
-                        , base.startDate
-                        , base.endDate
-                        , 0
-                        , base.cardinality
-                        , 0
+                        , SerialInterval(base.serial, base.serial)
+                        , None
                     ) }
                     logger.info (s"Merge One started, expected : ${linearisedAggregated.size}, ${ReportsToAdd.size}")
-                    val merged = mergeAggregatedReports(linearisedAggregated, ReportsToAdd)
+                    val merged = splitMerge.mergeAggregatedReports(linearisedAggregated, ReportsToAdd)
                     logger.info (s"Merge One ended, merge size : ${merged._1.size}, ${merged._2.size}")
 
                     aggregatedReportsRepository.getAggregatedReportsByDate(ruleId, firstExecutionTimeStamp, lastExecutionTimeStamp) match {
                       case Full(aggregated) => logger.info(s"merge 2 start, ${aggregated.size}")
-                        val newMerge = mergeAggregatedReports(aggregated, merged._1)
+                        val newMerge = splitMerge.mergeAggregatedReports(aggregated, merged._1)
                         logger.info(s"merge 2 end ${newMerge._1.size}, ${newMerge._2.size}")
                         newMerge
                       case eb:EmptyBox => logger.error(s"could not get aggregatedReport")
@@ -202,42 +186,23 @@ class AggregationService(
     }
 
   }
-/*
-  def getTimeInterval() : Option[Interval] = {
+}
 
-    val intervalStartDateTime = (updatesEntriesRepository.getAgregationUpdateTime) getOrElse {
-      val expectedReports = expectedReportRepository.findExpectedReports(new DateTime(0), DateTime.now())
-      //val oldestReportDate = reportsRepository.getOldestReports.getOrElse(None).map(_.executionDate).getOrElse(DateTime.now())
-      expectedReports match {
-        case Full(seq) => seq.sortWith((x,y)=> x.beginDate.isBefore(y.beginDate)).headOption.map(_.beginDate).getOrElse(DateTime.now)
-        case _ => DateTime.now
-      }
-    }
-    val reportLimit = DateTime.now.minusHours(reportDelay)
-    val maxReportDate = intervalStartDateTime.plusDays(maxDays)
+class InitializeAggregatedReport {
+  def fromExecutionReports (reports : Seq[Reports],expectedReports : Seq[LinearisedExpectedReport]  ) = {
+    reports.groupBy(_.executionTimestamp).flatMap{
+      case (executionTimeStamp,reports) =>
+        val headReport = reports.head
+        val (expected, unexpected) =  reports.partition(report => expectedReports.exists(_.serial == report.serial))
+        val expectedAggregated = expected.map(report => AggregatedReport( report, ReportType(report), 1))
+        val unexpectedAggregated = unexpected.map(report => AggregatedReport(report, UnknownReportType, 1))
 
-    if (intervalStartDateTime.isAfter(reportLimit))
-      None
-    else {
-      val end = if (reportLimit.isAfter(maxReportDate)) maxReportDate else reportLimit
-      Some(new Interval(intervalStartDateTime,end))
-    }
+        unexpectedAggregated ++ expectedAggregated
+    }.toSeq
   }
+}
 
-    , @Column("directiveid") directiveId: String
-  , @Column("ruleid") ruleId: String
-  , @Column("beginserial") beginSerial: Int
-  , @Column("endserial") endSerial: Int
-  , @Column("component") component: String
-  , @Column("keyvalue") keyValue: String
-  , state: DBReportType
-  , @Column("message") message: String
-  , @Column("startDate") startDate: Timestamp
-  , @Column("endDate") endDate: Timestamp // only the endDate is mutable
-  , @Column("received") received : Int
-  , @Column("expected") expected : Int
-*/
-
+class SplitMergeAggregatedReport {  
 
   def remergeConflict (baseSeq : Seq[AggregatedReport], reportsToMerge : Seq[AggregatedReport], beforeMerge : Option[AggregatedReport], afterMerge : Option[AggregatedReport]) : (Seq[AggregatedReport],Seq[AggregatedReport],Seq[AggregatedReport])= {
     def shouldRemoveBound (bound : Option[AggregatedReport] ) : Boolean = {
@@ -256,7 +221,11 @@ class AggregationService(
       reportToMerge <- reportsToMerge
 
     } yield {
-      val updatedReport = baseSeq.filter(baseReport => (baseReport.endDate isBefore reportToMerge.startDate) && (baseReport.endDate isAfter (reportToMerge.startDate minusMinutes reportInterval*2))) match {
+      val updatedReport = 
+        baseSeq.filter(baseReport => 
+             (baseReport.interval.getEnd isBefore reportToMerge.interval.getStart) 
+          && (baseReport.interval.getEnd isAfter (reportToMerge.interval.getStart minusMinutes AGGREGATION_INTERVAL))
+        ) match {
         case mergeReports if !mergeReports.isEmpty =>
         //logger.warn("beforeMerge")
         beforeMerge match {
@@ -266,7 +235,7 @@ class AggregationService(
               //logger.error(reportToMerge)
               //logger.info(beforeReport)
               reportsToSave ++= mergeReports.map{report => unchanged -= report
-              report.copy(endDate = reportToMerge.startDate)}
+              report.copy(interval = new Interval(report.interval.getStart, reportToMerge.interval.getStart))}
               reportsToDelete += beforeReport
             } else {
               // Nothing to save
@@ -274,10 +243,10 @@ class AggregationService(
             case None =>
               // Nothing to save
         }
-        mergeReports.find (mergeReport => mergeReport.state == reportToMerge.state && mergeReport.received == reportToMerge.received ) match {
+        mergeReports.find (mergeReport => mergeReport.status == reportToMerge.status && mergeReport.received == reportToMerge.received ) match {
             case Some(mergeReport) =>
               //logger.info("secondPart")
-              val reportMerged =  mergeReport.copy(endDate = reportToMerge.endDate)
+              val reportMerged =  mergeReport.copy(interval = new Interval(mergeReport.interval.getStart, reportToMerge.interval.getEnd))
               if (reportsToSave.contains(mergeReport)) {
                 reportsToSave.update(reportsToSave.indexOf(mergeReport), reportMerged)
               } else {
@@ -296,7 +265,7 @@ class AggregationService(
       }
 
       //logger.info("test")
-      baseSeq.filter(baseReport => (baseReport.startDate isBefore (updatedReport.endDate plusMinutes reportInterval*2))&& (baseReport.startDate after reportToMerge.endDate) ) match {
+      baseSeq.filter(baseReport => (baseReport.interval.getStart isBefore (updatedReport.interval.getEnd plusMinutes AGGREGATION_INTERVAL))&& (baseReport.interval.getStart isAfter reportToMerge.interval.getEnd) ) match {
         case mergeReports  =>
         val updatedReportAgain = afterMerge match {
           case Some(afterReport) =>
@@ -306,7 +275,7 @@ class AggregationService(
             //logger.info(mergeReports.size.toString)
             if (!mergeReports.isEmpty) {
               if (afterReport.received == 0) {
-                val updatedReportAgain = updatedReport.copy(endDate = afterReport.endDate)
+                val updatedReportAgain = updatedReport.copy(interval = new Interval(updatedReport.interval.getStart, afterReport.interval.getEnd))
                 if (reportsToSave.contains(updatedReport)) {
                   reportsToSave.update(reportsToSave.indexOf(updatedReport), updatedReportAgain)
                 } else {
@@ -325,10 +294,10 @@ class AggregationService(
             updatedReport
         }
         //logger.warn(s"after ended, second part $updatedReportAgain")
-        mergeReports.find (mergeReport => mergeReport.state == updatedReportAgain.state && mergeReport.received == updatedReportAgain.received ) match {
+        mergeReports.find (mergeReport => mergeReport.status == updatedReportAgain.status && mergeReport.received == updatedReportAgain.received ) match {
             case Some(mergeReport) =>
               unchanged -= mergeReport
-              val reportMerged =  updatedReportAgain.copy(endDate = mergeReport.endDate)
+              val reportMerged =  updatedReportAgain.copy(interval = new Interval(updatedReportAgain.interval.getStart, mergeReport.interval.getEnd))
               if (reportsToSave.contains(updatedReportAgain)) {
                 reportsToSave.update(reportsToSave.indexOf(updatedReportAgain), reportMerged)
               } else {
@@ -356,27 +325,27 @@ class AggregationService(
   def splitConflict (conflicting : AggregatedReport, report : AggregatedReport) : (Option[AggregatedReport],Seq[AggregatedReport],Option[AggregatedReport]) = {
 
     def splitBegin (base: AggregatedReport, newReportBegin: DateTime) = {
-      val splittedEnd =  base.copy(startDate = newReportBegin, id = 0)
-      val splittedBegin = base.copy(endDate = newReportBegin)
+      val splittedEnd =  base.copy(interval = new Interval(newReportBegin, base.interval.getEnd) , storageId = None)
+      val splittedBegin = base.copy(interval = new Interval(base.interval.getStart, newReportBegin))
       (splittedBegin,splittedEnd)
     }
 
     def splitEnd (base: AggregatedReport, newReportEnd: DateTime) = {
-      val splittedBegin =  base.copy(endDate = newReportEnd)
-      val splittedEnd = base.copy(startDate = newReportEnd, id = 0)
+      val splittedBegin =  base.copy(interval = new Interval(base.interval.getStart, newReportEnd))
+      val splittedEnd = base.copy(interval = new Interval(newReportEnd, base.interval.getEnd), storageId = None)
       (splittedBegin,splittedEnd)
     }
 
-    val (notConflictingBegin, conflictingEnd) = if ((conflicting.startDate isBefore report.startDate)) {
-      val (notConflictingBegin, conflictingEnd) = splitBegin(conflicting,report.startDate)
+    val (notConflictingBegin, conflictingEnd) = if ((conflicting.interval.getStart isBefore report.interval.getStart)) {
+      val (notConflictingBegin, conflictingEnd) = splitBegin(conflicting,report.interval.getStart)
 
       (Some(notConflictingBegin), conflictingEnd)
     } else {
       (None,conflicting)
     }
 
-    val (notConflictingEnd, conflictingPart) = if ((conflictingEnd.endDate isAfter report.endDate)) {
-      val ( conflictingPart, notConflictingEnd) = splitEnd(conflictingEnd,report.endDate)
+    val (notConflictingEnd, conflictingPart) = if ((conflictingEnd.interval.getEnd isAfter report.interval.getEnd)) {
+      val ( conflictingPart, notConflictingEnd) = splitEnd(conflictingEnd,report.interval.getEnd)
 
       (Some(notConflictingEnd), conflictingPart)
     } else {
@@ -386,19 +355,19 @@ class AggregationService(
 
     // Check if there is to much Report
     val newCount = report.received + conflictingPart.received
-    val resolvedConflicts = if (newCount > report.expected) {
+    val resolvedConflicts = if (newCount > 1) { //we can have at most one report for a key
       // TOO MUCH PUT UNKNOWN WITH NEWCOUNT RECEIVED
-      Seq(conflicting.copy(state = UnknownReportType, received = newCount, expected = newCount))
+      Seq(conflicting.copy(status = UnknownReportType, received = newCount))
     } else {
       // Check if same state
-      if (report.state == conflictingPart.state) {
+      if (report.status == conflictingPart.status) {
         // Update receive Number and return
         Seq(conflictingPart.copy(received = newCount, message = report.message))
       } else {
         // check if both are empty (should not Happen empty reports whoudl already been treated because they should all get Success status (with 0 reports)
         if (newCount == 0){
           // Both empty report, Wrong report type here, repair it
-          Seq(conflicting.copy(state = SuccessReportType))
+          Seq(conflicting.copy(status = SuccessReportType))
         } else {
           // Still need to remove empty if there exists, There will still be at least one report in it
           Seq(conflictingPart,report).filter(_.received == 0)
@@ -411,37 +380,37 @@ class AggregationService(
 
   def mergeOneAggregatedReport ( base : Seq[AggregatedReport], report : AggregatedReport ) : (Seq[AggregatedReport],Seq[AggregatedReport],Seq[AggregatedReport]) = {
     def createEmptyReport (base: AggregatedReport, begin : DateTime, end: DateTime) = {
-      base.copy(startDate = begin, endDate = end)
+      base.copy(interval = new Interval(begin, end))
     }
 
   logger.warn (s"merge $report in ${base.size}")
     if (!base.isEmpty) {
     // Is the report after all aggregated reports
-    if (base.forall(_.endDate isBefore report.startDate) ) {
+    if (base.forall(_.interval.getEnd isBefore report.interval.getStart) ) {
       // Get last report from this list
-      val maxEndDate : AggregatedReport = base.maxBy(_.endDate.getMillis())
+      val maxEndDate : AggregatedReport = base.maxBy(_.interval.getEnd.getMillis())
       val probablyUnchanged = base.filterNot(_ == maxEndDate)
       val (reportsToSave,unchanged) =
-        if ((maxEndDate.endDate isBefore report.startDate) &&(maxEndDate.endDate isAfter (report.startDate minusMinutes (2 * reportInterval)))) {
+        if ((maxEndDate.interval.getEnd isBefore report.interval.getStart) &&(maxEndDate.interval.getEnd isAfter (report.interval.getStart minusMinutes (AGGREGATION_INTERVAL)))) {
         // Check if same report has been received
           logger.info("merge after")
-          if (maxEndDate.state == report.state && maxEndDate.received == report.received) {
+          if (maxEndDate.status == report.status && maxEndDate.received == report.received) {
           // Extend actual report
             //logger.info("extend")
-            (Seq(maxEndDate.copy(endDate = report.endDate)),probablyUnchanged)
+            (Seq(maxEndDate.copy(interval = new Interval(maxEndDate.interval.getStart, report.interval.getEnd))),probablyUnchanged)
           } else {
             // Check if this a no answer
             if (report.received == 0) {
               // Nothing to do, waiting for a new report
-              (Seq(report.copy(startDate = maxEndDate.endDate)),base)
+              (Seq(report.copy(interval = new Interval(maxEndDate.interval.getEnd, report.interval.getEnd))),base)
             } else {
               // extend previous to beginning of new report and and this new report
 
-              (Seq(maxEndDate.copy(endDate = report.startDate),report),probablyUnchanged)
+              (Seq(maxEndDate.copy(interval = new Interval(maxEndDate.interval.getStart, report.interval.getStart)),report),probablyUnchanged)
             }
           }
         } else {
-          (Seq(createEmptyReport(report, maxEndDate.endDate, report.startDate), report), base)
+          (Seq(createEmptyReport(report, maxEndDate.interval.getEnd, report.interval.getStart), report), base)
         }
       (reportsToSave,Seq(), unchanged)
     } else {
@@ -477,8 +446,8 @@ class AggregationService(
   }
 
   def mergeAggregatedReports ( base : Seq[AggregatedReport], toMerge : Seq[AggregatedReport])  : (Seq[AggregatedReport], Seq[AggregatedReport])= {
-    val baseMap = base.groupBy(ReportKey(_)).mapValues(_.sortBy(_.startDate.getMillis()))
-    val mergeMap = toMerge.groupBy(ReportKey(_)).mapValues(_.sortBy(_.startDate.getMillis()))
+    val baseMap = base.groupBy( _.key ).mapValues(_.sortBy(_.interval.getStart.getMillis()))
+    val mergeMap = toMerge.groupBy( _.key ).mapValues(_.sortBy(_.interval.getStart.getMillis()))
     val mergingMap = (for {
       key <- (baseMap.keys ++ mergeMap.keys).toSeq.distinct
     } yield {
@@ -526,13 +495,15 @@ class AggregationService(
        value <-component.componentsValues
     } yield {
       LinearisedExpectedReport(
-          nodeId
-        , directive.directiveId
-        , aRuleExpectedReports.ruleId
+          ReportKey(
+              nodeId
+            , aRuleExpectedReports.ruleId
+            , directive.directiveId
+            , component.componentName
+            , value
+          )
         , aRuleExpectedReports.serial
-        , component.componentName
         , component.cardinality
-        , value
         , aRuleExpectedReports.beginDate
         , aRuleExpectedReports.endDate.getOrElse(DateTime.now)
       )
@@ -543,12 +514,8 @@ class AggregationService(
 //case class MissingReports (expected : Int, received : Int) => Sérialisé en _received_expected pour stocker le nombre
 
 case class LinearisedNodeStatusReport(
-    nodeId       : NodeId
-  , ruleId       : RuleId
+    key          : ReportKey
   , serial       : Int
-  , directiveId  : DirectiveId
-  , component    : String
-  , keyValue     : String
   , reportType   : ReportType
   , message      : String
   , executionDate: DateTime
@@ -563,15 +530,18 @@ object LinearisedNodeStatusReport {
       keyValue  <- component.componentValues ++ component.unexpectedCptValues
     } yield {
       LinearisedNodeStatusReport(
-          nodeStatusReport.nodeId
-        , nodeStatusReport.ruleId
+          ReportKey(
+              nodeStatusReport.nodeId
+            , nodeStatusReport.ruleId
+            , directive.directiveId
+            , component.component
+            , keyValue.componentValue
+          )
         , serial
-        , directive.directiveId
-        , component.component
-        , keyValue.componentValue
         , keyValue.cptValueReportType
         , keyValue.message.mkString(";")
-        , execDate)
+        , execDate
+      )
     }
   }
 
@@ -581,39 +551,11 @@ object LinearisedNodeStatusReport {
 
 
 // a class not unlike the AggregatedReports
+//TODO: what is its goal ?
 case class LinearisedExpectedReport(
-    nodeId       : NodeId
-  , directiveId  : DirectiveId
-  , ruleId       : RuleId
-  , serial       : Int
-  , component    : String
-  , cardinality  : Int
-  , keyValue     : String
-  , startDate    : DateTime
-  , endDate      : DateTime
+    key         : ReportKey
+  , serial      : Int
+  , cardinality : Int
+  , startDate   : DateTime
+  , endDate     : DateTime
 ) extends HashcodeCaching
-
-// this class that identify the entry
-case class ReportKey(
-       ruleId      : RuleId
-    ,  directiveId : DirectiveId
-    ,  component   : String
-    ,  keyValue    : String
-    ,  nodeId      : NodeId
-) extends HashcodeCaching
-
-object ReportKey {
-  def apply(entry : LinearisedExpectedReport) : ReportKey =
-    ReportKey(entry.ruleId, entry.directiveId, entry.component, entry.keyValue, entry.nodeId)
-
-  def apply(entry : LinearisedNodeStatusReport) : ReportKey =
-    ReportKey(entry.ruleId, entry.directiveId, entry.component, entry.keyValue, entry.nodeId)
-
-  def apply(entry : Reports) : ReportKey =
-    ReportKey(entry.ruleId, entry.directiveId, entry.component, entry.keyValue, entry.nodeId)
-
-  def apply(entry : AggregatedReport) : ReportKey =
-    ReportKey(
-        entry.ruleId,entry.directiveId,entry.component, entry.keyValue, entry.nodeId)
-
-}
