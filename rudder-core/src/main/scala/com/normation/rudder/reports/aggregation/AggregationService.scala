@@ -186,42 +186,6 @@ class AggregationService(
     }
 
   }
-/*
-  def getTimeInterval() : Option[Interval] = {
-
-    val intervalStartDateTime = (updatesEntriesRepository.getAgregationUpdateTime) getOrElse {
-      val expectedReports = expectedReportRepository.findExpectedReports(new DateTime(0), DateTime.now())
-      //val oldestReportDate = reportsRepository.getOldestReports.getOrElse(None).map(_.executionDate).getOrElse(DateTime.now())
-      expectedReports match {
-        case Full(seq) => seq.sortWith((x,y)=> x.beginDate.isBefore(y.beginDate)).headOption.map(_.beginDate).getOrElse(DateTime.now)
-        case _ => DateTime.now
-      }
-    }
-    val reportLimit = DateTime.now.minusHours(reportDelay)
-    val maxReportDate = intervalStartDateTime.plusDays(maxDays)
-
-    if (intervalStartDateTime.isAfter(reportLimit))
-      None
-    else {
-      val end = if (reportLimit.isAfter(maxReportDate)) maxReportDate else reportLimit
-      Some(new Interval(intervalStartDateTime,end))
-    }
-  }
-
-    , @Column("directiveid") directiveId: String
-  , @Column("ruleid") ruleId: String
-  , @Column("beginserial") beginSerial: Int
-  , @Column("endserial") endSerial: Int
-  , @Column("component") component: String
-  , @Column("keyvalue") keyValue: String
-  , state: DBReportType
-  , @Column("message") message: String
-  , @Column("startDate") startDate: Timestamp
-  , @Column("endDate") endDate: Timestamp // only the endDate is mutable
-  , @Column("received") received : Int
-  , @Column("expected") expected : Int
-*/
-
 }
 
 class InitializeAggregatedReport {

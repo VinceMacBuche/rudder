@@ -30,7 +30,9 @@
 * along with this program. If not, see <http://www.gnu.org/licenses/agpl.html>.
 *
 *************************************************************************************
-*/package com.normation.rudder.reports.aggregation
+*/
+
+package com.normation.rudder.reports.aggregation
 
 import net.liftweb.common.Loggable
 import org.joda.time.DateTime

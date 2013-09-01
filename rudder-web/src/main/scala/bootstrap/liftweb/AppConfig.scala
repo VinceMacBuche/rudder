@@ -1392,9 +1392,10 @@ object RudderConfig extends Loggable {
     new AggregationService(
       expectedReportRepository
     , reportsRepository
-    , reportingService
     , aggregatedReportsJdbcRepository
     , updatesEntryJdbcRepository
+    , new SplitMergeAggregatedReport
+    , new InitializeAggregatedReport
     , delay
     , max
   )
