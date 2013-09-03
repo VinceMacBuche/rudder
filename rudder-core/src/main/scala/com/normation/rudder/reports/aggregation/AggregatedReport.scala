@@ -50,13 +50,13 @@ import com.normation.utils.HashcodeCaching
 
 /**
  * AggregatedReport are the "normalized" description of
- * what happened for a given node, for the value of a 
- * component of a directive of a rule. 
- * 
+ * what happened for a given node, for the value of a
+ * component of a directive of a rule.
+ *
  * Hypothesys: for a given time, for a given AggregatedReportKey,
  * we have AT MOST one aggregatedReport (else, that means that
- * we missed an aggregation somehow). 
- * 
+ * we missed an aggregation somehow).
+ *
  */
 
 
@@ -64,12 +64,12 @@ import com.normation.utils.HashcodeCaching
 /**
  * This is the report key (that's the most precise
  * targeting of a report).
- *  
+ *
  * Notice that its the same key for an aggregated report or
- * a run report. 
- * 
+ * a run report.
+ *
  * Notice that the "id" is not in the key, because the idea
- * is a database thing, not a semantic one. 
+ * is a database thing, not a semantic one.
  */
 case class ReportKey(
     nodeId      : NodeId
@@ -85,7 +85,15 @@ object ReportKey {
 }
 
 //a case class for serials
-case class SerialInterval(beginingSerial: Int, endingSerial: Int)
+case class SerialInterval(beginingSerial: Int, endingSerial: Int) {
+
+  def update(serial : SerialInterval) = {
+    val newBegin  = if (serial.beginingSerial < beginingSerial) serial.beginingSerial else beginingSerial
+    val newEnding = if (serial.endingSerial > endingSerial) serial.endingSerial else endingSerial
+    SerialInterval(newBegin,newEnding)
+  }
+
+}
 
 object SerialInterval {
   def apply(serial: Int) = new SerialInterval(serial, serial)
@@ -94,7 +102,7 @@ object SerialInterval {
 
 case class AggregatedReport (
     key         : ReportKey
-  , received    : Int   
+  , received    : Int
   , status      : ReportType
   , interval    : Interval
   , message     : String
@@ -102,9 +110,9 @@ case class AggregatedReport (
   , storageId   : Option[Long]
 ) extends Loggable {
 
-  if(storageId == Some(0L)) 
+  if(storageId == Some(0L))
     throw new IllegalArgumentException("Storage ID can't be some (0)")
-  
+
   def toSquerylEntity : AggregatedSquerylReport = {
     AggregatedSquerylReport(
         key.nodeId.value

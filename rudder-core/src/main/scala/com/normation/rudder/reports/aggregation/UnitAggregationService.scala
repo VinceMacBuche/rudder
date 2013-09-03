@@ -58,7 +58,7 @@ final case class AgentExecution(timestamp: DateTime)
 /**
  * Agent report, with only the interesting parts for us
  */
-final case class ExecutionReport(timestamp: DateTime, status: ReportType, serial: Int)
+final case class ExecutionReport(timestamp: DateTime, status: ReportType, serial: Int, message: String)
 
 
 /**
@@ -68,13 +68,15 @@ final case class ExecutionReport(timestamp: DateTime, status: ReportType, serial
  * - only interval and optional existing db key
  */
 final case class AR(
-    interval  : Interval
-  , status    : ReportType
-  , storageId : Option[Long]
-  , nbReceived: Int
+    interval   : Interval
+  , status     : ReportType
+  , storageId  : Option[Long]
+  , nbReceived : Int
+  , serials    : SerialInterval
+  , message    : String
 ) {
 
-  val startPoint = ARStart(interval.getStart, status, storageId, nbReceived)
+  val startPoint = ARStart(interval.getStart, status, storageId, nbReceived, serials, message)
   val endGap = Gap(interval.getEnd)
 }
 
@@ -126,10 +128,12 @@ final case class Gap(dateTime: DateTime) extends StartingTime {
   override def withStart(t: DateTime) = Gap(t)
 }
 final case class ARStart(
-    dateTime  : DateTime
-  , status    : ReportType
-  , storageId : Option[Long]
-  , nbReceived: Int
+    dateTime   : DateTime
+  , status     : ReportType
+  , storageId  : Option[Long]
+  , nbReceived : Int
+  , serials    : SerialInterval
+  , message    : String
 ) extends StartingTime {
   override def withStart(t: DateTime) = this.copy(dateTime = t)
 }
@@ -282,7 +286,7 @@ object AggregatedReports extends Loggable {
  *
  * 2/ Normalize existing aggregated reports
  *    on the execution sequence:
- *    - extends 0-lenght interval to match execution
+ *    - extends 0-length interval to match execution
  *      intervals one
  *    - check that edges of existing aggregated report
  *      are aligned with edges of execution sequence
@@ -330,8 +334,8 @@ class UnitAggregationService extends Loggable {
     val extendedReports = extendsInterval(mergedReports)
 
     //finally, transform back our aggregatedReports datastructure to AR
-    //last report is built with an interval of lengh 0
-    val points = extendedReports.intervalStarts.toSeq
+    //last report is built with an interval of length 0
+    val points = extendedReports.toSave.intervalStarts.toSeq
 
     if(points.isEmpty) Set()
     else {
@@ -357,8 +361,8 @@ class UnitAggregationService extends Loggable {
   def toAR(start: StartingTime, end: DateTime) : Option[AR] = {
     start match {
       case Gap(_) => None
-      case ARStart(t, status, storageId, nbReports) =>
-        Some(AR(new Interval(t, end), status, storageId, nbReports))
+      case ARStart(t, status, storageId, nbReports, serials, message) =>
+        Some(AR(new Interval(t, end), status, storageId, nbReports, serials, message))
     }
   }
 
@@ -437,6 +441,8 @@ class UnitAggregationService extends Loggable {
         , status.getOrElse(UnknownReportType)
         , None
         , 1
+        , SerialInterval(report.serial)
+        , report.message
       )
     }
 
@@ -451,11 +457,11 @@ class UnitAggregationService extends Loggable {
    */
   def splitExisting(aggregatedReports: AggregatedReports, newReports: Seq[AR]): AggregatedReports = {
     (aggregatedReports/:newReports.flatMap(r => Seq(r.startPoint.dateTime, r.endGap.dateTime))){ case (agg, instant) =>
-      if(agg.isDefinedAt(instant)) agg
+      if(agg.isDefinedAt(instant)) agg /// and the end ????
       else {
         val newPoint = agg.getInvervalContaining(instant) match {
           case (Gap(_), _) => Gap(instant)
-          case (ARStart(start, status, _, i) , _) => ARStart(instant, status, None, i)
+          case (ARStart(start, status, _, i, serials, message) , _) => ARStart(instant, status, None, i, serials, message)
         }
         agg.replace(newPoint)
       }
@@ -507,8 +513,8 @@ class UnitAggregationService extends Loggable {
    */
   def unitMerge(existingAggregatedReport: StartingTime, newReport: AR) : StartingTime = {
     existingAggregatedReport match {
-      case Gap(t) => ARStart(t, newReport.status, newReport.storageId, newReport.nbReceived)
-      case r@ARStart(t, status, storageId, nbReceived) =>
+      case Gap(t) => ARStart(t, newReport.status, newReport.storageId, newReport.nbReceived, newReport.serials, newReport.message)
+      case r@ARStart(t, status, storageId, nbReceived, serials, message) =>
         val total = nbReceived+newReport.nbReceived
         if(total == 0) {
           // ??? well, does it makes sense.
@@ -516,11 +522,13 @@ class UnitAggregationService extends Loggable {
         } else if(total > 1) {
           //thats an unknown status. For a given key, we should always have exactly 0 or 1
           //report for a given time.
-          ARStart(t, UnknownReportType, storageId, nbReceived+newReport.nbReceived)
+          val newSerials = serials.update(newReport.serials)
+          val newMessage = s"${message} | ${newReport.message}"
+          ARStart(t, UnknownReportType, storageId, total, newSerials, newMessage)
         } else { // total == 1
           //the report with one received report is the good status
-          val newStatus = if(nbReceived == 0) newReport.status else status
-          ARStart(t, newStatus, storageId, 1)
+          val (newStatus, newSerials, newMessage) = if(nbReceived == 0) (newReport.status, newReport.serials, newReport.message) else (status,serials,message)
+          ARStart(t, newStatus, storageId, 1, newSerials, newMessage)
         }
     }
   }
@@ -529,32 +537,48 @@ class UnitAggregationService extends Loggable {
   /**
    * Merge contiguous aggregated reports with the same status
    */
-  def extendsInterval(aggregatedReports: AggregatedReports): AggregatedReports = {
-    if(aggregatedReports.intervalStarts.isEmpty) aggregatedReports
+  def extendsInterval(aggregatedReports: AggregatedReports): AggregationResult = {
+    if(aggregatedReports.intervalStarts.isEmpty) AggregationResult(aggregatedReports)
     else {
-      val init = (Seq[StartingTime](), Option.empty[StartingTime])
-      val (reports, last) = (init /: aggregatedReports.intervalStarts){ case ((processed, optCurrent), nextReport) =>
+      val init = (Seq[StartingTime](), Option.empty[StartingTime], Seq[StartingTime]())
+      val (reports, last, reportstoDelete) = (init /: aggregatedReports.intervalStarts){ case ((processed, optCurrent, toDelete), nextReport) =>
           optCurrent match {
-            case None => (processed, Some(nextReport))
+            case None => (processed, Some(nextReport), Seq())
             case Some(current) => //does current and next are meageable ?
               (current, nextReport) match {
                 case ( Gap(t), Gap(_) ) => //extends gap
-                  (processed, Some(Gap(t)))
-                case ( r@ARStart(t1, status1, storageId1, nb1), ARStart(t2, status2, storageId2, nb2) ) =>
+                  (processed, Some(Gap(t)), toDelete)
+                case ( r@ARStart(t1, status1, storageId1, nb1, serials1, message1), r2@ARStart(t2, status2, storageId2, nb2, serials2, message2s) ) =>
                   if(status1 == status2 && nb1 == nb2) { //extend ! Try to keep existing storageId if at least one defined
-                    (processed, Some(r.copy(storageId = storageId1.orElse(storageId2))) )
+                    val newSerials = serials1.update(serials2)
+                    val newDelete =
+                      if (storageId1.nonEmpty && storageId2.nonEmpty) {
+                        toDelete :+ r2
+                      } else {
+                        toDelete
+                      }
+
+                    (processed, Some(r.copy(storageId = storageId1.orElse(storageId2), serials = newSerials)), newDelete )
                   } else { //don't extend
-                    (processed :+ current, Some(nextReport))
+                    (processed :+ current, Some(nextReport), toDelete)
                   }
                 case (_,_) => //not homogeneous, don't extend
-                  (processed :+ current, Some(nextReport))
+                  (processed :+ current, Some(nextReport), toDelete)
               }
           }
       }
       val newStartingPoints = reports ++ last.toSeq
-      AggregatedReports(newStartingPoints)
+      AggregationResult(AggregatedReports(newStartingPoints), AggregatedReports(reportstoDelete))
     }
   }
 
 }
 
+case class AggregationResult (
+    toSave : AggregatedReports
+  , toDelete : AggregatedReports
+)
+
+object AggregationResult {
+  def apply(toSave: AggregatedReports) : AggregationResult = AggregationResult(toSave, AggregatedReports(Set()))
+}

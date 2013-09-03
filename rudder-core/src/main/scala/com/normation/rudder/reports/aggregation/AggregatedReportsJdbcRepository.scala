@@ -280,5 +280,4 @@ case class AggregatedSquerylReport (
   , @Column("endtime")     endTime     : Timestamp
   , @Column("received")    received    : Int
   , @Column("id")          id          : Long = 0L
-) extends KeyedEntity[Long] {
-}
+) extends KeyedEntity[Long]
