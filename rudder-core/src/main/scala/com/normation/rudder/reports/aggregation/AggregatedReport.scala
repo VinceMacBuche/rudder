@@ -155,6 +155,18 @@ object AggregatedReport {
     )
   }
 
+  def apply(aggregation : AggregationReport, reportKey : ReportKey) : AggregatedReport = {
+    AggregatedReport(
+        reportKey
+      , aggregation.nbReceived
+      , aggregation.status
+      , aggregation.interval
+      , aggregation.message
+      , aggregation.serials
+      , aggregation.storageId
+    )
+  }
+
   def apply(report : AggregatedSquerylReport) : AggregatedReport = {
     AggregatedReport(
         ReportKey(

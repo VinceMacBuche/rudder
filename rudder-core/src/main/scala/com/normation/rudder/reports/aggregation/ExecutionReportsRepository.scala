@@ -102,10 +102,10 @@ case class ExecutionReportsSquerylRepository(
 object Executions extends Schema {
   val executions = table[ReportExecution]("executions")
 
-    on(executions)(t => declare(
+  on(executions)(
+    t => declare(
       t.id.is(autoIncremented("executionsid"), primaryKey)
-      )
-      )
+  ) )
 }
 
 case class ReportExecution (

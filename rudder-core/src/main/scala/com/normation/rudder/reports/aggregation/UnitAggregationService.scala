@@ -36,10 +36,8 @@ package com.normation.rudder.reports.aggregation
 
 import scala.Option.option2Iterable
 import scala.collection.SortedSet
-
 import org.joda.time.DateTime
 import org.joda.time.Interval
-
 import com.normation.rudder.domain.reports.RuleExpectedReports
 import com.normation.rudder.domain.reports.bean.ReportType
 import com.normation.rudder.domain.reports.bean.UnknownReportType
@@ -47,8 +45,8 @@ import com.normation.rudder.reports.aggregation.AggregationConstants.AGGREGATION
 import com.normation.rudder.reports.aggregation.AggregationConstants.RESOLUTION
 import com.normation.rudder.reports.aggregation.AggregationConstants.RUN_INTERVAL
 import com.normation.rudder.reports.aggregation.AggregationConstants.coincide
-
 import net.liftweb.common.Loggable
+import com.normation.rudder.domain.reports.bean.Reports
 
 /**
  * Representation of the moment when an agent ran
@@ -60,6 +58,17 @@ final case class AgentExecution(timestamp: DateTime)
  */
 final case class ExecutionReport(timestamp: DateTime, status: ReportType, serial: Int, message: String)
 
+object ExecutionReport {
+  def apply (report : Reports) : ExecutionReport = {
+    ExecutionReport (
+        report.executionTimestamp
+      , ReportType(report.severity)
+      , report.serial
+      , report.message
+    )
+  }
+}
+
 
 /**
  * A class that only hold interesting parts of aggregated
@@ -67,7 +76,7 @@ final case class ExecutionReport(timestamp: DateTime, status: ReportType, serial
  * - not the key
  * - only interval and optional existing db key
  */
-final case class AR(
+final case class AggregationReport(
     interval   : Interval
   , status     : ReportType
   , storageId  : Option[Long]
@@ -79,6 +88,20 @@ final case class AR(
   val startPoint = ARStart(interval.getStart, status, storageId, nbReceived, serials, message)
   val endGap = Gap(interval.getEnd)
 }
+
+object AggregationReport {
+  def apply (aggregatedReport : AggregatedReport) : AggregationReport = {
+    AggregationReport(
+        aggregatedReport.interval
+      , aggregatedReport.status
+      , aggregatedReport.storageId
+      , aggregatedReport.received
+      , aggregatedReport.serials
+      , aggregatedReport.message
+    )
+  }
+}
+
 
 /**
  * The list of each execution, plus utility method to give
@@ -220,7 +243,7 @@ object AggregatedReports extends Loggable {
 
   def apply(startingTimes: Iterable[StartingTime]): AggregatedReports = AggregatedReports(SortedSet() ++ startingTimes)
 
-  def apply(reports: Seq[AR]) : AggregatedReports = {
+  def apply(reports: Seq[AggregationReport]) : AggregatedReports = {
 
     val sorted = reports.sortWith( (t1,t2) => t1.interval.getStart.isBefore( t2.interval.getStart) )
 
@@ -315,14 +338,15 @@ class UnitAggregationService extends Loggable {
     , agentExecutions: Set[AgentExecution]
       //a set of existing aggregation reports for the
       //interval of new reports.
-    , existingAggregationReports: Set[AR]
-  ): Set[AR] = {
+    , existingAggregationReports: Set[AggregationReport]
+  ): Set[AggregationReport] = {
 
     //just to be sure, add all execution timestamp to the know agent run.
     val allRuns = agentExecutions ++ newExecutionReports.map(r => AgentExecution(r.timestamp))
 
     val execSeq = buildExecutionSequence(allRuns)
     val existingReports = normalizeExistingAggregatedReport(existingAggregationReports, execSeq)
+    logger.info(existingReports)
     val newReports = createNewAggregatedReports(newExecutionReports, expectedReports, execSeq)
 
     //now, start split/merge with split:
@@ -358,11 +382,11 @@ class UnitAggregationService extends Loggable {
   /**
    * From a starting point and an ending date, build a aggregated reports
    */
-  def toAR(start: StartingTime, end: DateTime) : Option[AR] = {
+  def toAR(start: StartingTime, end: DateTime) : Option[AggregationReport] = {
     start match {
       case Gap(_) => None
       case ARStart(t, status, storageId, nbReports, serials, message) =>
-        Some(AR(new Interval(t, end), status, storageId, nbReports, serials, message))
+        Some(AggregationReport(new Interval(t, end), status, storageId, nbReports, serials, message))
     }
   }
 
@@ -391,7 +415,7 @@ class UnitAggregationService extends Loggable {
    * The return value is correctly sorted by time, without
    * any overlapping intervals.
    */
-  def normalizeExistingAggregatedReport(reports: Set[AR], execSeq: ExecutionSequence): AggregatedReports = {
+  def normalizeExistingAggregatedReport(reports: Set[AggregationReport], execSeq: ExecutionSequence): AggregatedReports = {
     val aggregatedReports = AggregatedReports(reports.toSeq)
     aggregatedReports.normalizeWith(execSeq)
   }
@@ -405,9 +429,9 @@ class UnitAggregationService extends Loggable {
    * - both expected reports and execSeq endpoints are over each executionReport timestamp
    *   (i.e: we actually got all the date we needed to work)
    */
-  def createNewAggregatedReports(executionReports: Seq[ExecutionReport], expectedReports: Seq[RuleExpectedReports], execSeq: ExecutionSequence) : Seq[AR] = {
+  def createNewAggregatedReports(executionReports: Seq[ExecutionReport], expectedReports: Seq[RuleExpectedReports], execSeq: ExecutionSequence) : Seq[AggregationReport] = {
 
-    def createOne(report: ExecutionReport) : AR = {
+    def createOne(report: ExecutionReport) : AggregationReport = {
       //find the corresponding expected report
       val status = for {
         //no expected means that the report was not exepected :)
@@ -436,7 +460,7 @@ class UnitAggregationService extends Loggable {
       }
 
       //create a new aggregated report.
-      AR(
+      AggregationReport(
           interval
         , status.getOrElse(UnknownReportType)
         , None
@@ -455,7 +479,7 @@ class UnitAggregationService extends Loggable {
    * New report are created without a storageId, but keep the
    * number of received reports and status
    */
-  def splitExisting(aggregatedReports: AggregatedReports, newReports: Seq[AR]): AggregatedReports = {
+  def splitExisting(aggregatedReports: AggregatedReports, newReports: Seq[AggregationReport]): AggregatedReports = {
     (aggregatedReports/:newReports.flatMap(r => Seq(r.startPoint.dateTime, r.endGap.dateTime))){ case (agg, instant) =>
       if(agg.isDefinedAt(instant)) agg /// and the end ????
       else {
@@ -474,7 +498,7 @@ class UnitAggregationService extends Loggable {
    * exactly both its start point and its end point defined as a point of
    * the aggregated report.
    */
-  def mergeUpdateStatus(aggregatedReports: AggregatedReports, newReports: Seq[AR]): AggregatedReports = {
+  def mergeUpdateStatus(aggregatedReports: AggregatedReports, newReports: Seq[AggregationReport]): AggregatedReports = {
     def areAligned(): Unit = {
       //check hypothesis
       val nonOk = newReports.flatMap { case report =>
@@ -482,6 +506,8 @@ class UnitAggregationService extends Loggable {
         if(  existing._1.dateTime != report.interval.getStart
           || existing._2.dateTime != report.interval.getEnd
         ) {
+          logger.error(report)
+          logger.warn(existing)
           Some("TODO: error message about report not aligned with existing aggregated report")
         } else {
           None
@@ -511,7 +537,7 @@ class UnitAggregationService extends Loggable {
    * (end time is not taken into account, it must have been
    * checked before).
    */
-  def unitMerge(existingAggregatedReport: StartingTime, newReport: AR) : StartingTime = {
+  def unitMerge(existingAggregatedReport: StartingTime, newReport: AggregationReport) : StartingTime = {
     existingAggregatedReport match {
       case Gap(t) => ARStart(t, newReport.status, newReport.storageId, newReport.nbReceived, newReport.serials, newReport.message)
       case r@ARStart(t, status, storageId, nbReceived, serials, message) =>

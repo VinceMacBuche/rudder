@@ -171,7 +171,7 @@ class AggregationTest extends Specification {
 
   "unit Aggregation" should {
     val result =
-      Some(AR(new Interval(now, now.plusSeconds(RUN_INTERVAL)), SuccessReportType , None, 1, SerialInterval(12,12), ""))
+      Some(AggregationReport(new Interval(now, now.plusSeconds(RUN_INTERVAL)), SuccessReportType , None, 1, SerialInterval(12,12), ""))
 
     "transform a result into an aggregated Report" in {
       unitagg.toAR(start, endingTime ) === result

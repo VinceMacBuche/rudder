@@ -78,7 +78,7 @@ class AggregationService(
 
 //  }
 
-
+  val unitAggregator : UnitAggregationService = new UnitAggregationService()
 
 
   def newAggregationfromReports (reports:Seq[Reports]) : (Seq[AggregatedReport],Seq[AggregatedReport])= {
@@ -154,10 +154,25 @@ class AggregationService(
             //logger.info(filteredReports.minBy(_.executionTimestamp.getMillis()).executionTimestamp)
             logger.warn(filteredReports.size.toString)
             if (!reports.isEmpty) {
-            val (toSave,toDelete) = newAggregationfromReports(filteredReports)
+            val onlyReports = reports.map(_._1)
+            onlyReports.groupBy(ReportKey(_)).map{
+              case (reportKey, reports) =>
+
+                implicit def startingTimeOrdering: Ordering[DateTime] = Ordering.fromLessThan(_ isBefore _)
+                val beginDate = reports.map(_.executionTimestamp).min
+
+                val endDate = reports.map(_.executionTimestamp).max
+                val expectedReports = expectedReportRepository.findExpectedReports(reportKey.ruleId, Some(beginDate), Some(endDate)).get
+                val alreadyAggregated = aggregatedReportsRepository.getAggregatedReportsByDate(reportKey.ruleId, beginDate, endDate).get.toSet
+                val result = unitAggregator.updateAggregatedReports(reports.map(ExecutionReport(_)), expectedReports, reports.map(report => AgentExecution(report.executionTimestamp)).toSet, alreadyAggregated.map(report => AggregationReport(report)))
+
+                val resultToSave = result.map(AggregatedReport(_, reportKey))
+
+                aggregatedReportsRepository.saveAggregatedReports(resultToSave.toSeq)
+            }
             //logger.info(toSave.size.toString)
             //logger.warn(toDelete.size.toString)
-            aggregatedReportsRepository.saveAggregatedReports(toSave)
+            //aggregatedReportsRepository.saveAggregatedReports(toSave)
             //logger.info(aggregatedReportsRepository.deleteAggregatedReports(toDelete))
             updatesEntriesRepository.setAggregationStatus(reports.map(_._2).max, reports.maxBy(_._2)._1.executionTimestamp)
             }
@@ -202,7 +217,7 @@ class InitializeAggregatedReport {
   }
 }
 
-class SplitMergeAggregatedReport {  
+class SplitMergeAggregatedReport {
 
   def remergeConflict (baseSeq : Seq[AggregatedReport], reportsToMerge : Seq[AggregatedReport], beforeMerge : Option[AggregatedReport], afterMerge : Option[AggregatedReport]) : (Seq[AggregatedReport],Seq[AggregatedReport],Seq[AggregatedReport])= {
     def shouldRemoveBound (bound : Option[AggregatedReport] ) : Boolean = {
@@ -221,9 +236,9 @@ class SplitMergeAggregatedReport {
       reportToMerge <- reportsToMerge
 
     } yield {
-      val updatedReport = 
-        baseSeq.filter(baseReport => 
-             (baseReport.interval.getEnd isBefore reportToMerge.interval.getStart) 
+      val updatedReport =
+        baseSeq.filter(baseReport =>
+             (baseReport.interval.getEnd isBefore reportToMerge.interval.getStart)
           && (baseReport.interval.getEnd isAfter (reportToMerge.interval.getStart minusMinutes AGGREGATION_INTERVAL))
         ) match {
         case mergeReports if !mergeReports.isEmpty =>
