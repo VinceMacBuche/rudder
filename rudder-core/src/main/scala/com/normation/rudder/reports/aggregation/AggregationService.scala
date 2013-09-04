@@ -165,7 +165,7 @@ class AggregationService(
                 val serialInterVal = SerialInterval(reports.map(_.serial).min,reports.map(_.serial).max)
                 val interval = new Interval(beginDate,endDate)
                 val expectedReports = expectedReportRepository.findExpectedReports(reportKey.ruleId, Some(beginDate), Some(endDate)).getOrElse(Seq())
-                val alreadyAggregated = aggregatedReportsRepository.getAggregatedReportsByDate(reportKey.ruleId, beginDate, endDate).map(_.filter(_.key == reportKey)).getOrElse(Seq()).toSet
+                val alreadyAggregated = aggregatedReportsRepository.getAggregatedReportsByDate(reportKey.ruleId, beginDate minusSeconds(AGGREGATION_INTERVAL), endDate plusSeconds(AGGREGATION_INTERVAL)).map(_.filter(_.key == reportKey)).getOrElse(Seq()).toSet
                 val finallyAggreg = if (alreadyAggregated.isEmpty) alreadyAggregated + AggregatedReport(reportKey
       , 0
       , SuccessReportType
@@ -173,7 +173,7 @@ class AggregationService(
       , ""
       , serialInterVal
       , None ) else alreadyAggregated
-                val result = unitAggregator.updateAggregatedReports(reports.map(ExecutionReport(_)), expectedReports, reports.map(report => AgentExecution(report.executionTimestamp)).toSet, finallyAggreg.map(report => AggregationReport(report)))
+                val result = unitAggregator.updateAggregatedReports(reports.map(ExecutionReport(_)), expectedReports, ((reports.map(report => AgentExecution(report.executionTimestamp)))++ (finallyAggreg.map(ag =>AgentExecution(ag.interval.getEnd())))).toSet, finallyAggreg.map(report => AggregationReport(report)))
 
                 val resultToSave = result.map(AggregatedReport(_, reportKey))
 

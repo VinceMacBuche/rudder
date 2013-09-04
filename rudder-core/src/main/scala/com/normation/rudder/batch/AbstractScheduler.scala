@@ -147,7 +147,7 @@ trait AbstractScheduler extends Loggable {
         //if one update is pending, immediatly start one other
 
         //schedule next update, in minutes
-        LAPinger.schedule(this, StartUpdate, realUpdateInterval*1000* 5000)
+        LAPinger.schedule(this, StartUpdate, realUpdateInterval*1000* 10)
 
         //log some information
         val format = "yyyy/MM/dd HH:mm:ss"

@@ -62,7 +62,7 @@ object ExecutionReport {
   def apply (report : Reports) : ExecutionReport = {
     ExecutionReport (
         report.executionTimestamp
-      , ReportType(report.severity)
+      , ReportType(report)
       , report.serial
       , report.message
     )
@@ -195,10 +195,10 @@ case class AggregatedReports private ( intervalStarts: SortedSet[StartingTime] )
     val init : (StartingTime, StartingTime) = (Gap(t), Gap(t.plusMillis(1)))
 
     (init/:intervalStarts)( (previous, current) =>
-      if(current.dateTime.isBefore(t)) {
+      if(current.dateTime.isBefore(t) || current.dateTime.isEqual(t)) {
         (current, previous._2)
       } else if(previous._2 == init._2) { //we just croos t
-        (previous._2, current)
+        (previous._1, current)
       } else previous
     )
   }
@@ -234,7 +234,29 @@ case class AggregatedReports private ( intervalStarts: SortedSet[StartingTime] )
       }
     }
 
-    new AggregatedReports(normalized)
+    //no that we dealt with all existing aggregated report,
+    //we need to deal with missing one.
+    //They are found by execution sequence start NOT in normalized.
+    //For them, we just take execSeq interval value, as they should be
+    //already normalized
+
+    //normally, we won't add overlapping interval that way, because we use the
+    //same normalized sequence of run than for the last part, and
+    //interval length in the sequence of run are at most one run long
+
+    //the two set are strictly ascendant in time, we can follow them
+    val times = normalized.map( _.dateTime)
+    val normalized2 = (normalized /: execSeq.intervals) { case (currentAgg, execInterval) =>
+
+      val addStart = if(times.contains(execInterval.getStart)) currentAgg
+      else (currentAgg + Gap(execInterval.getStart))
+
+      if(times.contains(execInterval.getEnd)) addStart
+      else (addStart + Gap(execInterval.getEnd))
+    }
+
+
+    new AggregatedReports(normalized2)
   }
 }
 
@@ -262,26 +284,28 @@ object AggregatedReports extends Loggable {
         if(coincide(p1.interval.getEnd, p2.interval.getStart)) {
           // OK, the end of p1 coincide with the start of p2
           Seq(p1.startPoint)
-        } else if(p1.interval.getEnd.isAfter(p2.interval.getStart)) {
-          //that's an error?
-          //perhaps a precedent hypothesis on the duration of the interval
-          //that was corrected afterward by the reception of the log.
-          //In all case, log the problem, and explain that since now,
-          //we will take p2.start as end to p1.
-          logger.error("Error on aggregated reports: found an interval that ends after the start of another run.") //TODO: better reporting
-          Seq(p1.startPoint)
         } else {
-          //if p1 is 0-lenght intervalle, extend it
-          if(coincide(p1.interval.getStart, p1.interval.getEnd)) {
-            //extend how mych ?
-            if( p1.interval.getEnd.plusSeconds(AGGREGATION_INTERVAL).isAfter(p2.interval.getStart) ) {
-              Seq(p1.startPoint)
-            } else { //extends by one run, but expects strange things in the future
-              Seq(p1.startPoint, Gap(p1.interval.getStart.plusSeconds(RUN_INTERVAL)))
-            }
+          if(p1.interval.getEnd.isAfter(p2.interval.getStart)) {
+            //that's an error?
+            //perhaps a precedent hypothesis on the duration of the interval
+            //that was corrected afterward by the reception of the log.
+            //In all case, log the problem, and explain that since now,
+            //we will take p2.start as end to p1.
+            logger.error("Error on aggregated reports: found an interval that ends after the start of another run.") //TODO: better reporting
+            Seq(p1.startPoint)
           } else {
-            //case for a gap in our aggregated reports
-            Seq(s(0).startPoint, s(0).endGap)
+            //if p1 is 0-lenght intervalle, extend it
+            if(coincide(p1.interval.getStart, p1.interval.getEnd)) {
+              //extend how mych ?
+              if( p1.interval.getEnd.plusSeconds(AGGREGATION_INTERVAL).isAfter(p2.interval.getStart) ) {
+                Seq(p1.startPoint)
+              } else { //extends by one run, but expects strange things in the future
+                Seq(p1.startPoint, Gap(p1.interval.getStart.plusSeconds(RUN_INTERVAL)))
+              }
+            } else {
+              //case for a gap in our aggregated reports
+              Seq(s(0).startPoint, s(0).endGap)
+            }
           }
         }
       }
@@ -417,7 +441,10 @@ class UnitAggregationService extends Loggable {
    */
   def normalizeExistingAggregatedReport(reports: Set[AggregationReport], execSeq: ExecutionSequence): AggregatedReports = {
     val aggregatedReports = AggregatedReports(reports.toSeq)
-    aggregatedReports.normalizeWith(execSeq)
+    logger.warn(aggregatedReports)
+    val res = aggregatedReports.normalizeWith(execSeq)
+    logger.warn(res)
+    res
   }
 
   /**
@@ -435,7 +462,7 @@ class UnitAggregationService extends Loggable {
       //find the corresponding expected report
       val status = for {
         //no expected means that the report was not exepected :)
-        expected <- expectedReports.takeWhile(expect => report.timestamp.isBefore(expect.beginDate)).lastOption
+        expected <- expectedReports.takeWhile(expect => expect.interval.contains(report.timestamp)).lastOption
         serialOk <- if(expected.serial == report.serial) Some(report.status) else None
       } yield {
         serialOk
@@ -518,11 +545,11 @@ class UnitAggregationService extends Loggable {
       }
     }
 
-   // areAligned()
+    areAligned()
 
     //now, actually merge things
     //new reports may not be in any order, that does not matter
-    (aggregatedReports/: newReports) { case (aggregated, report) =>
+    (aggregatedReports /: newReports) { case (aggregated, report) =>
       val existing = aggregated.getInvervalContaining(report.startPoint.dateTime)
       aggregated.replace(unitMerge(existing._1, report))
     }

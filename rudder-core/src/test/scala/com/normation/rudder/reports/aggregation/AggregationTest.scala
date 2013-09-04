@@ -114,46 +114,7 @@ class AggregationTest extends Specification {
     , Some(42)
   )
 
-  val beforebaseReport : AggregatedReport = AggregatedReport (
-      key
-    , 1
-    , SuccessReportType
-    , (now.minusMinutes(15), now.minusMinutes(5))
-    , msg
-    , serials
-    , Some(41)
-  )
-
-  val beginning2 : AggregatedReport = AggregatedReport (
-      key
-    , 1
-    , SuccessReportType
-    , (now.minusMinutes(15), now)
-    , msg
-    , serials
-    , Some(41)
-  )
-
-  val begining : AggregatedReport = AggregatedReport (
-      key
-    , 0
-    , SuccessReportType
-    , (now.minusMinutes(5), now)
-    , msg
-    , serials
-    , Some(42)
-  )
-
-
-  val ending : AggregatedReport = AggregatedReport (
-      key
-    , 0
-    , SuccessReportType
-    , (now, now.plusMinutes(5))
-    , msg
-    , serials
-    , None
- )
+  val aggregationReport = AggregationReport(baseReport)
 
 
  val unitagg = new UnitAggregationService()
@@ -162,10 +123,12 @@ class AggregationTest extends Specification {
 
   val gap = Gap(now)
 
-  val start = ARStart(now,SuccessReportType, None, 1, SerialInterval(1,1), "")
-  val endingTime = now plusSeconds(AGGREGATION_INTERVAL)
+  val start = ARStart(now,SuccessReportType, None, 1, SerialInterval(12,12), "")
+  val endingTime = now plusSeconds(RUN_INTERVAL)
 
   val execSeq = unitagg.buildExecutionSequence(Set(AgentExecution(now)))
+
+  val existingReports = unitagg.normalizeExistingAggregatedReport(Set(aggregationReport), execSeq)
 
   val newARs = unitagg.createNewAggregatedReports(Seq(executionReport), Seq(ruleExpectedReport), execSeq)
 
@@ -184,120 +147,39 @@ class AggregationTest extends Specification {
     "create an aggregatedReport from a Report and an expectedReport " in {
       newARs must haveTheSameElementsAs( result.toSeq)
     }
-  }
-
-  "Aggregation" should {
-
-    val (begin,reports,end) = aggregation.splitConflict(baseReport, reportToAdd)
-    "have a beginning" in {
-
-      begin === Some(begining)
-    }
-
-    "have an ending" in   {
-      end === Some(ending)
-    }
-
-    "have a report" in {
-      reports === Seq(reportToAdd)
-    }
-
-  }
-
-  "Reports" should {
-    val result = initialization.fromExecutionReports(Seq(report), Seq(expectedReport))
-    result.head === reportToAdd
-  }
-
-  "Merge" should {
-    val (toSave,toDelete) = aggregation.mergeAggregatedReports(Seq(baseReport), Seq(reportToAdd))
-    val (toSave2,toDelete2) = aggregation.mergeAggregatedReports(Seq(beforebaseReport,baseReport), Seq(reportToAdd))
-    println(toSave2)
-
-    "save must have 3 elements to save " in {
-
-      toSave must haveTheSameElementsAs (Seq(begining,reportToAdd, ending))
-    }
-
-    "Delete must be Empty" in {
-      toDelete must beEmpty
-    }
-
-        "save2 must have 3 elements to save " in {
-
-      toSave2 must haveTheSameElementsAs (Seq( ending,beginning2))
-    }
-  }
-
-    "MergeOne" should {
-    val (toSave,toDelete,_) = aggregation.mergeOneAggregatedReport(Seq(baseReport), reportToAdd)
-
-    "have 3 elements to save " in {
-
-      toSave.size === 3
-    }
-
-    "Delete must be Empty" in {
-      toDelete.isEmpty
-    }
 
 
   }
 
+  "normalize aggregation report" should {
+
+    "normalize correcly one report" in {
+      existingReports.intervalStarts must haveTheSameElementsAs(Seq(Gap(now)))
+    }
+  }
+
+
+val split = unitagg.splitExisting(existingReports, newARs)
+
+  "splitExisting" should {
+
+   "split one aggregatedreports" in {
+   split.intervalStarts must haveTheSameElementsAs(Seq(Gap(now),Gap(now plusSeconds(RUN_INTERVAL))))
+   }
+  }
+
+
+  "merge update align" should  {
+
+    val res = unitagg.mergeUpdateStatus(split, newARs)
+
+    res.intervalStarts must haveTheSameElementsAs( Set(ARStart(now,SuccessReportType,None,1,SerialInterval(12,12),""), Gap(now plusSeconds(RUN_INTERVAL)))
+
+)
+  }
+
+  "interval containing" should {
+    split.getInvervalContaining(now) === (split.intervalStarts.head,split.intervalStarts.tail.head)
+  }
 
 }
-/*
-case class AggregatedReportDummy (
-    nodeId: String,
-    policyInstanceId: String,
-    configurationRuleId: String,
-    beginSerial: Int,
-    endSerial: Int,
-    component: String,
-    keyValue: String,
-    state: DBReportType,
-    message: String,
-    startTime: Timestamp,
-    endTime: Timestamp,
-    received: Int,
-    expected: Int
-)
-
-object AggregatedReportDummy {
-  def apply(report : (AggregatedReport,Boolean)) : AggregatedReportDummy = {
-    val a = report._1
-    AggregatedReportDummy(
-        a.nodeId,
-        a.directiveId,
-        a.ruleId,
-        a.beginSerial,
-        a.endSerial,
-        a.component,
-        a.keyValue,
-        a.state,
-        a.message,
-        a.startTime,
-        a.endTime,
-        a.received,
-        a.expected
-    )
-  }
-  def apply(a : AggregatedReport) : AggregatedReportDummy = {
-
-    AggregatedReportDummy(
-        a.nodeId,
-        a.directiveId,
-        a.ruleId,
-        a.beginSerial,
-        a.endSerial,
-        a.component,
-        a.keyValue,
-        a.state,
-        a.message,
-        a.startTime,
-        a.endTime,
-        a.received,
-        a.expected
-    )
-  }
-}*/
