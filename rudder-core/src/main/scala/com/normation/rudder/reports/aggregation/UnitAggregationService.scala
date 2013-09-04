@@ -518,7 +518,7 @@ class UnitAggregationService extends Loggable {
       }
     }
 
-    areAligned()
+   // areAligned()
 
     //now, actually merge things
     //new reports may not be in any order, that does not matter
