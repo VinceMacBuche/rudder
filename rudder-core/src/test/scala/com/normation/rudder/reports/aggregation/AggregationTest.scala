@@ -249,13 +249,13 @@ class AggregationTest extends Specification {
   "complete aggregation" should {
 
     "add a report after the end" in {
-      aggregate must haveTheSameElementsAs(Set(AggregationReport(new Interval(now minusMinutes(5),now plusMinutes(5)),SuccessReportType,Some(42),1,SerialInterval(12,12),"")))
+      aggregate.toSave must haveTheSameElementsAs(Set(AggregationReport(new Interval(now minusMinutes(5),now plusMinutes(5)),SuccessReportType,Some(42),1,SerialInterval(12,12),"")))
 
 
     }
     
     "extend with 2 report after the end" in {
-      aggregate2 must haveTheSameElementsAs(
+      aggregate2.toSave must haveTheSameElementsAs(
           Set(
               AggregationReport(new Interval(now minusMinutes(5),now plusMinutes(10)),SuccessReportType,Some(42),1,SerialInterval(12,12),"")))
 
@@ -263,7 +263,7 @@ class AggregationTest extends Specification {
     }
     
     "extend in the middle" in {
-      aggregateMiddle must haveTheSameElementsAs(
+      aggregateMiddle.toSave must haveTheSameElementsAs(
           Set(
               AggregationReport(new Interval(now minusMinutes(5),now plusMinutes(10)),SuccessReportType,Some(42),1,SerialInterval(12,12),"")))
 
