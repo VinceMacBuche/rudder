@@ -372,8 +372,10 @@ class UnitAggregationService extends Loggable {
     val existingReports = normalizeExistingAggregatedReport(existingAggregationReports, execSeq)
     val newReports = createNewAggregatedReports(newExecutionReports, expectedReports, execSeq)
 
+    logger.error(existingReports)
     //now, start split/merge with split:
     val splittedExisting = splitExisting(existingReports, newReports)
+     logger.error("splitted are " + splittedExisting)
     //now merge phase 1: update status with new reports
     val mergedReports = mergeUpdateStatus(splittedExisting, newReports)
 

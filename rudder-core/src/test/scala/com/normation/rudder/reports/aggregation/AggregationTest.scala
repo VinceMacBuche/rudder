@@ -45,6 +45,7 @@ import com.normation.rudder.domain.reports.bean.ResultSuccessReport
 import org.joda.time.{ DateTime, Interval }
 import com.normation.rudder.domain.reports.bean.SuccessReportType
 import java.sql.Timestamp
+import com.normation.rudder.domain.reports.bean.ErrorReportType
 
 
 
@@ -62,9 +63,14 @@ class AggregationTest extends Specification {
  
   val now = DateTime.now()
 
-  val report: Reports  = ResultSuccessReport(now, "cr", "policy", "one", 12, "component", "value",now, "message")
+  
+  // Execution Reports
+  
+  val nowReport   : ExecutionReport = ExecutionReport(now, SuccessReportType, 12, "")
+  val afterReport : ExecutionReport = ExecutionReport(now plusMinutes(5), SuccessReportType, 12, "")
+  val errorReport : ExecutionReport = ExecutionReport(now, ErrorReportType, 12, "")
 
-  val afterReport: ExecutionReport  = ExecutionReport(now plusMinutes(5), SuccessReportType, 12, "")
+  // Expected Rule
   val reportComponent = ReportComponent (
       "component"
     , 1
@@ -87,11 +93,12 @@ class AggregationTest extends Specification {
     , now minusHours(1)
     , Some(now plusHours(1))
   )
-  val key = ReportKey(report)
+  
+  // ReportKey and other utils
+  val key = ReportKey(NodeId("one"), RuleId("cr"), DirectiveId("policy"), "component", "value")
   val msg = ""
   val serials = SerialInterval(12,12)
 
-  val reportToAdd : AggregatedReport = AggregatedReport(report, SuccessReportType, 1)
 
 
   val baseReport : AggregatedReport = AggregatedReport (
@@ -138,32 +145,32 @@ class AggregationTest extends Specification {
   val aggregationReport = AggregationReport(baseReport)
 
 
- val unitagg = new UnitAggregationService()
+ val unitAggregation = new UnitAggregationService()
 
-  val executionReport = ExecutionReport(report.executionTimestamp, SuccessReportType, report.serial, "")
-
-  val gap = Gap(now)
 
   val start = ARStart(now,SuccessReportType, None, 1, SerialInterval(12,12), "")
   val endingTime = now plusSeconds(RUN_INTERVAL)
 
-  val execSeq = unitagg.buildExecutionSequence(Set(AgentExecution(now),AgentExecution(now minusMinutes(5)),AgentExecution(now plusMinutes(5))))
+  val execSeq = unitAggregation.buildExecutionSequence(Set(AgentExecution(now),AgentExecution(now minusMinutes(5)),AgentExecution(now plusMinutes(5))))
 
  
-  val newAR = unitagg.createNewAggregatedReports(Seq(executionReport), Seq(ruleExpectedReport), execSeq)
-  val newARs = unitagg.createNewAggregatedReports(Seq(executionReport,afterReport), Seq(ruleExpectedReport), execSeq)
+  val newAR = unitAggregation.createNewAggregatedReports(Seq(nowReport), Seq(ruleExpectedReport), execSeq)
+  val newARs = unitAggregation.createNewAggregatedReports(Seq(nowReport,afterReport), Seq(ruleExpectedReport), execSeq)
+   
+  val errorAR = unitAggregation.createNewAggregatedReports(Seq(errorReport), Seq(ruleExpectedReport), execSeq)
+  
   "unit Aggregation" should {
  
   val result =
       Seq(AggregationReport(new Interval(now, now.plusSeconds(RUN_INTERVAL)), SuccessReportType , None, 1, SerialInterval(12,12), ""))
     "transform a result into an aggregated Report" in {
-      unitagg.toAR(start, endingTime ) === result.headOption
+      unitAggregation.toAR(start, endingTime ) === result.headOption
     }
 
     "transform a gap into nothing" in {
-      unitagg.toAR(gap, endingTime ) === None
+      unitAggregation.toAR(Gap(now), endingTime ) === None
     }
-  val newAR = unitagg.createNewAggregatedReports(Seq(executionReport), Seq(ruleExpectedReport), execSeq)
+  val newAR = unitAggregation.createNewAggregatedReports(Seq(nowReport), Seq(ruleExpectedReport), execSeq)
  
     "create an aggregationReport from a Report and an expectedReport " in {
       newAR must haveTheSameElementsAs( result)
@@ -179,9 +186,9 @@ class AggregationTest extends Specification {
   }
 
   
-   val existingReports = unitagg.normalizeExistingAggregatedReport(Set(aggregationReport), execSeq)
+   val existingReports = unitAggregation.normalizeExistingAggregatedReport(Set(aggregationReport), execSeq)
    
-      val oldReports = unitagg.normalizeExistingAggregatedReport(Set(oldReport), execSeq)
+      val oldReports = unitAggregation.normalizeExistingAggregatedReport(Set(oldReport), execSeq)
       
   "normalize aggregation report" should {
 
@@ -195,8 +202,8 @@ class AggregationTest extends Specification {
   }
 
 
-  val splitOne = unitagg.splitExisting(existingReports, newAR)
-  val splitTwo = unitagg.splitExisting(existingReports, newARs)
+  val splitOne = unitAggregation.splitExisting(existingReports, newAR)
+  val splitTwo = unitAggregation.splitExisting(existingReports, newARs)
   "splitExisting" should {
 
     "split one aggregatedreports" in {
@@ -210,8 +217,9 @@ class AggregationTest extends Specification {
 
 
   "unitMerge" should {
-    val emptyStart = ARStart(now minusMinutes(5), SuccessReportType, None, 0, SerialInterval(12,12), "")
+    val emptyStart = ARStart(now, SuccessReportType, None, 0, SerialInterval(12,12), "")
     
+    unitAggregation.unitMerge(emptyStart, errorAR.head) === ARStart(now minusMinutes(5),ErrorReportType,None,1,SerialInterval(12,12),"")
     
   }
   
@@ -219,13 +227,13 @@ class AggregationTest extends Specification {
 
     
     "merge one aggregatedreports" in {
-      val res = unitagg.mergeUpdateStatus(splitOne, newAR)
+      val res = unitAggregation.mergeUpdateStatus(splitOne, newAR)
           
       res.intervalStarts must haveTheSameElementsAs( Set(ARStart(now minusMinutes(5),SuccessReportType,Some(42),1,SerialInterval(12,12), ""),ARStart(now,SuccessReportType,None,1,SerialInterval(12,12),""), Gap(now plusSeconds(RUN_INTERVAL))))
     }
     
     "merge two aggregatedreports" in {
-      val res = unitagg.mergeUpdateStatus(splitTwo, newARs)
+      val res = unitAggregation.mergeUpdateStatus(splitTwo, newARs)
           
       res.intervalStarts must haveTheSameElementsAs( 
           Set(
@@ -240,12 +248,12 @@ class AggregationTest extends Specification {
     splitOne.getInvervalContaining(now) === (splitOne.intervalStarts.tail.head,splitOne.intervalStarts.tail.tail.head)
   }
 
-  val aggregate = unitagg.updateAggregatedReports(Seq(executionReport), Seq(ruleExpectedReport), Set(AgentExecution(now minusMinutes(5))), Set(aggregationReport))
+  val aggregate = unitAggregation.updateAggregatedReports(Seq(nowReport), Seq(ruleExpectedReport), Set(AgentExecution(now minusMinutes(5))), Set(aggregationReport))
   
-  val aggregate2 = unitagg.updateAggregatedReports(Seq(executionReport,afterReport), Seq(ruleExpectedReport), Set(AgentExecution(now minusMinutes(5))), Set(aggregationReport))
+  val aggregate2 = unitAggregation.updateAggregatedReports(Seq(nowReport,afterReport), Seq(ruleExpectedReport), Set(AgentExecution(now minusMinutes(5))), Set(aggregationReport))
   
     
-  val aggregateMiddle = unitagg.updateAggregatedReports(Seq(executionReport), Seq(ruleExpectedReport), Set(AgentExecution(now minusMinutes(5)),AgentExecution(now minusMinutes(30)),AgentExecution(now plusMinutes(6))), Set(oldReport,newReport))
+  val aggregateMiddle = unitAggregation.updateAggregatedReports(Seq(nowReport), Seq(ruleExpectedReport), Set(AgentExecution(now minusMinutes(5)),AgentExecution(now minusMinutes(30)),AgentExecution(now plusMinutes(6))), Set(oldReport,newReport))
   "complete aggregation" should {
 
     "add a report after the end" in {
