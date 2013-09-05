@@ -122,10 +122,9 @@ class AggregatedReportsJdbcRepository(
     }
   }
 
-  def deleteAggregatedReports(reports : Seq[AggregatedReport]) : Seq[Int] = {
-    val toDelete = reports.filter(_.storageId != None)
+  def deleteAggregatedReports(reportsId : Seq[Long]) : Seq[Int] = {
     sessionProvider.ourTransaction {
-        toDelete.map(report => Reportings.reports.deleteWhere(line => line.id === report.storageId.getOrElse(0L) ) )
+        reportsId.map(reportId => Reportings.reports.deleteWhere(line => line.id === reportId ) )
 
     }
   }
@@ -171,8 +170,8 @@ class AggregatedReportsJdbcRepository(
     else {
 
       // convert date to the proper format
-      val start = toTimeStamp(beginDate.toDateMidnight)
-      val end = toTimeStamp(endDate.withTime(23,59,59,999))
+      val start = toTimeStamp(beginDate)
+      val end = toTimeStamp(endDate)
 
       tryo ( sessionProvider.ourTransaction {
         val q = from(Reportings.reports)(entry =>

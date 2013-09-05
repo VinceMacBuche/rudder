@@ -113,5 +113,5 @@ trait AggregatedReportsRepository {
     , endDate   : DateTime
   ) : Box[Boolean]
 
-    def deleteAggregatedReports(reports : Seq[AggregatedReport]) : Seq[Int]
+    def deleteAggregatedReports(reportsIds : Seq[Long]) : Seq[Int]
 }

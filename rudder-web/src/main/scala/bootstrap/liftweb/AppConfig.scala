@@ -1394,8 +1394,6 @@ object RudderConfig extends Loggable {
     , reportsRepository
     , aggregatedReportsJdbcRepository
     , updatesEntryJdbcRepository
-    , new SplitMergeAggregatedReport
-    , new InitializeAggregatedReport
     , delay
     , max
   )
