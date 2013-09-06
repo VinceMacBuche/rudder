@@ -47,6 +47,7 @@ import com.normation.rudder.reports.aggregation.AggregationConstants.RUN_INTERVA
 import com.normation.rudder.reports.aggregation.AggregationConstants.coincide
 import net.liftweb.common.Loggable
 import com.normation.rudder.domain.reports.bean.Reports
+import com.normation.rudder.domain.reports.bean.SuccessReportType
 
 /**
  * Representation of the moment when an agent ran
@@ -365,17 +366,23 @@ class UnitAggregationService extends Loggable {
     , existingAggregationReports: Set[AggregationReport]
   ): AggregationResult = {
 
+    logger.debug("execution reports are: " + newExecutionReports)
+    logger.debug("already aggregated reports are : "+existingAggregationReports)
     //just to be sure, add all execution timestamp to the know agent run.
     val allRuns = agentExecutions ++ newExecutionReports.map(r => AgentExecution(r.timestamp))
-    logger.warn(newExecutionReports)
+
+
     val execSeq = buildExecutionSequence(allRuns)
+    logger.debug("excutions are: " + execSeq)
+
+
     val existingReports = normalizeExistingAggregatedReport(existingAggregationReports, execSeq)
     val newReports = createNewAggregatedReports(newExecutionReports, expectedReports, execSeq)
 
-    logger.error(existingReports)
+    logger.debug(" existing reports are" + existingReports)
     //now, start split/merge with split:
     val splittedExisting = splitExisting(existingReports, newReports)
-     logger.error("splitted are " + splittedExisting)
+     logger.debug("splitted are " + splittedExisting)
     //now merge phase 1: update status with new reports
     val mergedReports = mergeUpdateStatus(splittedExisting, newReports)
 
@@ -385,19 +392,28 @@ class UnitAggregationService extends Loggable {
     //finally, transform back our aggregatedReports datastructure to AR
     //last report is built with an interval of length 0
     val points = extendedReports.toSave.intervalStarts.toSeq
+
+    logger.debug(s"extended $points")
     val toDelete = extendedReports.IdsToDelete
+
+    logger.debug(s"toDetele $toDelete")
     if(points.isEmpty) AggregationResult(Set(), toDelete)
     else {
-      val even = if(points.size%2 == 0) points else points.dropRight(1)
 
-      val allButTheLast = even.sliding(2).toSeq.flatMap { s => //s.size == 2
+      // As we work on interval with this wliding we will produce reports for all of them except the last
+      val allButTheLast = points.sliding(2).map { s => //s.size == 2
         //we are building the AR for the first point, the second only give the end
         toAR(s(0), s(1).dateTime)
       }
+      logger.debug(allButTheLast)
 
-      val last = points.last
+      // we need to get the latest point, creating a report with one instant interval
+      val last = points.last match {
+        case Gap(_) => None
+        case lastPoint:ARStart => Some(toAR(lastPoint,lastPoint.dateTime))
+      }
 
-      AggregationResult(Set() ++ allButTheLast ++ toAR(last, last.dateTime).toSeq,toDelete)
+      AggregationResult(Set() ++ allButTheLast ++ last,toDelete)
     }
   }
 
@@ -407,11 +423,12 @@ class UnitAggregationService extends Loggable {
   /**
    * From a starting point and an ending date, build a aggregated reports
    */
-  def toAR(start: StartingTime, end: DateTime) : Option[AggregationReport] = {
+  def toAR(start: StartingTime, end: DateTime) : AggregationReport = {
     start match {
-      case Gap(_) => None
+      case Gap(t) =>
+        AggregationReport(new Interval(t, end), SuccessReportType, None, 0, SerialInterval(0,0), "")
       case ARStart(t, status, storageId, nbReports, serials, message) =>
-        Some(AggregationReport(new Interval(t, end), status, storageId, nbReports, serials, message))
+        AggregationReport(new Interval(t, end), status, storageId, nbReports, serials, message)
     }
   }
 
@@ -442,6 +459,7 @@ class UnitAggregationService extends Loggable {
    */
   def normalizeExistingAggregatedReport(reports: Set[AggregationReport], execSeq: ExecutionSequence): AggregatedReports = {
     val aggregatedReports = AggregatedReports(reports.toSeq)
+    logger.debug(aggregatedReports)
     val res = aggregatedReports.normalizeWith(execSeq)
     res
   }
@@ -548,7 +566,10 @@ class UnitAggregationService extends Loggable {
     //new reports may not be in any order, that does not matter
     (aggregatedReports /: newReports) { case (aggregated, report) =>
       val existing = aggregated.getInvervalContaining(report.startPoint.dateTime)
-      aggregated.replace(unitMerge(existing._1, report))
+     // logger.info(s"interval containing $report is between ${existing._1} and ${existing._2}")
+      val res = aggregated.replace(unitMerge(existing._1, report))
+     // logger.warn("merge restult is : " + res)
+      res
     }
   }
 

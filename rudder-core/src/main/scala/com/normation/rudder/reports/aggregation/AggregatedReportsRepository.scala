@@ -70,6 +70,19 @@ trait AggregatedReportsRepository {
 
   def createAggregatedReports(reports : Seq[AggregatedReport]) : Box[Seq[AggregatedReport]]
 
+
+
+   /**
+    *  Retrieve all the reports for a ReportKey between two dates
+    *  The ReportKey may not exists, in that case no report will be returned.
+    *
+    */
+  def getAggregatedReportsByReportKey(
+      reportKey : ReportKey
+    , beginDate : DateTime
+    , endDate   : DateTime
+  ) : Box[Seq[AggregatedReport]]
+
    /**
     *  Retrieve all the reports for a Rule between two dates
     *  The Rule may not exists, in that case no report will be returned.

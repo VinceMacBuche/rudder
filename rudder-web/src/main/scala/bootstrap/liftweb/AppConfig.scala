@@ -1365,12 +1365,11 @@ object RudderConfig extends Loggable {
    */
 
   val aggregatedReportsJdbcRepository = {
-    val systemRules = Seq(
-                          RuleId("inventory-all")
-                        , RuleId("hasPolicyServer-root")
-                        , RuleId("root-DP")
-                      )
-    new AggregatedReportsJdbcRepository(squerylDatasourceProvider, systemRules)
+    new AggregatedReportsJdbcRepository(squerylDatasourceProvider)
+  }
+
+  val reportExecutionsRepository = {
+    ReportsExecutionSquerylRepository(squerylDatasourceProvider)
   }
 
   val updatesEntryJdbcRepository = new AggregationStatusJdbcRepository(squerylDatasourceProvider)
@@ -1394,6 +1393,7 @@ object RudderConfig extends Loggable {
     , reportsRepository
     , aggregatedReportsJdbcRepository
     , updatesEntryJdbcRepository
+    , reportExecutionsRepository
     , delay
     , max
   )

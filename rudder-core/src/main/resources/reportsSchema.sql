@@ -303,3 +303,8 @@ key text PRIMARY KEY,
 lastId integer NOT NULL,
 date timestamp with time zone NOT NULL
 );
+
+create table ReportsExecution {
+nodeId text NOT NULL,
+date timestamp with time zone NOT NULL,
+isended boolean NOT NULL

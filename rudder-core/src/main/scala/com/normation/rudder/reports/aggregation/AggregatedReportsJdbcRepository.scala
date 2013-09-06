@@ -55,7 +55,6 @@ import org.squeryl.customtypes.CustomType
 
 class AggregatedReportsJdbcRepository(
     sessionProvider : SquerylConnectionProvider
-  , systemRules     : Seq[RuleId]
 ) extends AggregatedReportsRepository with Loggable {
 
   def toTimeStamp(d:BaseDateTime) : Timestamp = new Timestamp(d.getMillis)
@@ -158,6 +157,37 @@ class AggregatedReportsJdbcRepository(
     }
   }
 
+  // Retrieve all the reports for a CR between two dates
+  def getAggregatedReportsByReportKey(
+    reportKey : ReportKey
+    , beginDate : DateTime
+    , endDate   : DateTime
+  ) : Box[Seq[AggregatedReport]] = {
+
+        if(beginDate.getMillis >= endDate.getMillis) Full(Seq())
+    else {
+
+      // convert date to the proper format
+      val start = toTimeStamp(beginDate)
+      val end = toTimeStamp(endDate)
+
+    tryo ( sessionProvider.ourTransaction {
+      val q = from(Reportings.reports)( entry =>
+        where(
+            entry.ruleId      === reportKey.ruleId.value and
+            entry.nodeId      === reportKey.nodeId.value and
+            entry.directiveId === reportKey.directiveId.value and
+            entry.component   === reportKey.component and
+            entry.keyValue    === reportKey.keyValue and
+            entry.startTime < end and
+            entry.endTime > start
+        )
+        select(entry)
+      ) map (AggregatedReport(_))
+
+      (Seq[AggregatedReport]() ++ q)
+    } ) ?~! s"Error when trying to get report information for rule '${reportKey.ruleId.value}', directive '${reportKey.directiveId.value}', component ${reportKey.component}, ${reportKey.keyValue} from date '%s' to date '%s'".format(reportKey.ruleId.value)
+    } }
 
   // Retrieve all the reports for a CR between two dates
   def getAggregatedReportsByDate(
@@ -208,8 +238,7 @@ class AggregatedReportsJdbcRepository(
           where(
               entry.nodeId === nodeId.value and
               entry.startTime < end and
-              entry.endTime > start and
-              entry.ruleId.notIn(systemRules.map(x => x.value))
+              entry.endTime > start
           )
           select(entry)
         ).map(AggregatedReport(_))

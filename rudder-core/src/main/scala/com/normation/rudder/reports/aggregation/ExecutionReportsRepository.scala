@@ -36,16 +36,16 @@ package com.normation.rudder.reports.aggregation
 
 import org.joda.time.DateTime
 import com.normation.inventory.domain.NodeId
-import org.squeryl.KeyedEntity
 import org.squeryl.PrimitiveTypeMode._
-import org.squeryl.Schema
+import org.squeryl._
 import org.squeryl.annotations.Column
 import java.sql.Timestamp
 import net.liftweb.util.Helpers.tryo
 import net.liftweb.common._
 import com.normation.rudder.repository.jdbc.SquerylConnectionProvider
+import AggregationConstants._
 
-trait ExecutionReportsRepository {
+trait ReportsExecutionRepository {
 
   def getExecutionByNode (nodeId : NodeId) : Box[Seq[ReportExecution]]
 
@@ -53,66 +53,91 @@ trait ExecutionReportsRepository {
 
   def closeExecutions (executions : Seq[ReportExecution]) : Box[Seq[ReportExecution]]
 
+
 }
 
-case class ExecutionReportsSquerylRepository(
+
+
+case class ReportsExecutionSquerylRepository(
     sessionProvider : SquerylConnectionProvider
-) extends ExecutionReportsRepository {
+) extends ReportsExecutionRepository with Loggable {
 
   def getExecutionByNode (nodeId : NodeId) : Box[Seq[ReportExecution]] = {
-    tryo ( sessionProvider.ourTransaction {
-      val q = from(Executions.executions)(entry =>
+    try {  sessionProvider.ourTransaction {
+      val queryResult = from(Executions.executions)(entry =>
         where(
           entry.nodeId === nodeId.value
         )
         select(entry)
-      )
-      (Seq[ReportExecution]() ++ q)
-
-    } ) ?~! s"Error when trying to get report executions for node '${nodeId.value}'"
+      ).toSeq.map(fromDB)
+      Full(Seq[ReportExecution]() ++ queryResult)
+    } } catch {
+      case e:Exception  =>
+        logger.error(s"Error when trying to get report executions for node '${nodeId.value}'")
+        Failure(s"Error when trying to get report executions for node '${nodeId.value}' cause is : $e")
+    }
+  //  } ) ?~! s"Error when trying to get report executions for node '${nodeId.value}'"
   }
 
   def saveExecutions (executions : Seq[ReportExecution]) : Box[Seq[ReportExecution]] =  {
+    val dbExecs = executions.map(toDB)
     try {
-      val res = sessionProvider.ourTransaction {
-        executions.map(execution => Executions.executions.insert(execution) )
-      }
-      Full(res)
+      val saveResult = sessionProvider.ourTransaction {
+        dbExecs.map(execution => Executions.executions.insert(execution) )
+      }.toSeq.map(fromDB)
+      Full(saveResult)
     } catch {
-      case e:Exception => Failure("could not create aggregated reports")
+      case e:Exception => Failure("could not create aggregated reports" + e)
     }
   }
 
 
   def closeExecutions (executions : Seq[ReportExecution]) : Box[Seq[ReportExecution]] =  {
     try {
-      val res = sessionProvider.ourTransaction {
-        executions.map(execution => Executions.executions.update( exec =>
-         where( exec.id === execution.id)
-         set( exec.isEnded := true)
-          ) )
+      val closeResult = sessionProvider.ourTransaction {
+        executions.map( execution =>
+          Executions.executions.update( exec =>
+            where (
+                  exec.nodeId === execution.nodeId.value
+              and exec.date   === toTimeStamp(execution.date)
+            )
+
+            set   ( exec.isClosed := true)
+        ) )
       }
+      logger.debug(s" closed ${closeResult.size}, should have close ${executions.size}")
       Full(executions)
     } catch {
       case e:Exception => Failure("could not create aggregated reports")
     }
   }
+
+
+  private[this] implicit def toDB (execution : ReportExecution)  : DBReportExecution = {
+    DBReportExecution(execution.nodeId.value, execution.date, execution.isClosed)
+  }
+
+  private[this] implicit def fromDB (execution : DBReportExecution)  : ReportExecution = {
+    ReportExecution(NodeId(execution.nodeId), new DateTime(execution.date), execution.isClosed)
+  }
+
+
+
 }
 
 object Executions extends Schema {
-  val executions = table[ReportExecution]("executions")
-
-  on(executions)(
-    t => declare(
-      t.id.is(autoIncremented("executionsid"), primaryKey)
-  ) )
+  val executions = table[DBReportExecution]("reportsexecution")
 }
+
+case class DBReportExecution (
+    @Column("nodeid") nodeId   : String
+  , @Column("date")   date     : Timestamp
+  , @Column("closed") isClosed : Boolean
+)
+
 
 case class ReportExecution (
-    @Column("nodeid") nodeId  : String
-  , @Column("date")   date    : Timestamp
-  , @Column("ended")  isEnded : Boolean
-) extends KeyedEntity[Long] {
-
-  @Column("id") val  id : Long = 0L
-}
+    nodeId   : NodeId
+  , date     : DateTime
+  , isClosed : Boolean
+)

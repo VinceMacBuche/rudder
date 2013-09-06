@@ -100,7 +100,7 @@ class AggregationTest extends Specification {
   val serials = SerialInterval(12,12)
 
 
-
+  // Aggregation Report
   val baseReport : AggregatedReport = AggregatedReport (
       key
     , 1
@@ -110,6 +110,7 @@ class AggregationTest extends Specification {
     , serials
     , Some(42)
   )
+  val aggregationReport = AggregationReport(baseReport)
 
   
   val oldReport : AggregationReport = AggregationReport (
@@ -142,8 +143,6 @@ class AggregationTest extends Specification {
     , ""
   )
 
-  val aggregationReport = AggregationReport(baseReport)
-
 
  val unitAggregation = new UnitAggregationService()
 
@@ -152,11 +151,10 @@ class AggregationTest extends Specification {
   val endingTime = now plusSeconds(RUN_INTERVAL)
 
   val execSeq = unitAggregation.buildExecutionSequence(Set(AgentExecution(now),AgentExecution(now minusMinutes(5)),AgentExecution(now plusMinutes(5))))
+  val oldExecSeq = unitAggregation.buildExecutionSequence(Set(AgentExecution(now minusMinutes(30)),AgentExecution(now),AgentExecution(now minusMinutes(5)),AgentExecution(now plusMinutes(5))))
 
- 
   val newAR = unitAggregation.createNewAggregatedReports(Seq(nowReport), Seq(ruleExpectedReport), execSeq)
   val newARs = unitAggregation.createNewAggregatedReports(Seq(nowReport,afterReport), Seq(ruleExpectedReport), execSeq)
-   
   val errorAR = unitAggregation.createNewAggregatedReports(Seq(errorReport), Seq(ruleExpectedReport), execSeq)
   
   "unit Aggregation" should {
@@ -196,7 +194,7 @@ class AggregationTest extends Specification {
       existingReports.intervalStarts must haveTheSameElementsAs(Seq(ARStart(now minusMinutes(5),SuccessReportType,Some(42),1,SerialInterval(12,12), ""),Gap(now),Gap(now plusMinutes(5))))
     }
     
-    "break oldReports correcly one report" in {
+    "t" in {
       oldReports.intervalStarts must haveTheSameElementsAs(Seq(ARStart(now minusMinutes(5),SuccessReportType,Some(42),1,SerialInterval(12,12), ""),Gap(now),Gap(now plusMinutes(5))))
     }
   }

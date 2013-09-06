@@ -39,6 +39,7 @@ import net.liftweb.util.Helpers.tryo
 import com.normation.rudder.reports.aggregation.AggregationService
 
 
+
 /**
  * That batch scheduler periodically aggregate reports.
  *
