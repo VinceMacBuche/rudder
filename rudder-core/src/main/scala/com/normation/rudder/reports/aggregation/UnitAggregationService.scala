@@ -86,7 +86,6 @@ final case class AggregationReport(
   , message    : String
 ) {
 
-  if (nbReceived == 0) println(this)
   val startPoint = ARStart(interval.getStart, status, storageId, nbReceived, serials, message)
   val endGap = Gap(interval.getEnd)
 }
@@ -248,13 +247,16 @@ case class AggregatedReports private ( intervalStarts: SortedSet[StartingTime] )
 
     //the two set are strictly ascendant in time, we can follow them
     val times = normalized.map( _.dateTime)
+
+
     val normalized2 = (normalized /: execSeq.intervals) { case (currentAgg, execInterval) =>
 
       val addStart = if(times.contains(execInterval.getStart)) currentAgg
       else (currentAgg + Gap(execInterval.getStart))
 
-      if(times.contains(execInterval.getEnd)) addStart
-      else (addStart + Gap(execInterval.getEnd))
+      addStart
+  //    if(times.contains(execInterval.getEnd)) addStart
+    //  else (addStart + Gap(execInterval.getEnd))
     }
 
     new AggregatedReports(normalized2)
@@ -426,6 +428,7 @@ class UnitAggregationService extends Loggable {
   def toAR(start: StartingTime, end: DateTime) : AggregationReport = {
     start match {
       case Gap(t) =>
+        //TODO : handle serial here.
         AggregationReport(new Interval(t, end), SuccessReportType, None, 0, SerialInterval(0,0), "")
       case ARStart(t, status, storageId, nbReports, serials, message) =>
         AggregationReport(new Interval(t, end), status, storageId, nbReports, serials, message)

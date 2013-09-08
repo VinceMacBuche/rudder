@@ -162,11 +162,11 @@ class AggregationTest extends Specification {
   val result =
       Seq(AggregationReport(new Interval(now, now.plusSeconds(RUN_INTERVAL)), SuccessReportType , None, 1, SerialInterval(12,12), ""))
     "transform a result into an aggregated Report" in {
-      unitAggregation.toAR(start, endingTime ) === result.headOption
+      unitAggregation.toAR(start, endingTime ) === result.head
     }
 
     "transform a gap into nothing" in {
-      unitAggregation.toAR(Gap(now), endingTime ) === None
+      unitAggregation.toAR(Gap(now), endingTime ) === result.head.copy ( nbReceived = 0)
     }
   val newAR = unitAggregation.createNewAggregatedReports(Seq(nowReport), Seq(ruleExpectedReport), execSeq)
  
@@ -186,12 +186,12 @@ class AggregationTest extends Specification {
   
    val existingReports = unitAggregation.normalizeExistingAggregatedReport(Set(aggregationReport), execSeq)
    
-      val oldReports = unitAggregation.normalizeExistingAggregatedReport(Set(oldReport), execSeq)
+      val oldReports = unitAggregation.normalizeExistingAggregatedReport(Set(oldReport), execSeq.copy (instants = thiinstants + oldReport.interval.getStart))
       
   "normalize aggregation report" should {
 
     "normalize correcly one report" in {
-      existingReports.intervalStarts must haveTheSameElementsAs(Seq(ARStart(now minusMinutes(5),SuccessReportType,Some(42),1,SerialInterval(12,12), ""),Gap(now),Gap(now plusMinutes(5))))
+      existingReports.intervalStarts must haveTheSameElementsAs(Seq(ARStart(now minusMinutes(5),SuccessReportType,Some(42),1,SerialInterval(12,12), ""),Gap(now)  ))
     }
     
     "t" in {

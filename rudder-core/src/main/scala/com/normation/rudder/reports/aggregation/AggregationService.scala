@@ -167,7 +167,7 @@ class AggregationService(
 
           // check if aggregated are empty if so : create an empty Aggreted Report over the whole interval
           // Since some corrections in the agrgeation this may not be necessary
-          val finallyAggreg = if (alreadyAggregated.isEmpty)
+         /* val finallyAggreg = if (alreadyAggregated.isEmpty)
               Set( AggregatedReport(
                        reportKey
                      , 0
@@ -179,7 +179,7 @@ class AggregationService(
                ) )
              else
                alreadyAggregated
-
+            */
            //TODO: To handle missing reports with huge date difference (HUGE  -> over AGGREGATION INTERVAL)
            // Look for report nearer the bounds, The main goal is to create no Answer blocks, if missing they won't be created
            // Before :
@@ -191,13 +191,15 @@ class AggregationService(
 
            // TODO: If aggregated Reports bounds are out of the reports executions bounds
            // add the bounds to the executions ( startTime for before report, endTime for after report)
-           val executions = newReportsExecutions
+           val beforeReport = alreadyAggregated.find(_.interval.getStart isBefore beginDate).map(agg => AgentExecution(agg.interval.getStart()))
+           //val beforeReport = finallyAggreg.find(_.interval.getStart isBefore beginDate).map(agg => AgentExecution(agg.interval.getStart()))
+           val executions = newReportsExecutions ++ beforeReport
            // Aggregation !
            val result = unitAggregator.updateAggregatedReports(
                             reports.map(ExecutionReport(_))
                           , expectedReports
                           , executions
-                          , finallyAggreg.map(report => AggregationReport(report)
+                          , alreadyAggregated.map(report => AggregationReport(report)
                         ) )
 
 
