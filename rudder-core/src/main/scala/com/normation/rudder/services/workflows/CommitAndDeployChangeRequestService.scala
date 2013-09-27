@@ -218,7 +218,43 @@ class CommitAndDeployChangeRequestServiceImpl(
         , longDescription = current.longDescription.trim
       )
 
-      initialFixed == currentFixed
+      if (initialFixed == currentFixed) {
+        // No conflict return
+        true
+      } else {
+        // Write debug logs to understand what cause the conflict
+        logger.debug("Could not merge because causes are :")
+        if ( initialFixed.id != currentFixed.id) {
+          logger.debug(s"Rule id has changed: initial state -> ${initialFixed.id.value}, current value -> ${currentFixed.id.value}")
+        }
+
+        if ( initialFixed.name != currentFixed.name) {
+          logger.debug(s"Rule name has changed: initial state -> ${initialFixed.name}, current value -> ${currentFixed.name}")
+        }
+
+        if ( initialFixed.shortDescription != currentFixed.shortDescription) {
+          logger.debug(s"Rule shortDescription has changed: initial state -> ${initialFixed.shortDescription}, current value -> ${currentFixed.shortDescription}")
+        }
+
+        if ( initialFixed.longDescription != currentFixed.longDescription) {
+          logger.debug(s"Rule longDescription has changed: initial state -> ${initialFixed.longDescription}, current value -> ${currentFixed.longDescription}")
+        }
+
+        if ( initialFixed.targets != currentFixed.targets) {
+          logger.debug(s"Rule targets has changed: initial state -> ${initialFixed.targets}, current value -> ${currentFixed.targets}")
+        }
+
+        if ( initialFixed.isEnabledStatus != currentFixed.isEnabledStatus) {
+          logger.debug(s"Rule isEnabledStatus has changed: initial state -> ${initialFixed.isEnabledStatus}, current value -> ${currentFixed.isEnabledStatus}")
+        }
+
+        if ( initialFixed.directiveIds != currentFixed.directiveIds) {
+          logger.debug(s"Rule directiveIds has changed: initial state -> ${initialFixed.directiveIds}, current value -> ${currentFixed.directiveIds}")
+        }
+
+        //return
+        false
+      }
     }
 
     def compareDirectives(initial:Directive, current:Directive) : Boolean = {
@@ -234,7 +270,54 @@ class CommitAndDeployChangeRequestServiceImpl(
         , longDescription = current.longDescription.trim
       )
 
-      initialFixed == currentFixed
+
+      if (initialFixed == currentFixed) {
+        // return
+        true
+      } else {
+        // Write debug logs to understand what cause the conflict
+        logger.debug("Could not merge because causes are :")
+        if ( initialFixed.id != currentFixed.id) {
+          logger.debug(s"Directive id has changed: initial state -> ${initialFixed.id.value}, current value -> ${currentFixed.id.value}")
+        }
+
+        if ( initialFixed.name != currentFixed.name) {
+          logger.debug(s"Directive name has changed: initial state -> ${initialFixed.name}, current value -> ${currentFixed.name}")
+        }
+
+        if ( initialFixed.shortDescription != currentFixed.shortDescription) {
+          logger.debug(s"Directive shortDescription has changed: initial state -> ${initialFixed.shortDescription}, current value -> ${currentFixed.shortDescription}")
+        }
+
+        if ( initialFixed.longDescription != currentFixed.longDescription) {
+          logger.debug(s"Directive longDescription has changed: initial state -> ${initialFixed.longDescription}, current value -> ${currentFixed.longDescription}")
+        }
+
+        if ( initialFixed.priority != currentFixed.priority) {
+          logger.debug(s"Directive priority has changed: initial state -> ${initialFixed.priority}, current value -> ${currentFixed.priority}")
+        }
+
+        if ( initialFixed.isEnabled != currentFixed.isEnabled) {
+          logger.debug(s"Directive isEnabled has changed: initial state -> ${initialFixed.isEnabled}, current value -> ${currentFixed.isEnabled}")
+        }
+
+        if ( initialFixed.techniqueVersion != currentFixed.techniqueVersion) {
+          logger.debug(s"Directive techniqueVersion has changed: initial state -> ${initialFixed.techniqueVersion}, current value -> ${currentFixed.techniqueVersion}")
+        }
+
+        for  {
+          key <- (initialFixed.parameters.keys ++ currentFixed.parameters.keys).toSeq.distinct
+          initVal = initialFixed.parameters.get(key)
+          currVal = currentFixed.parameters.get(key)
+        } yield {
+          if ( currVal != initVal) {
+            logger.debug(s"Directive parameter $key has changed : initial state -> ${initVal.getOrElse("value is mising")}, current value -> ${currVal.getOrElse("value is mising")}")
+          }
+        }
+
+        //return
+        false
+      }
     }
 
     def compareGroups(initial:NodeGroup, current:NodeGroup) : Boolean = {
@@ -256,7 +339,39 @@ class CommitAndDeployChangeRequestServiceImpl(
         , serverList = ( if (current.isDynamic) { initial } else { current }).serverList
       )
 
-      initialFixed == currentFixed
+      if (initialFixed == currentFixed) {
+        // No conflict return
+        true
+      } else {
+        // Write debug logs to understand what cause the conflict
+        logger.debug("Could not merge because causes are :")
+        if ( initialFixed.id != currentFixed.id) {
+          logger.debug(s"Group id has changed: initial state -> ${initialFixed.id.value}, current value -> ${currentFixed.id.value}")
+        }
+
+        if ( initialFixed.name != currentFixed.name) {
+          logger.debug(s"Group name has changed: initial state -> ${initialFixed.name}, current value -> ${currentFixed.name}")
+        }
+
+        if ( initialFixed.description != currentFixed.description) {
+          logger.debug(s"Group description has changed: initial state -> ${initialFixed.description}, current value -> ${currentFixed.description}")
+        }
+
+        if ( initialFixed.query != currentFixed.query) {
+          logger.debug(s"Group query has changed: initial state -> ${initialFixed.query}, current value -> ${currentFixed.query}")
+        }
+
+        if ( initialFixed.isDynamic != currentFixed.isDynamic) {
+          logger.debug(s"Group isDynamic has changed: initial state -> ${initialFixed.isDynamic}, current value -> ${currentFixed.isDynamic}")
+        }
+
+        if ( initialFixed.isEnabled != currentFixed.isEnabled) {
+          logger.debug(s"Group isEnabled has changed: initial state -> ${initialFixed.isEnabled}, current value -> ${currentFixed.isEnabled}")
+        }
+
+        //return
+        false
+      }
     }
 
     /*
