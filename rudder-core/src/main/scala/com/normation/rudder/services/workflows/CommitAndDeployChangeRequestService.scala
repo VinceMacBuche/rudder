@@ -111,7 +111,7 @@ class CommitAndDeployChangeRequestServiceImpl(
   , woParameterRepository : WoParameterRepository
   , asyncDeploymentAgent  : AsyncDeploymentAgent
   , dependencyService     : DependencyAndDeletionService
-  , workflowEnabled       : Boolean
+  , workflowEnabled       : () => Boolean
   , xmlSerializer         : XmlSerializer
   , xmlUnserializer       : XmlUnserializer
   , sectionSpecParser     : SectionSpecParser
@@ -465,7 +465,7 @@ class CommitAndDeployChangeRequestServiceImpl(
     /*
      * check for all elem, stop on the first failing
      */
-    if (workflowEnabled)
+    if (workflowEnabled())
       (for {
         directivesOk <- sequence(changeRequest.directives.values.toSeq) { changes =>
                           // Only check the directive for now

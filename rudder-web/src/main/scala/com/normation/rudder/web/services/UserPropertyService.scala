@@ -56,18 +56,25 @@ trait UserPropertyService {
 
 class UserPropertyServiceImpl( val opt : ReasonsMessageInfo ) extends UserPropertyService {
 
-  override val reasonsFieldBehavior = ( opt.enabled, opt.mandatory ) match {
+  private[this] val impl = new StatelessUserPropertyService(() => opt.enabled, () => opt.mandatory, () => opt.explanation)
+
+  override val reasonsFieldBehavior = impl.reasonsFieldBehavior
+  override val reasonsFieldExplanation : String = impl.reasonsFieldExplanation
+}
+
+/**
+ * Reloadable service
+ */
+class StatelessUserPropertyService(getEnable: () => Boolean, getMandatory: () => Boolean, getExplanation: () => String) extends UserPropertyService {
+
+  override def reasonsFieldBehavior = ( getEnable(), getMandatory() ) match {
     case ( true, true )  => Mandatory
     case ( true, false ) => Optionnal
     case ( false, _ )    => Disabled
   }
-
-  //  def reasonsFieldEnabled() : Boolean = opt.enabled
-
-  //  def reasonsFieldMandatory() : Boolean = opt.mandatory
-
-  override val reasonsFieldExplanation : String = opt.explanation
+  override def reasonsFieldExplanation : String = getExplanation()
 }
+
 
 class ReasonsMessageInfo(
   val enabled : Boolean,

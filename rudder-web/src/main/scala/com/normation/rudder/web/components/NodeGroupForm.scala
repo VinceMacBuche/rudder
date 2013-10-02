@@ -107,7 +107,7 @@ class NodeGroupForm(
 
   private[this] val nodeInfoService            = RudderConfig.nodeInfoService
   private[this] val categoryHierarchyDisplayer = RudderConfig.categoryHierarchyDisplayer
-  private[this] val workflowEnabled            = RudderConfig.RUDDER_ENABLE_APPROVAL_WORKFLOWS
+  private[this] val workflowEnabled            = RudderConfig.configService.rudder_workflow_enabled
 
   private[this] val nodeGroupCategoryForm = new LocalSnippet[NodeGroupCategoryForm]
   private[this] val nodeGroupForm = new LocalSnippet[NodeGroupForm]

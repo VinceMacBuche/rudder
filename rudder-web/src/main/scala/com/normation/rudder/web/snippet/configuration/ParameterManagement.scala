@@ -69,7 +69,7 @@ class ParameterManagement extends DispatchSnippet with Loggable {
   private[this] val woParameterService = RudderConfig.woParameterService
   private[this] val uuidGen            = RudderConfig.stringUuidGenerator
   private[this] val userPropertyService= RudderConfig.userPropertyService
-private[this] val workflowEnabled      = RudderConfig.RUDDER_ENABLE_APPROVAL_WORKFLOWS
+private[this] val workflowEnabled      = RudderConfig.configService.rudder_workflow_enabled
 
   //the current GlobalParameterForm component
   private[this] val parameterPopup = new LocalSnippet[CreateOrUpdateGlobalParameterPopup]

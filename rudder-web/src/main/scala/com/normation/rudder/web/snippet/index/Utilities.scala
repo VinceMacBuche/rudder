@@ -58,7 +58,7 @@ class Utilities {
     if ( CurrentUser.checkRights(Read("administration")) )
       S.redirectTo("eventLogs")
     else
-      if (RudderConfig.RUDDER_ENABLE_APPROVAL_WORKFLOWS)
+      if (RudderConfig.configService.rudder_workflow_enabled)
         S.redirectTo("changeRequests")
       else
         S.redirectTo("/secure/index")

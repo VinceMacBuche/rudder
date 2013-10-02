@@ -124,7 +124,7 @@ class DirectiveEditForm(
   private[this] val woChangeRequestRepo    = RudderConfig.woChangeRequestRepository
   private[this] val roChangeRequestRepo    = RudderConfig.roChangeRequestRepository
   private[this] val techniqueRepo          = RudderConfig.techniqueRepository
-  private[this] val workflowEnabled        = RudderConfig.RUDDER_ENABLE_APPROVAL_WORKFLOWS
+  private[this] val workflowEnabled        = RudderConfig.configService.rudder_workflow_enabled
 
   private[this] val htmlId_save = htmlId_policyConf + "Save"
   private[this] val parameterEditor = {

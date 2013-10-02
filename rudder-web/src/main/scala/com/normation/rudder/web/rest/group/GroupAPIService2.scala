@@ -64,7 +64,7 @@ case class GroupApiService2 (
   , workflowService      : WorkflowService
   , restExtractor        : RestExtractorService
   , queryProcessor       : QueryProcessor
-  , workflowEnabled      : Boolean
+  , workflowEnabled      : () => Boolean
   ) extends Loggable {
 
 
@@ -97,7 +97,7 @@ case class GroupApiService2 (
       }
     ) match {
       case Full(crId) =>
-        val optCrId = if (workflowEnabled) Some(crId) else None
+        val optCrId = if (workflowEnabled()) Some(crId) else None
         val jsonGroup = List(toJSON(group,optCrId))
         toJsonResponse(Some(id), ("groups" -> JArray(jsonGroup)))
       case eb:EmptyBox =>
@@ -177,7 +177,7 @@ case class GroupApiService2 (
                  * else if (workflowEnabled) false
                  * else defaultEnabled
                  */
-                val enableCheck = restGroup.onlyName || (!workflowEnabled && defaultEnabled)
+                val enableCheck = restGroup.onlyName || (!workflowEnabled() && defaultEnabled)
                 val baseGroup = NodeGroup(groupId,name,"",None,true,Set(),enableCheck)
                 restExtractor.extractNodeGroupCategoryId(req.params) match {
                   case Full(category) =>

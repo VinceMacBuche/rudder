@@ -68,7 +68,7 @@ class CreateOrUpdateGlobalParameterPopup(
   private[this] val woChangeRequestRepo      = RudderConfig.woChangeRequestRepository
   private[this] val changeRequestService     = RudderConfig.changeRequestService
   private[this] val workflowService          = RudderConfig.workflowService
-  private[this] val workflowEnabled          = RudderConfig.RUDDER_ENABLE_APPROVAL_WORKFLOWS
+  private[this] val workflowEnabled          = RudderConfig.configService.rudder_workflow_enabled
 
   def dispatch = {
     case "popupContent" =>  { _ =>   popupContent }

@@ -146,7 +146,7 @@ class RuleEditForm(
   private[this] val reportingService     = RudderConfig.reportingService
   private[this] val userPropertyService  = RudderConfig.userPropertyService
 
-  private[this] val workflowEnabled      = RudderConfig.RUDDER_ENABLE_APPROVAL_WORKFLOWS
+  private[this] val workflowEnabled      = RudderConfig.configService.rudder_workflow_enabled
   private[this] val roChangeRequestRepo  = RudderConfig.roChangeRequestRepository
 
   private[this] var selectedTargets = rule.targets
@@ -492,7 +492,7 @@ class RuleEditForm(
         , parentFormTracker = Some(formTracker)
       )
 
-    if((!RudderConfig.RUDDER_UI_CHANGEMESSAGE_ENABLED) && (!workflowEnabled)) {
+    if((!RudderConfig.configService.rudder_ui_changeMessage_enabled) && (!workflowEnabled)) {
       popup.onSubmit
     } else {
       SetHtml("confirmUpdateActionDialog", popup.popupContent) &

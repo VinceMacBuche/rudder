@@ -171,7 +171,6 @@ class Boot extends Loggable {
     AutoComplete.init()
 
 
-    val workflowEnabled = RudderConfig.RUDDER_ENABLE_APPROVAL_WORKFLOWS
 
     // All the following is related to the sitemap
     val nodeManagerMenu =
@@ -257,7 +256,7 @@ class Boot extends Loggable {
       Menu("UtilitiesHome", <span>Utilities</span>) /
         "secure" / "utilities" / "index" >>
         TestAccess ( () =>
-          if (workflowEnabled || CurrentUser.checkRights(Read("administration")))
+          if (RudderConfig.configService.rudder_workflow_enabled || CurrentUser.checkRights(Read("administration")))
             Empty
           else
              Full(RedirectWithState("/secure/index", redirection))
@@ -270,9 +269,9 @@ class Boot extends Loggable {
 
         , Menu("changeRequests", <span>Change requests</span>) /
             "secure" / "utilities" / "changeRequests"
-            >> (if (workflowEnabled) LocGroup("utilitiesGroup") else Hidden)
+            >> (if (RudderConfig.configService.rudder_workflow_enabled) LocGroup("utilitiesGroup") else Hidden)
             >> TestAccess ( () =>
-              if (workflowEnabled)
+              if (RudderConfig.configService.rudder_workflow_enabled)
                 Empty
               else
                 Full(RedirectWithState("/secure/utilities/eventLogs", redirection ) )
@@ -282,7 +281,7 @@ class Boot extends Loggable {
             "secure" / "utilities" / "changeRequest"
             >> Hidden
             >> TestAccess ( () =>
-              if (workflowEnabled)
+              if (RudderConfig.configService.rudder_workflow_enabled)
                 Empty
               else
                 Full(RedirectWithState("/secure/utilities/eventLogs", redirection) )

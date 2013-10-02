@@ -76,7 +76,7 @@ case class DirectiveAPIService2 (
   , changeRequestService : ChangeRequestService
   , workflowService      : WorkflowService
   , restExtractor        : RestExtractorService
-  , workflowEnabled      : Boolean
+  , workflowEnabled      : () => Boolean
   , editorService        : DirectiveEditorService
   ) extends Loggable {
 
@@ -115,7 +115,7 @@ case class DirectiveAPIService2 (
       }
     ) match {
       case Full(crId) =>
-        val optCrId = if (workflowEnabled) Some(crId) else None
+        val optCrId = if (workflowEnabled()) Some(crId) else None
         val jsonDirective = ("directives" -> JArray(List(toJSON(technique, activeTechnique, directive, optCrId))))
         toJsonResponse(Some(id), jsonDirective)
       case eb:EmptyBox =>

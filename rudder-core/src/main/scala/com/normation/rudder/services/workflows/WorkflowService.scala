@@ -79,9 +79,7 @@ trait WorkflowService {
    */
   def startWorkflow(changeRequestId: ChangeRequestId, actor:EventActor, reason: Option[String]) : Box[WorkflowNodeId]
 
-
-
-  val stepsValue :List[WorkflowNodeId]
+  def stepsValue :List[WorkflowNodeId]
 
   def findNextSteps(
       currentUserRights : Seq[String]
@@ -99,6 +97,27 @@ trait WorkflowService {
   def isEditable(currentUserRights:Seq[String],currentStep:WorkflowNodeId, isCreator : Boolean): Boolean
   def isPending(currentStep:WorkflowNodeId): Boolean
 }
+
+/**
+ * A proxy workflow service based on a runtime choice
+ */
+class EitherWorkflowService(cond: () => Boolean, whenTrue: WorkflowService, whenFalse: WorkflowService) extends WorkflowService {
+  def startWorkflow(changeRequestId: ChangeRequestId, actor:EventActor, reason: Option[String]) : Box[WorkflowNodeId] =
+    if(cond()) whenTrue.startWorkflow(changeRequestId, actor, reason) else whenFalse.startWorkflow(changeRequestId, actor, reason)
+  def stepsValue :List[WorkflowNodeId] =
+    if(cond()) whenTrue.stepsValue else whenFalse.stepsValue
+  def findNextSteps(currentUserRights: Seq[String], currentStep: WorkflowNodeId, isCreator: Boolean) : WorkflowAction =
+    if(cond()) whenTrue.findNextSteps(currentUserRights, currentStep, isCreator) else whenFalse.findNextSteps(currentUserRights, currentStep, isCreator)
+  def findBackSteps(currentUserRights: Seq[String], currentStep: WorkflowNodeId, isCreator: Boolean) : Seq[(WorkflowNodeId,(ChangeRequestId,EventActor, Option[String]) => Box[WorkflowNodeId])] =
+    if(cond()) whenTrue.findBackSteps(currentUserRights, currentStep, isCreator) else whenFalse.findBackSteps(currentUserRights, currentStep, isCreator)
+  def findStep(changeRequestId: ChangeRequestId) : Box[WorkflowNodeId] =
+    if(cond()) whenTrue.findStep(changeRequestId) else whenFalse.findStep(changeRequestId)
+  def isEditable(currentUserRights: Seq[String], currentStep: WorkflowNodeId, isCreator: Boolean): Boolean =
+    if(cond()) whenTrue.isEditable(currentUserRights, currentStep, isCreator) else whenFalse.isEditable(currentUserRights, currentStep, isCreator)
+  def isPending(currentStep:WorkflowNodeId): Boolean =
+    if(cond()) whenTrue.isPending(currentStep) else whenFalse.isPending(currentStep)
+}
+
 
 case class WorkflowAction(
     name:String

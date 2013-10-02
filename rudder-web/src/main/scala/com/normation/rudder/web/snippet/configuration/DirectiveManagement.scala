@@ -81,7 +81,7 @@ class DirectiveManagement extends DispatchSnippet with Loggable {
   val getDirectiveLib     = () => RudderConfig.roDirectiveRepository.getFullDirectiveLibrary
   val uuidGen             = RudderConfig.stringUuidGenerator
   val treeUtilService     = RudderConfig.jsTreeUtilService
-  val workflowEnabled     = RudderConfig.RUDDER_ENABLE_APPROVAL_WORKFLOWS
+  val workflowEnabled     = RudderConfig.configService.rudder_workflow_enabled
 
   def dispatch = {
     case "head" => { _ => head }

@@ -56,7 +56,6 @@ import com.normation.rudder.authorization.Edit
 
 class WorkflowInformation extends CometActor with CometListener with Loggable {
   private[this] val workflowService = RudderConfig.workflowService
-  private[this] val workflowEnabled = RudderConfig.RUDDER_ENABLE_APPROVAL_WORKFLOWS
   private[this] val asyncWorkflow   = RudderConfig.asyncWorkflowInfo
 
   private[this] val isValidator = CurrentUser.checkRights(Edit("validator"))
@@ -64,7 +63,7 @@ class WorkflowInformation extends CometActor with CometListener with Loggable {
   def registerWith = asyncWorkflow
 
   def render = {
-    new RenderOut(( (workflowEnabled && (isValidator || isDeployer )) match {
+    new RenderOut(( (RudderConfig.configService.rudder_workflow_enabled && (isValidator || isDeployer )) match {
       case true =>   {if (isValidator) pendingModifications
       else ".pendingModifications" #> Text("")} &
       {if (isDeployer) pendingDeployment

@@ -88,7 +88,7 @@ object PendingChangeRequestDisplayer extends Loggable{
     , id    : T
     , check : checkFunction[T]
   ) = {
-    if (RudderConfig.RUDDER_ENABLE_APPROVAL_WORKFLOWS) {
+    if (RudderConfig.configService.rudder_workflow_enabled) {
       val crs = check(id,true)
       displayPendingChangeRequest(xml,crs)
     }  else {
