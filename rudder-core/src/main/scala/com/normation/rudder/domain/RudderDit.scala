@@ -145,6 +145,7 @@ class RudderDit(val BASE_DN:DN) extends AbstractDit {
   dit.register(GROUP.SYSTEM.model)
   dit.register(API_ACCOUNTS.model)
   dit.register(PARAMETERS.model)
+  dit.register(APPCONFIG.model)
 
 
   //here, we can't use activeTechniqueCategory because we want a subclass
@@ -453,6 +454,27 @@ class RudderDit(val BASE_DN:DN) extends AbstractDit {
   }
 
   object PARAMETERS extends OU("Parameters", BASE_DN) {
+    parameters =>
+
+    def getParameter(dn:DN) : Box[String] = singleRdnValue(dn,A_PARAMETER_NAME)
+
+    def parameterDN(parameterName:ParameterName) = new DN(new RDN(A_PARAMETER_NAME, parameterName.value), parameters.dn)
+
+    def parameterModel(
+        name        : ParameterName
+    ) : LDAPEntry = {
+      val mod = LDAPEntry(parameterDN(name))
+      mod +=! (A_OC,OC.objectClassNames(OC_PARAMETER).toSeq:_*)
+      mod
+    }
+  }
+
+  /**
+   * This is the Rudder APPLICATION configuration.
+   * Perhaps it should not be in that DIT, but in an
+   * upper one.
+   */
+  object APPCONFIG extends OU("Application Properties", BASE_DN.getParent) {
     parameters =>
 
     def getParameter(dn:DN) : Box[String] = singleRdnValue(dn,A_PARAMETER_NAME)

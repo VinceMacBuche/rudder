@@ -55,12 +55,17 @@ import bootstrap.liftweb.RudderConfig
 class Utilities {
 
   def index(xhtml:NodeSeq) : NodeSeq = {
-    if ( CurrentUser.checkRights(Read("administration")) )
+    if ( CurrentUser.checkRights(Read("administration")) ) {
       S.redirectTo("eventLogs")
-    else
-      if (RudderConfig.configService.rudder_workflow_enabled)
+    } else {
+      //if we are not able to read workflow, redirect to index
+      val workflow = RudderConfig.configService.rudder_workflow_enabled.getOrElse(false)
+
+      if (workflow) {
         S.redirectTo("changeRequests")
-      else
+      } else {
         S.redirectTo("/secure/index")
+      }
+    }
   }
 }

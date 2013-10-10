@@ -67,7 +67,7 @@ case class ParameterApiService2 (
   , changeRequestService : ChangeRequestService
   , workflowService      : WorkflowService
   , restExtractor        : RestExtractorService
-  , workflowEnabled      : () => Boolean
+  , workflowEnabled      : () => Box[Boolean]
   ) extends Loggable {
 
 
@@ -101,7 +101,7 @@ case class ParameterApiService2 (
       }
     ) match {
       case Full(crId) =>
-        val optCrId = if (workflowEnabled()) Some(crId) else None
+        val optCrId = if (/* TODO: handle error here */workflowEnabled().getOrElse(false)) Some(crId) else None
         val jsonParameter = List(toJSON(parameter,optCrId))
         toJsonResponse(Some(id), ("parameters" -> JArray(jsonParameter)))
       case eb:EmptyBox =>

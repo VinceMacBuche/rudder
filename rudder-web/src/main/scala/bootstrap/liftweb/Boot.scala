@@ -252,11 +252,15 @@ class Boot extends Loggable {
       )
 
 
-    def utilitiesMenu =
+    def utilitiesMenu = {
+      // if we can't get the workflow property, default to false
+      // (don't give rights if you don't know)
+      val workflowEnabled = RudderConfig.configService.rudder_workflow_enabled.getOrElse(false)
+
       Menu("UtilitiesHome", <span>Utilities</span>) /
         "secure" / "utilities" / "index" >>
         TestAccess ( () =>
-          if (RudderConfig.configService.rudder_workflow_enabled || CurrentUser.checkRights(Read("administration")))
+          if (workflowEnabled || CurrentUser.checkRights(Read("administration")))
             Empty
           else
              Full(RedirectWithState("/secure/index", redirection))
@@ -269,9 +273,9 @@ class Boot extends Loggable {
 
         , Menu("changeRequests", <span>Change requests</span>) /
             "secure" / "utilities" / "changeRequests"
-            >> (if (RudderConfig.configService.rudder_workflow_enabled) LocGroup("utilitiesGroup") else Hidden)
+            >> (if (workflowEnabled) LocGroup("utilitiesGroup") else Hidden)
             >> TestAccess ( () =>
-              if (RudderConfig.configService.rudder_workflow_enabled)
+              if (workflowEnabled)
                 Empty
               else
                 Full(RedirectWithState("/secure/utilities/eventLogs", redirection ) )
@@ -281,7 +285,7 @@ class Boot extends Loggable {
             "secure" / "utilities" / "changeRequest"
             >> Hidden
             >> TestAccess ( () =>
-              if (RudderConfig.configService.rudder_workflow_enabled)
+              if (workflowEnabled)
                 Empty
               else
                 Full(RedirectWithState("/secure/utilities/eventLogs", redirection) )
@@ -292,6 +296,7 @@ class Boot extends Loggable {
             >> LocGroup("utilitiesGroup")
             >> TestAccess ( () => userIsAllowed("/secure/index",Read("administration")) )
       )
+    }
 
 
     val rootMenu = List(

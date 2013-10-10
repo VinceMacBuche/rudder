@@ -580,4 +580,37 @@ class LDAPEntityMapper(
     entry +=! (A_DESCRIPTION, parameter.description)
     entry
   }
+
+  //////////////////////////////    Rudder Config    //////////////////////////////
+
+  def entry2RudderConfig(e:LDAPEntry) : Box[GlobalParameter] = {
+    if(e.isA(OC_PARAMETER)) {
+      //OK, translate
+      for {
+        name        <- e(A_PARAMETER_NAME) ?~! "Missing required attribute %s in entry %s".format(A_PARAMETER_NAME, e)
+        value       = e(A_PARAMETER_VALUE).getOrElse("")
+        description = e(A_DESCRIPTION).getOrElse("")
+        overridable = e.getAsBoolean(A_PARAMETER_OVERRIDABLE).getOrElse(true)
+      } yield {
+        GlobalParameter(
+            ParameterName(name)
+          , value
+          , description
+          , overridable
+        )
+      }
+    } else Failure("The given entry is not of the expected ObjectClass '%s'. Entry details: %s".format(OC_PARAMETER, e))
+  }
+
+  def rudderConfig2Entry(parameter: GlobalParameter) : LDAPEntry = {
+    val entry = rudderDit.APPCONFIG.parameterModel(
+        parameter.name
+    )
+    entry +=! (A_PARAMETER_VALUE, parameter.value)
+    entry +=! (A_PARAMETER_OVERRIDABLE, parameter.overridable.toLDAPString)
+    entry +=! (A_DESCRIPTION, parameter.description)
+    entry
+  }
+
+
 }

@@ -32,12 +32,13 @@
 *************************************************************************************
 */
 package com.normation.rudder.web.services
+import net.liftweb.common.Box
+import net.liftweb.common.Full
 
 object ReasonBehavior extends Enumeration {
   type ReasonBehavior = Value
   val Disabled, Mandatory, Optionnal = Value
 }
-import ReasonBehavior._
 
 /**
  * Expose application configuration choices from users
@@ -49,14 +50,14 @@ trait UserPropertyService {
    * @return the strategy
    */
   // def reasonsFieldEnabled() : Boolean
-  def reasonsFieldBehavior : ReasonBehavior
+  def reasonsFieldBehavior : ReasonBehavior.ReasonBehavior
   def reasonsFieldExplanation : String
 
 }
 
 class UserPropertyServiceImpl( val opt : ReasonsMessageInfo ) extends UserPropertyService {
 
-  private[this] val impl = new StatelessUserPropertyService(() => opt.enabled, () => opt.mandatory, () => opt.explanation)
+  private[this] val impl = new StatelessUserPropertyService(() => Full(opt.enabled), () => Full(opt.mandatory), () => Full(opt.explanation))
 
   override val reasonsFieldBehavior = impl.reasonsFieldBehavior
   override val reasonsFieldExplanation : String = impl.reasonsFieldExplanation
@@ -65,14 +66,17 @@ class UserPropertyServiceImpl( val opt : ReasonsMessageInfo ) extends UserProper
 /**
  * Reloadable service
  */
-class StatelessUserPropertyService(getEnable: () => Boolean, getMandatory: () => Boolean, getExplanation: () => String) extends UserPropertyService {
+class StatelessUserPropertyService(getEnable: () => Box[Boolean], getMandatory: () => Box[Boolean], getExplanation: () => Box[String]) extends UserPropertyService {
 
-  override def reasonsFieldBehavior = ( getEnable(), getMandatory() ) match {
-    case ( true, true )  => Mandatory
-    case ( true, false ) => Optionnal
-    case ( false, _ )    => Disabled
+  // TODO: handle errors here!
+
+
+  override def reasonsFieldBehavior = ( getEnable().getOrElse(true), getMandatory().getOrElse(true) ) match {
+    case ( true, true )  => ReasonBehavior.Mandatory
+    case ( true, false ) => ReasonBehavior.Optionnal
+    case ( false, _ )    => ReasonBehavior.Disabled
   }
-  override def reasonsFieldExplanation : String = getExplanation()
+  override def reasonsFieldExplanation : String = getExplanation().getOrElse("")
 }
 
 

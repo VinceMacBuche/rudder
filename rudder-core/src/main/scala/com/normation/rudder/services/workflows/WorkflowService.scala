@@ -101,21 +101,26 @@ trait WorkflowService {
 /**
  * A proxy workflow service based on a runtime choice
  */
-class EitherWorkflowService(cond: () => Boolean, whenTrue: WorkflowService, whenFalse: WorkflowService) extends WorkflowService {
+class EitherWorkflowService(cond: () => Box[Boolean], whenTrue: WorkflowService, whenFalse: WorkflowService) extends WorkflowService {
+
+  //TODO: handle ERRORS for config!
+
+  def current: WorkflowService = if(cond().getOrElse(false)) whenTrue else whenFalse
+
   def startWorkflow(changeRequestId: ChangeRequestId, actor:EventActor, reason: Option[String]) : Box[WorkflowNodeId] =
-    if(cond()) whenTrue.startWorkflow(changeRequestId, actor, reason) else whenFalse.startWorkflow(changeRequestId, actor, reason)
+    if(cond().getOrElse(false)) whenTrue.startWorkflow(changeRequestId, actor, reason) else whenFalse.startWorkflow(changeRequestId, actor, reason)
   def stepsValue :List[WorkflowNodeId] =
-    if(cond()) whenTrue.stepsValue else whenFalse.stepsValue
+    if(cond().getOrElse(false)) whenTrue.stepsValue else whenFalse.stepsValue
   def findNextSteps(currentUserRights: Seq[String], currentStep: WorkflowNodeId, isCreator: Boolean) : WorkflowAction =
-    if(cond()) whenTrue.findNextSteps(currentUserRights, currentStep, isCreator) else whenFalse.findNextSteps(currentUserRights, currentStep, isCreator)
+    if(cond().getOrElse(false)) whenTrue.findNextSteps(currentUserRights, currentStep, isCreator) else whenFalse.findNextSteps(currentUserRights, currentStep, isCreator)
   def findBackSteps(currentUserRights: Seq[String], currentStep: WorkflowNodeId, isCreator: Boolean) : Seq[(WorkflowNodeId,(ChangeRequestId,EventActor, Option[String]) => Box[WorkflowNodeId])] =
-    if(cond()) whenTrue.findBackSteps(currentUserRights, currentStep, isCreator) else whenFalse.findBackSteps(currentUserRights, currentStep, isCreator)
+    if(cond().getOrElse(false)) whenTrue.findBackSteps(currentUserRights, currentStep, isCreator) else whenFalse.findBackSteps(currentUserRights, currentStep, isCreator)
   def findStep(changeRequestId: ChangeRequestId) : Box[WorkflowNodeId] =
-    if(cond()) whenTrue.findStep(changeRequestId) else whenFalse.findStep(changeRequestId)
+    if(cond().getOrElse(false)) whenTrue.findStep(changeRequestId) else whenFalse.findStep(changeRequestId)
   def isEditable(currentUserRights: Seq[String], currentStep: WorkflowNodeId, isCreator: Boolean): Boolean =
-    if(cond()) whenTrue.isEditable(currentUserRights, currentStep, isCreator) else whenFalse.isEditable(currentUserRights, currentStep, isCreator)
+    if(cond().getOrElse(false)) whenTrue.isEditable(currentUserRights, currentStep, isCreator) else whenFalse.isEditable(currentUserRights, currentStep, isCreator)
   def isPending(currentStep:WorkflowNodeId): Boolean =
-    if(cond()) whenTrue.isPending(currentStep) else whenFalse.isPending(currentStep)
+    if(cond().getOrElse(false)) whenTrue.isPending(currentStep) else whenFalse.isPending(currentStep)
 }
 
 
@@ -194,8 +199,8 @@ class TwoValidationStepsWorkflowServiceImpl(
   , roWorkflowRepo : RoWorkflowRepository
   , woWorkflowRepo : WoWorkflowRepository
   , workflowComet  : AsyncWorkflowInfo
-  , selfValidation : Boolean
-  , selfDeployment : Boolean
+  , selfValidation : () => Box[Boolean]
+  , selfDeployment : () => Box[Boolean]
 ) extends WorkflowService with Loggable {
 
   case object Validation extends WorkflowNode {
@@ -226,8 +231,9 @@ class TwoValidationStepsWorkflowServiceImpl(
     , isCreator         : Boolean
   ) : WorkflowAction = {
     val authorizedRoles = currentUserRights.filter(role => (role == "validator" || role == "deployer"))
-    val canValid  = selfValidation || !isCreator
-    val canDeploy = selfDeployment || !isCreator
+    //TODO: manage error for config !
+    val canValid  = selfValidation().getOrElse(false) || !isCreator
+    val canDeploy = selfDeployment().getOrElse(false) || !isCreator
     currentStep match {
       case Validation.id =>
         val validatorActions =
@@ -258,8 +264,9 @@ class TwoValidationStepsWorkflowServiceImpl(
     , isCreator         : Boolean
   ) : Seq[(WorkflowNodeId,(ChangeRequestId,EventActor, Option[String]) => Box[WorkflowNodeId])] = {
     val authorizedRoles = currentUserRights.filter(role => (role == "validator" || role == "deployer"))
-    val canValid  = selfValidation || !isCreator
-    val canDeploy = selfDeployment || !isCreator
+    //TODO: manage error for config !
+    val canValid  = selfValidation().getOrElse(false) || !isCreator
+    val canDeploy = selfDeployment().getOrElse(false) || !isCreator
     currentStep match {
       case Validation.id =>
         if (authorizedRoles.contains("validator") && canValid) Seq((Cancelled.id,stepValidationToCancelled _)) else Seq()

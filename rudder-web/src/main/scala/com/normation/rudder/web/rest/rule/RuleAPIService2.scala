@@ -72,7 +72,7 @@ case class RuleApiService2 (
   , changeRequestService : ChangeRequestService
   , workflowService      : WorkflowService
   , restExtractor        : RestExtractorService
-  , workflowEnabled      : () => Boolean
+  , workflowEnabled      : () => Box[Boolean]
   ) {
 
 
@@ -106,7 +106,7 @@ case class RuleApiService2 (
       }
     ) match {
       case Full(crId) =>
-        val optCrId = if (workflowEnabled()) Some(crId) else None
+        val optCrId = if (/* TODO: handle error here */ workflowEnabled().getOrElse(false)) Some(crId) else None
         val jsonRule = List(toJSON(rule,optCrId))
         toJsonResponse(Some(id), ("rules" -> JArray(jsonRule)))
       case eb:EmptyBox =>
@@ -186,7 +186,7 @@ case class RuleApiService2 (
                  * else if (workflowEnabled) false
                  * else defaultEnabled
                  */
-                val enableCheck = restRule.onlyName || (!workflowEnabled() && defaultEnabled)
+                val enableCheck = restRule.onlyName || /* TODO: handle error here */(!workflowEnabled().getOrElse(false) && defaultEnabled)
                 val baseRule = Rule(ruleId,name,0)
 
                 // The enabled value in restRule will be used in the saved Rule

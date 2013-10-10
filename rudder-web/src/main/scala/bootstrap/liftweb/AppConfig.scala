@@ -130,6 +130,7 @@ import com.normation.rudder.migration.ChangeRequestMigration_3_4
 import com.normation.rudder.migration.EventLogsMigration_3_4
 import com.normation.rudder.migration.EventLogsMigration_3_4
 import com.normation.rudder.web.rest.parameter._
+import com.normation.rudder.appconfig._
 
 /**
  * Define a resource for configuration.
@@ -179,78 +180,7 @@ object RudderProperties {
 
 
 
-/**
- * A service that Read mutable (runtime) configuration properties
- *
- * Configuration read by that service MUST NOT BE CACHED.
- * Else, of course, they loose their runtime/mutable property.
- *
- */
-trait ReadConfigService {
 
-  /**
-   * Change message properties
-   */
-  def rudder_ui_changeMessage_enabled() : Boolean
-  def rudder_ui_changeMessage_mandatory() : Boolean
-  def rudder_ui_changeMessage_explanation() : String
-
-  /**
-   * Workflow
-   */
-  def rudder_workflow_enabled(): Boolean
-  def rudder_workflow_self_validation(): Boolean
-  def rudder_workflow_self_deployment(): Boolean
-
-}
-
-/**
- * A service that modify existing config parameters
- */
-trait UpdateConfigService {
-
-  def set_rudder_ui_changeMessage_enabled(value: Boolean): Box[Unit]
-  def set_rudder_ui_changeMessage_mandatory(value: Boolean): Box[Unit]
-  def set_rudder_ui_changeMessage_explanation(value: String): Box[Unit]
-
-  /**
-   * Workflows
-   */
-  def set_rudder_workflow_enabled(value: Boolean): Box[Unit]
-  def set_rudder_workflow_self_validation(value: Boolean): Box[Unit]
-  def set_rudder_workflow_self_deployment(value: Boolean): Box[Unit]
-
-}
-
-/**
- * example implementation that use properties from config file
- * as reference, and change them in memory (no persistence)
- */
-class ExampleConfigService(defaultConfig: Config) {
-  private[this] var RUDDER_UI_CHANGEMESSAGE_ENABLED = defaultConfig.getBoolean("rudder.ui.changeMessage.enabled") //false
-  private[this] var RUDDER_UI_CHANGEMESSAGE_MANDATORY = defaultConfig.getBoolean("rudder.ui.changeMessage.mandatory") //false
-  private[this] var RUDDER_UI_CHANGEMESSAGE_EXPLANATION = defaultConfig.getString("rudder.ui.changeMessage.explanation") //"Please enter a message explaining the reason for this change."
-  private[this] var RUDDER_ENABLE_APPROVAL_WORKFLOWS = defaultConfig.getBoolean("rudder.workflow.enabled") // false
-  private[this] var RUDDER_ENABLE_SELF_VALIDATION    = defaultConfig.getBoolean("rudder.workflow.self.validation") // false
-  private[this] var RUDDER_ENABLE_SELF_DEPLOYMENT    = defaultConfig.getBoolean("rudder.workflow.self.deployment") // true
-
-  def rudder_ui_changeMessage_enabled() : Boolean = RUDDER_UI_CHANGEMESSAGE_ENABLED
-  def rudder_ui_changeMessage_mandatory() : Boolean = RUDDER_UI_CHANGEMESSAGE_MANDATORY
-  def rudder_ui_changeMessage_explanation() : String = RUDDER_UI_CHANGEMESSAGE_EXPLANATION
-  def set_rudder_ui_changeMessage_enabled(value: Boolean): Box[Unit] = Full(this.RUDDER_UI_CHANGEMESSAGE_ENABLED = value)
-  def set_rudder_ui_changeMessage_mandatory(value: Boolean): Box[Unit] = Full(this.RUDDER_UI_CHANGEMESSAGE_MANDATORY = value)
-  def set_rudder_ui_changeMessage_explanation(value: String): Box[Unit] = Full(this.RUDDER_UI_CHANGEMESSAGE_EXPLANATION = value)
-
-
-  ///// workflows /////
-  def rudder_workflow_enabled(): Boolean = RUDDER_ENABLE_APPROVAL_WORKFLOWS
-  def rudder_workflow_self_validation(): Boolean = RUDDER_ENABLE_SELF_VALIDATION
-  def rudder_workflow_self_deployment(): Boolean = RUDDER_ENABLE_SELF_DEPLOYMENT
-  def set_rudder_workflow_enabled(value: Boolean): Box[Unit] = Full(RUDDER_ENABLE_APPROVAL_WORKFLOWS = value)
-  def set_rudder_workflow_self_validation(value: Boolean): Box[Unit] = Full(RUDDER_ENABLE_SELF_VALIDATION = value)
-  def set_rudder_workflow_self_deployment(value: Boolean): Box[Unit] = Full(RUDDER_ENABLE_SELF_DEPLOYMENT = value)
-
-}
 
 /**
  * Static initialization of Rudder services.
@@ -655,7 +585,11 @@ object RudderConfig extends Loggable {
       , parameterApiService2
     )
 
-  lazy val configService = new ExampleConfigService(config)
+  lazy val configService: ReadConfigService with UpdateConfigService =
+    new LDAPBasedConfigService(
+        config
+      , new LdapConfigRepository(rudderDit, rwLdap, ldapEntityMapper)
+  )
 
   //////////////////////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////////////////

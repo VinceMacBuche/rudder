@@ -1,0 +1,173 @@
+/*
+*************************************************************************************
+* Copyright 2013 Normation SAS
+*************************************************************************************
+*
+* This program is free software: you can redistribute it and/or modify
+* it under the terms of the GNU Affero General Public License as
+* published by the Free Software Foundation, either version 3 of the
+* License, or (at your option) any later version.
+*
+* In accordance with the terms of section 7 (7. Additional Terms.) of
+* the GNU Affero GPL v3, the copyright holders add the following
+* Additional permissions:
+* Notwithstanding to the terms of section 5 (5. Conveying Modified Source
+* Versions) and 6 (6. Conveying Non-Source Forms.) of the GNU Affero GPL v3
+* licence, when you create a Related Module, this Related Module is
+* not considered as a part of the work and may be distributed under the
+* license agreement of your choice.
+* A "Related Module" means a set of sources files including their
+* documentation that, without modification of the Source Code, enables
+* supplementary functions or services in addition to those offered by
+* the Software.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+* GNU Affero General Public License for more details.
+*
+* You should have received a copy of the GNU Affero General Public License
+* along with this program. If not, see <http://www.gnu.org/licenses/agpl.html>.
+*
+*************************************************************************************
+*/
+package com.normation.rudder.appconfig
+
+import net.liftweb.common.Full
+import com.typesafe.config.Config
+import net.liftweb.common.Box
+import com.normation.rudder.domain.parameters.GlobalParameter
+import com.normation.rudder.domain.parameters.GlobalParameter
+import com.normation.rudder.domain.parameters.ParameterName
+import com.normation.rudder.domain.parameters.GlobalParameter
+
+/**
+ * A service that Read mutable (runtime) configuration properties
+ *
+ * Configuration read by that service MUST NOT BE CACHED.
+ * Else, of course, they loose their runtime/mutable property.
+ *
+ */
+trait ReadConfigService {
+
+  /**
+   * Change message properties
+   */
+  def rudder_ui_changeMessage_enabled() : Box[Boolean]
+  def rudder_ui_changeMessage_mandatory() : Box[Boolean]
+  def rudder_ui_changeMessage_explanation() : Box[String]
+
+  /**
+   * Workflow
+   */
+  def rudder_workflow_enabled(): Box[Boolean]
+  def rudder_workflow_self_validation(): Box[Boolean]
+  def rudder_workflow_self_deployment(): Box[Boolean]
+
+}
+
+/**
+ * A service that modify existing config parameters
+ */
+trait UpdateConfigService {
+
+  def set_rudder_ui_changeMessage_enabled(value: Boolean): Box[Unit]
+  def set_rudder_ui_changeMessage_mandatory(value: Boolean): Box[Unit]
+  def set_rudder_ui_changeMessage_explanation(value: String): Box[Unit]
+
+  /**
+   * Workflows
+   */
+  def set_rudder_workflow_enabled(value: Boolean): Box[Unit]
+  def set_rudder_workflow_self_validation(value: Boolean): Box[Unit]
+  def set_rudder_workflow_self_deployment(value: Boolean): Box[Unit]
+
+}
+
+/**
+ * example implementation that use properties from config file
+ * as reference, and change them in memory (no persistence)
+ */
+class ExampleConfigService(defaultConfig: Config) extends ReadConfigService with UpdateConfigService {
+  private[this] var RUDDER_UI_CHANGEMESSAGE_ENABLED = defaultConfig.getBoolean("rudder.ui.changeMessage.enabled") //false
+  private[this] var RUDDER_UI_CHANGEMESSAGE_MANDATORY = defaultConfig.getBoolean("rudder.ui.changeMessage.mandatory") //false
+  private[this] var RUDDER_UI_CHANGEMESSAGE_EXPLANATION = defaultConfig.getString("rudder.ui.changeMessage.explanation") //"Please enter a message explaining the reason for this change."
+  private[this] var RUDDER_ENABLE_APPROVAL_WORKFLOWS = defaultConfig.getBoolean("rudder.workflow.enabled") // false
+  private[this] var RUDDER_ENABLE_SELF_VALIDATION    = defaultConfig.getBoolean("rudder.workflow.self.validation") // false
+  private[this] var RUDDER_ENABLE_SELF_DEPLOYMENT    = defaultConfig.getBoolean("rudder.workflow.self.deployment") // true
+
+  def rudder_ui_changeMessage_enabled() = Full(RUDDER_UI_CHANGEMESSAGE_ENABLED)
+  def rudder_ui_changeMessage_mandatory() = Full(RUDDER_UI_CHANGEMESSAGE_MANDATORY)
+  def rudder_ui_changeMessage_explanation() = Full(RUDDER_UI_CHANGEMESSAGE_EXPLANATION)
+  def set_rudder_ui_changeMessage_enabled(value: Boolean): Box[Unit] = Full(this.RUDDER_UI_CHANGEMESSAGE_ENABLED = value)
+  def set_rudder_ui_changeMessage_mandatory(value: Boolean): Box[Unit] = Full(this.RUDDER_UI_CHANGEMESSAGE_MANDATORY = value)
+  def set_rudder_ui_changeMessage_explanation(value: String): Box[Unit] = Full(this.RUDDER_UI_CHANGEMESSAGE_EXPLANATION = value)
+
+
+  ///// workflows /////
+  def rudder_workflow_enabled() = Full(RUDDER_ENABLE_APPROVAL_WORKFLOWS)
+  def rudder_workflow_self_validation() = Full(RUDDER_ENABLE_SELF_VALIDATION)
+  def rudder_workflow_self_deployment() = Full(RUDDER_ENABLE_SELF_DEPLOYMENT)
+  def set_rudder_workflow_enabled(value: Boolean): Box[Unit] = Full(RUDDER_ENABLE_APPROVAL_WORKFLOWS = value)
+  def set_rudder_workflow_self_validation(value: Boolean): Box[Unit] = Full(RUDDER_ENABLE_SELF_VALIDATION = value)
+  def set_rudder_workflow_self_deployment(value: Boolean): Box[Unit] = Full(RUDDER_ENABLE_SELF_DEPLOYMENT = value)
+
+}
+
+/**
+ * At start-up, read information from the default config.
+ * They will be used has default value is none is stored in LDAP.
+ */
+class LDAPBasedConfigService(defaultConfig: Config, repos: ConfigRepository) extends ReadConfigService with UpdateConfigService {
+
+  /*
+   *  Correct implementation use a macro in place of all the
+   *  redondant calls...
+   *
+   */
+
+  private[this] def get[T](name: String)(implicit converter: GlobalParameter => T) : Box[T] = {
+    for {
+      params <- repos.getConfigParameters
+      param  <- params.find( _.name.value == name) match {
+                  case None =>
+                    val configName = name.replaceAll("_", ".")
+                    save(name, defaultConfig.getString(configName))
+                  case Some(p) => Full(p)
+                }
+    } yield {
+      param
+    }
+  }
+
+  private[this] def save[T](name: String, value: T): Box[GlobalParameter] = {
+    val p = GlobalParameter(ParameterName(name), value.toString, "", true)
+    repos.saveConfigParameter(p)
+  }
+
+
+  private[this] implicit def toBoolean(p: GlobalParameter): Boolean = p.value.toLowerCase match {
+    case "true" | "1" => true
+    case _ => false
+  }
+
+  private[this] implicit def toString(p: GlobalParameter): String = p.value
+
+  private[this] implicit def toUnit(p: Box[GlobalParameter]) : Box[Unit] = p.map( _ => ())
+
+  def rudder_ui_changeMessage_enabled() = get("rudder_ui_changeMessage_enabled")
+  def rudder_ui_changeMessage_mandatory() = get("rudder_ui_changeMessage_mandatory")
+  def rudder_ui_changeMessage_explanation() = get("rudder_ui_changeMessage_explanation")
+  def set_rudder_ui_changeMessage_enabled(value: Boolean): Box[Unit] = save("rudder_ui_changeMessage_enabled", value)
+  def set_rudder_ui_changeMessage_mandatory(value: Boolean): Box[Unit] = save("rudder_ui_changeMessage_mandatory", value)
+  def set_rudder_ui_changeMessage_explanation(value: String): Box[Unit] = save("rudder_ui_changeMessage_explanation", value)
+
+
+  ///// workflows /////
+  def rudder_workflow_enabled() = get("rudder_workflow_enabled")
+  def rudder_workflow_self_validation() = get("rudder_workflow_self_validation")
+  def rudder_workflow_self_deployment() = get("rudder_workflow_self_deployment")
+  def set_rudder_workflow_enabled(value: Boolean): Box[Unit] = save("rudder_workflow_enabled", value)
+  def set_rudder_workflow_self_validation(value: Boolean): Box[Unit] = save("rudder_workflow_self_validation", value)
+  def set_rudder_workflow_self_deployment(value: Boolean): Box[Unit] = save("rudder_workflow_self_deployment", value)
+}
