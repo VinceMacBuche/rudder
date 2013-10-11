@@ -80,7 +80,7 @@ class DyngroupReloading extends DispatchSnippet with Loggable {
 
     //process the list of networks
     "#dyngroupReloadingButton" #> {
-      SHtml.ajaxSubmit("Reload dynamic groups", process _) ++ Script(OnLoad(JsRaw(""" correctButtons(); """)))
+      SHtml.ajaxSubmit("Reload dynamic groups now", process _) ++ Script(OnLoad(JsRaw(""" correctButtons(); """)))
     }
   }
 }

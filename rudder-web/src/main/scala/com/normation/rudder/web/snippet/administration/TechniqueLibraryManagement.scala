@@ -718,7 +718,7 @@ class TechniqueLibraryManagement extends DispatchSnippet with Loggable {
 
       //fill the template
       // Add a style to display correctly the button in both page : policyServer and technique library
-      ":submit" #> ( SHtml.ajaxSubmit("Reload Techniques", process _, ("style","min-width:150px")) ++
+      ":submit" #> ( SHtml.ajaxSubmit("Update Techniques now", process _, ("style","min-width:150px")) ++
                      Script(OnLoad(JsRaw(""" correctButtons(); """)))
                    )
   }
