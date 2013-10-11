@@ -42,6 +42,7 @@ import com.normation.rudder.domain.parameters.ParameterName
 import com.normation.rudder.domain.parameters.GlobalParameter
 import com.normation.rudder.batch.AsyncWorkflowInfo
 import com.normation.rudder.services.workflows.WorkflowUpdate
+import com.typesafe.config.ConfigFactory
 
 /**
  * A service that Read mutable (runtime) configuration properties
@@ -116,11 +117,12 @@ class ExampleConfigService(defaultConfig: Config) extends ReadConfigService with
 
 }
 
+
 /**
  * At start-up, read information from the default config.
  * They will be used has default value is none is stored in LDAP.
  */
-class LDAPBasedConfigService(defaultConfig: Config, repos: ConfigRepository, workflowUpdate : AsyncWorkflowInfo) extends ReadConfigService with UpdateConfigService {
+class LDAPBasedConfigService(configFile: Config, repos: ConfigRepository, workflowUpdate : AsyncWorkflowInfo) extends ReadConfigService with UpdateConfigService {
 
   /*
    *  Correct implementation use a macro in place of all the
@@ -128,13 +130,25 @@ class LDAPBasedConfigService(defaultConfig: Config, repos: ConfigRepository, wor
    *
    */
 
+  val defaultConfig =
+    """rudder.ui.changeMessage.enabled=true
+       rudder.ui.changeMessage.mandatory=false
+       rudder.ui.changeMessage.explanation=Please enter a message explaining the reason for this change.
+       rudder.workflow.enabled=false
+       rudder.workflow.self.validation=false
+       rudder.workflow.self.deployment=true
+    """
+
+  val configWithFallback = configFile.withFallback(ConfigFactory.parseString(defaultConfig))
+
   private[this] def get[T](name: String)(implicit converter: GlobalParameter => T) : Box[T] = {
     for {
       params <- repos.getConfigParameters
       param  <- params.find( _.name.value == name) match {
                   case None =>
                     val configName = name.replaceAll("_", ".")
-                    save(name, defaultConfig.getString(configName))
+                    val value = configWithFallback.getString(configName)
+                    save(name, value)
                   case Some(p) => Full(p)
                 }
     } yield {
