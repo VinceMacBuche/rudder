@@ -173,7 +173,7 @@ class RuleGrid(
         },
         "aaSorting": [[ 0, "asc" ]],
         "aoColumns": [${ if(showCheckboxColumn) """
-          { "sWidth": "30px" },""" else "" }
+          { "sWidth": "30px" , "bSortable" : false},""" else "" }
           { "sWidth": "90px" },
           { "sWidth": "120px"  },
           { "sWidth": "60px" },
@@ -183,7 +183,8 @@ class RuleGrid(
         "sDom": '<"dataTables_wrapper_top"fl>rt<"dataTables_wrapper_bottom"ip>'
       });
       $$('.dataTables_filter input').attr("placeholder", "Search");
-      """
+      createTooltip();
+          """
 
 
     (
@@ -214,6 +215,7 @@ class RuleGrid(
      Script(JsRaw(s"var ${tableVar};") &     //pop-ups for multiple Directives
       JsRaw( """var openMultiPiPopup = function(popupid) {
           createPopup(popupid);
+          createTooltip();
      }""") &
  OnLoad(JsRaw(onLoad)))
 
@@ -331,16 +333,27 @@ class RuleGrid(
 
 
     //now, build html lines
-    if(lines.isEmpty) {
-      NodeSeq.Empty
-    } else {
-      lines.map { l => l match {
+      lines.flatMap { l =>
+        l match {
       case line:OKLine =>
-        <tr>
+        val tooltipId = Helpers.nextFuncName
+        <div>{
+        if(line.rule.shortDescription.size > 0){
+
+
+         <div class="tooltipContent" id={tooltipId}>
+           <h3>{line.rule.name}</h3>
+           <div>{line.rule.shortDescription}</div>
+         </div>
+           }
+        }
+        <tr tooltipid={tooltipId} class="tooltipable" title="">
           { // CHECKBOX
             if(showCheckboxColumn) <td><input type="checkbox" name={line.rule.id.value} /></td> else NodeSeq.Empty
           }
-          <td>{ // NAME
+          <td>
+         { // NAME
+
             if(popup) <a href={"""/secure/configurationManager/ruleManagement#{"ruleId":"%s"}""".format(line.rule.id.value)}>{detailsLink(line.rule, line.rule.name)}</a> else detailsLink(line.rule, line.rule.name)
           }</td>
           <td>{ // Category
@@ -393,7 +406,7 @@ class RuleGrid(
             else NodeSeq.Empty
           }
         </tr>
-
+          </div>
       case line:ErrorLine =>
         <tr class="error">
 
@@ -432,7 +445,7 @@ class RuleGrid(
           }
         </tr>
       } }
-    } }
+    }
 
     for {
       directivesLib <- directiveLib
