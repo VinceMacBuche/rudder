@@ -123,7 +123,7 @@ class RuleCategoryPopup(
       "#categoryName * "          #> categoryName.toForm_! &
       "#categoryParent *"        #> categoryParent.toForm_! &
       "#categoryDescription *" #> categoryDescription.toForm_! &
-      "#saveCategory"          #> SHtml.ajaxSubmit("Save", () => onSubmit(), ("id", "createRuleCategorySaveButton") , ("tabindex","3")) andThen
+      "#saveCategory"          #> SHtml.ajaxSubmit("Save", () => onSubmit(), ("id", "createRuleCategorySaveButton") , ("tabindex","3"), ("style","margin-left:5px;")) andThen
       ".notifications *"       #> updateAndDisplayNotifications()
 
     )(html ++ Script(OnLoad(JsRaw("updatePopup();"))))
@@ -132,11 +132,11 @@ class RuleCategoryPopup(
 
   def deletePopupContent(canBeDeleted : Boolean) : NodeSeq = {
     val action = () => if (canBeDeleted)  onSubmitDelete else closePopup
-
+    val disabled  = if (canBeDeleted) ("","") else ("disabled","true")
      (
       "#dialogTitle *"  #> s"Delete Rule category ${s"'${rootCategory.name}'"}" &
       "#text * "        #> (if(canBeDeleted) "Are you sure you want to delete this rule category?" else "This Rule category is not empty and therefore cannot be deleted")  &
-      "#deleteCategoryButton" #> SHtml.ajaxButton("Confirm", action, ("id", "createRuleCategorySaveButton") , ("tabindex","3"), ("disabled",s"${!canBeDeleted}"))
+      "#deleteCategoryButton" #> SHtml.ajaxButton("Confirm", action, ("id", "createRuleCategorySaveButton") ,("tabindex","3") , ("style","margin-left:5px;"), disabled )
     )(deleteHtml ++ Script(OnLoad(JsRaw("updatePopup();"))))
   }
 
