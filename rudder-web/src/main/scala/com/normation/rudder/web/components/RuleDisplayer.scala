@@ -53,7 +53,7 @@ import com.normation.rudder.rule.category._
 import com.normation.rudder.domain.policies.Rule
 import com.normation.rudder.domain.policies.RuleId
 import net.liftweb.http.LocalSnippet
-import com.normation.rudder.web.components.popup.CreateRuleCategoryPopup
+import com.normation.rudder.web.components.popup.RuleCategoryPopup
 
 
 class RuleDisplayer (
@@ -85,6 +85,7 @@ class RuleDisplayer (
       , root
       , directive
       , (() =>  check)
+      , ((c:RuleCategory) => showCategoryPopup(Some(c)))
       , ((c:RuleCategory) => showCategoryPopup(Some(c)))
     )
   }
@@ -199,7 +200,7 @@ var column = ${columnToFilter};"""))
  // Popup
 
     private[this] def creationPopup(category : Option[RuleCategory]) =
-      new  CreateRuleCategoryPopup(
+      new  RuleCategoryPopup(
           root
         , category
         , {(r : RuleCategory) =>
