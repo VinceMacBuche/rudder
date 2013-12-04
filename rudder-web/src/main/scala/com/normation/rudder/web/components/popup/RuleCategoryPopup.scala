@@ -66,7 +66,7 @@ import com.normation.eventlog.ModificationId
  * if a group is passed as an argument, will force the creation of a new group based on the query
  * contained
  */
-class CreateRuleCategoryPopup(
+class RuleCategoryPopup(
     rootCategory      : RuleCategory
   , targetCategory    : Option[RuleCategory]
   , onSuccessCategory : (RuleCategory) => JsCmd
@@ -81,6 +81,18 @@ class CreateRuleCategoryPopup(
       xml <- Templates(path)
     } yield {
       chooseTemplate("component", "creationPopup", xml)
+    }) openOr {
+      logger.error("Missing template <component:creationPopup> at path: %s.html".format(path.mkString("/")))
+      <div/>
+    }
+  }
+
+  private def deleteHtml = {
+    val path = "templates-hidden" :: "Popup" :: "RuleCategoryPopup" :: Nil
+    (for {
+      xml <- Templates(path)
+    } yield {
+      chooseTemplate("component", "deletePopup", xml)
     }) openOr {
       logger.error("Missing template <component:creationPopup> at path: %s.html".format(path.mkString("/")))
       <div/>
@@ -133,10 +145,12 @@ class CreateRuleCategoryPopup(
 
   }
 
+  val categories = targetCategory.map(rootCategory.filter(_)).getOrElse(rootCategory)
+
   private[this] val categoryParent =
     new WBSelectField(
         "Parent category"
-      , categoryHierarchyDisplayer.getRuleCategoryHierarchy(rootCategory, None).map { case (id, name) => (id.value -> name)}
+      , categoryHierarchyDisplayer.getRuleCategoryHierarchy(categories, None).map { case (id, name) => (id.value -> name)}
       , targetCategory.flatMap(rootCategory.findParent(_)).map(_.id.value).getOrElse(rootCategory.id.value)
     ) {
     override def className = "rudderBaseFieldSelectClassName"
@@ -203,6 +217,8 @@ class CreateRuleCategoryPopup(
   private[this] def onFailure : JsCmd = {
     updateFormClientSide()
   }
+
+
 
   private[this] def updateAndDisplayNotifications() : NodeSeq = {
     notifications :::= formTracker.formErrors
