@@ -137,7 +137,7 @@ class CreateRuleCategoryPopup(
     new WBSelectField(
         "Parent category"
       , categoryHierarchyDisplayer.getRuleCategoryHierarchy(rootCategory, None).map { case (id, name) => (id.value -> name)}
-      , rootCategory.id.value
+      , targetCategory.flatMap(rootCategory.findParent(_)).map(_.id.value).getOrElse(rootCategory.id.value)
     ) {
     override def className = "rudderBaseFieldSelectClassName"
   }
