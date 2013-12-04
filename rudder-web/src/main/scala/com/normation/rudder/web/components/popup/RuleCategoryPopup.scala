@@ -59,6 +59,7 @@ import com.normation.rudder.rule.category.RuleCategory
 import com.normation.rudder.rule.category.RuleCategory
 import com.normation.rudder.rule.category.RuleCategoryId
 import com.normation.eventlog.ModificationId
+import com.normation.rudder.rule.category.RuleCategory
 
 /**
  * Create a group or a category
@@ -128,6 +129,17 @@ class RuleCategoryPopup(
     )(html ++ Script(OnLoad(JsRaw("updatePopup();"))))
   }
 
+
+  def deletePopupContent(canBeDeleted : Boolean) : NodeSeq = {
+    val action = () => if (canBeDeleted)  onSubmitDelete else closePopup
+
+     (
+      "#dialogTitle *"  #> s"Delete Rule category ${s"'${rootCategory.name}'"}" &
+      "#text * "        #> (if(canBeDeleted) "Are you sure you want to delete this rule category?" else "This Rule category is not empty and therefore cannot be deleted")  &
+      "#deleteCategoryButton" #> SHtml.ajaxButton("Confirm", action, ("id", "createRuleCategorySaveButton") , ("tabindex","3"), ("disabled",s"${!canBeDeleted}"))
+    )(deleteHtml ++ Script(OnLoad(JsRaw("updatePopup();"))))
+  }
+
   ///////////// fields for category settings ///////////////////
   private[this] val categoryName = new WBTextField("Name", targetCategory.map(_.name).getOrElse("")) {
     override def setFilter = notNull _ :: trim _ :: Nil
@@ -171,6 +183,27 @@ class RuleCategoryPopup(
    */
   private[this] def updateFormClientSide() : JsCmd = {
     SetHtml("RuleCategoryCreationContainer", popupContent())
+  }
+
+  private[this] def onSubmitDelete() : JsCmd = {
+    targetCategory match {
+      case Some(category) =>
+        val modId = new ModificationId(uuidGen.newUuid)
+        woRulecategoryRepository.delete(category.id, modId , CurrentUser.getActor, None, true) match {
+         case Full(x) => closePopup() & onSuccessCallback(x.value) & onSuccessCategory(category)
+              case Empty =>
+                logger.error("An error occurred while deleting the category")
+                formTracker.addFormError(error("An error occurred while deleting the category"))
+                onFailure & onFailureCallback()
+              case Failure(m,_,_) =>
+                logger.error("An error occurred while deleting the category:" + m)
+                formTracker.addFormError(error(m))
+                onFailure & onFailureCallback()
+        }
+      case None =>
+        // Should not happen, close popup
+        closePopup()
+    }
   }
 
   private[this] def onSubmit() : JsCmd = {
