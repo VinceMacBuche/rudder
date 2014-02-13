@@ -36,19 +36,19 @@ package com.normation.rudder.web.services
 
 import scala.xml.NodeSeq
 import scala.xml.NodeSeq.seqToNodeSeq
-
 import com.normation.inventory.domain.NodeId
 import com.normation.rudder.domain.policies.FullGroupTarget
 import com.normation.rudder.domain.policies.FullOtherTarget
 import com.normation.rudder.domain.policies.FullRuleTargetInfo
 import com.normation.rudder.repository.FullNodeGroupCategory
 import com.normation.rudder.web.model.JsTreeNode
-
 import net.liftweb.common.Loggable
 import net.liftweb.http.SHtml
-import net.liftweb.http.js.JsCmd
+import net.liftweb.http.js._
+import net.liftweb.http.js.JsCmds._
 import net.liftweb.util.Helpers
 import net.liftweb.util.Helpers.{ boolean2, strToSuperArrowAssoc }
+import net.liftweb.http.js.JE.JsRaw
 
 /**
  *
@@ -79,6 +79,7 @@ object DisplayNodeGroupTree extends Loggable {
       private[this] val localOnClickTarget = onClickTarget.map( _.curried(category) )
 
       private[this] val tooltipId = Helpers.nextFuncName
+
       private[this] val xml = (
         <span class="treeGroupCategoryName tooltipable" tooltipid={tooltipId} title="">{category.name}</span>
         <div class="tooltipContent" id={tooltipId}>
@@ -119,25 +120,66 @@ object DisplayNodeGroupTree extends Loggable {
       , onClickNode   : Option[FullRuleTargetInfo => JsCmd]
     ) : JsTreeNode = new JsTreeNode {
 
+
+      val groupId = {
+        targetInfo.target match {
+          case g:FullGroupTarget =>
+             g.nodeGroup.id.value
+          case o:FullOtherTarget =>
+            o.target.target
+        }
+      }
+
+      val htmlId = s"jstree-${groupId}"
+      val jsId = htmlId.replace(":", "\\\\:")
+
+        val jsInitFunction = Script(JsRaw (s"""
+           console.log("${jsId}");
+           $$('#${jsId}').mouseover( function(e) {
+           e.stopPropagation();
+           $$('#${jsId} .actions').show();
+           $$('#${jsId} a:first').addClass("treeOver jstree-hovered");
+         });
+
+
+           $$('#${jsId}').hover( function(e) {
+           $$('.actions').hide();
+           $$('.treeOver').removeClass("treeOver jstree-hovered");
+           $$('#${jsId} .actions').show();
+           $$('#${jsId} a:first').addClass("treeOver jstree-hovered");
+           }, function(e) {
+           $$('.treeOver').removeClass("treeOver jstree-hovered");
+           $$('#${jsId} .actions').hide();
+           } );
+
+           //$$('#${"edit"+jsId}').click( function(e) {
+           //  e.stopPropagation();
+           //});
+           //$$('#${"delete"+jsId}').click( function(e) {
+           //  e.stopPropagation();
+           //});
+           """))
+
       override def children = Nil
 
-      override val attrs = (
-          ( "rel" -> { if (targetInfo.isSystem) "system_target" else "group"} ) ::
-          (targetInfo.target match {
-            case g:FullGroupTarget =>
-              ( "groupId" -> g.nodeGroup.id.value ) ::
-              ( "id" -> ("jsTree-" + g.nodeGroup.id.value) ) ::
-               Nil
-            case o:FullOtherTarget =>
-              ( "id" -> ("jsTree-" + o.target.target) ) ::
-               Nil
-          })
-      )
+
+      override val attrs = {
+        ( "rel"     -> { if (targetInfo.isSystem) "system_target" else "group"} ) ::
+        ( "groupId" -> groupId ) ::
+        ( "id"      -> htmlId ) ::
+        Nil
+      }
       override def body = {
         val tooltipId = Helpers.nextFuncName
+        val actionButtons = {
 
+        <span class="actions" style="float:left; padding-top:1px;padding-left:10px">{
+          SHtml.span(<span>+</span>     ,Noop) ++
+          SHtml.span(<span>-</span>     ,Noop)
+        } </span>
+        }
         val xml  = {
-          <span class="treeGroupName tooltipable" tooltipid={tooltipId} title="">
+          <span class="treeGroupName tooltipable" tooltipid={tooltipId} title="" style="float:left">
             {targetInfo.name}
             { targetInfo.target match {
                 case g:FullGroupTarget => s": ${g.nodeGroup.isDynamic ? "dynamic" | "static" }"
@@ -150,7 +192,8 @@ object DisplayNodeGroupTree extends Loggable {
           <div class="tooltipContent" id={tooltipId}>
             <h3>{targetInfo.name}</h3>
             <div>{targetInfo.description}</div>
-          </div>
+          </div> ++
+        actionButtons ++ jsInitFunction
         }
 
         onClickNode match {
@@ -162,7 +205,7 @@ object DisplayNodeGroupTree extends Loggable {
 
     }
 
-    displayCategory(groupLib).toXml
+    displayCategory(groupLib).toXml ++ Script(JsRaw("$('.actions').hide();"))
   }
 
   //build the tree category, filtering only category with groups
