@@ -135,13 +135,7 @@
   </div>
   <hr class="spacer"/>
   
-  <fieldset class="topLevelAction">
-    <p class="clearable">
-      This is the zone for top level actions which does not take into account
-      modifications done in the edit zone. 
-    </p>
-    
-    <legend>Rule actions</legend>
+  <div class="topLevelAction">
 
     <div id="removeAction" class="twoColumns">
 <!--      <label for="removeButton" id="removeButtonLabel">Remove from user library</label>-->
@@ -161,11 +155,7 @@
         Note: the Rule will be applied only if its status is Enabled and 
         its Directive, Technique and target node group are all Enabled.
     </div>
-        
-  </fieldset>
-
-  <fieldset class="editZone">
-    <legend>Modify Rule parameters</legend>
+    </div>
 
     <div id="notifications">
 <!--       <ul> -->
@@ -173,6 +163,8 @@
 <!--       </ul> -->
     </div>
     <hr class="spacer" />
+    
+    <div class="inner-portlet-header spacing-title">GENERAL INFORMATIONS</div>
     <div class="groupedEditZone">
       <div id="nameField">
         Here comes the name field
@@ -195,16 +187,16 @@
     
 
     <div class="groupedEditZone">
-       <fieldset class="crEditHierarchy"><legend>Directive <lift:authz role="directive_write"><a href= "/secure/configurationManager/directiveManagement">(Create a new Directive)</a></lift:authz></legend>
+    <div class="inner-portlet-header spacing-title">DIRECTIVES</div>
           <div id="selectPiField">
             Here comes the Directive selection field
           </div>
-        </fieldset>
-        <fieldset class="crEditHierarchy"><legend>Group hierarchy  <lift:authz role="group_write"><a href= "/secure/nodeManager/groups">(Create a new Group)</a></lift:authz></legend>
+          <hr class="spacer"/>
+    <div class="inner-portlet-header spacing-title">GROUPS</div>
+          
           <div id="selectGroupField">
             Here comes the group selection field
           </div>
-        </fieldset>
       <div class="hierarchySpacer"></div>
     </div>
     
@@ -213,7 +205,8 @@
     <div class="cpiefsave">
       <button id="save">Save</button>
     </div>
-  </fieldset>
+    
+    <hr class="spacer" />
 </div>
 
 </component:form>
