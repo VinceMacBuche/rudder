@@ -296,9 +296,10 @@ class Groups extends StatefulSnippet with SpringExtendableSnippet[Groups] with L
       (
         <div id={htmlId_groupTree}>
           <ul>{DisplayNodeGroupTree.displayTree(
-                  groupLib = lib
-                , onClickCategory = Some(fullDisplayCategory(workflowEnabled))
-                , onClickTarget  = Some(showTargetInfo(workflowEnabled))
+                  lib
+                , Some(fullDisplayCategory(workflowEnabled))
+                , Some(showTargetInfo(workflowEnabled))
+                , Map()
            )}</ul>
         </div>
       ) ++ Script(OnLoad(

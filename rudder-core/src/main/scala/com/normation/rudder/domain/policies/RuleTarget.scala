@@ -96,7 +96,9 @@ case object EmptyTarget extends RuleTarget {
 trait TargetComposition extends CompositeRuleTarget {
   def targets : Set[RuleTarget]
 
-  def updateTargets(updatedTargets : Set[RuleTarget]) : RuleTarget
+  def updateTargets(updatedTargets : Set[RuleTarget]) : TargetComposition
+
+  def + (target : RuleTarget) = updateTargets( targets + target)
 
   def remove(target : RuleTarget) : RuleTarget = {
     val removedTargets = (targets - target)
@@ -132,8 +134,26 @@ case class TargetUnion ( targets : Set [RuleTarget]) extends TargetComposition {
 
 case class TargetExclusion (includedTarget: RuleTarget, excludedTarget : Option[RuleTarget]) extends CompositeRuleTarget {
   override val toJson : JValue = ( "include" -> includedTarget.toJson ) ~ ( "exclude" -> excludedTarget.map(_.toJson) )
-  override def toString = " ( " +target.toString()+" )"
+  override def toString = target.toString()
 
+  def updateInclude (target : RuleTarget) = {
+    val newIncluded = includedTarget match {
+      case union : TargetUnion => union + target
+      case EmptyTarget => target
+      case t => TargetUnion(Set(t ,target))
+    }
+    copy(newIncluded)
+  }
+
+  def updateExclude (target : RuleTarget) = {
+
+    val newExcluded = excludedTarget match {
+      case Some(union : TargetUnion) => Some(union + target)
+      case Some(EmptyTarget) | None => Some(target)
+      case Some(t) => Some(TargetUnion(Set(t ,target)))
+    }
+    copy(includedTarget,newExcluded)
+  }
   def remove(target : RuleTarget) : RuleTarget = {
     def updateTarget(ruleTarget : RuleTarget) = {
       ruleTarget match {
@@ -188,6 +208,16 @@ object RuleTarget extends Loggable {
         logger.error(s"${json.toString} is not a valid rule target")
         None
     }
+  }
+
+  def merge(targets : Set[RuleTarget]) : TargetExclusion = {
+
+    val start = TargetExclusion(TargetUnion(Set()),None)
+    (start /: targets) {
+      case (res,e:TargetExclusion) =>
+       e.excludedTarget.map(res.updateExclude ).getOrElse(res).updateInclude(e.includedTarget)
+      case (res,t) => res.updateInclude(t)
+      }
   }
 
 

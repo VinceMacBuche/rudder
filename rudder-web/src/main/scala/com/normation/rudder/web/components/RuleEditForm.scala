@@ -79,6 +79,8 @@ import com.normation.rudder.domain.nodes.NodeInfo
 import org.joda.time.DateTime
 import com.normation.rudder.web.model.WBSelectField
 import com.normation.rudder.rule.category.RuleCategoryId
+import com.normation.rudder.domain.policies.EmptyTarget
+import com.normation.rudder.domain.policies.TargetExclusion
 
 object RuleEditForm {
 
@@ -157,7 +159,7 @@ class RuleEditForm(
   private[this] val roChangeRequestRepo  = RudderConfig.roChangeRequestRepository
   private[this] val categoryHierarchyDisplayer = RudderConfig.categoryHierarchyDisplayer
 
-  private[this] var selectedTargets = rule.targets
+  private[this] var ruleTarget : RuleTarget = RuleTarget.merge(rule.targets)
   private[this] var selectedDirectiveIds = rule.directiveIds
 
   private[this] val getFullNodeGroupLib = RudderConfig.roNodeGroupRepository.getFullGroupLibrary _
@@ -172,8 +174,10 @@ class RuleEditForm(
   val extendsAt = SnippetExtensionKey(classOf[RuleEditForm].getSimpleName)
 
   def mainDispatch = Map(
-    "showForm" -> { _:NodeSeq => showForm() },
-    "showEditForm" -> { _:NodeSeq => showForm(1) }
+    "showForm" -> { _:NodeSeq => logger.warn(body)
+      showForm() },
+    "showEditForm" -> { _:NodeSeq => logger.warn(body)
+      showForm(1)}
   )
 
   private[this] def showForm(tab :Int = 0) : NodeSeq = {
@@ -288,7 +292,8 @@ class RuleEditForm(
           <ul>{DisplayNodeGroupTree.displayTree(
               groupLib
             , None
-            , Some(onClickRuleTarget)
+            , None
+            , Map("include" -> includeRuleTarget _,"exclude" -> excludeRuleTarget _)
           )}</ul>
         </div> } &
       "#save" #> saveButton &
@@ -306,18 +311,32 @@ class RuleEditForm(
               return this.id;
             }).get()));""".format(htmlId_activeTechniquesTree)
         ))) &
+        /*
+        JsRaw(s"""    var scope = angular.element($$("#groupManagement")).scope();
+              scope.$$apply(function(){
+                scope.target = ${ruleTarget.toString()};
+              })""") &
+        /*
         JsCrVar("updateSelectedTargets", AnonFunc(JsRaw("""
           $('#selectedTargets').val(JSON.stringify(
             $.jstree._reference('#%s').get_selected().map(function(){
               return this.id;
             }).get()));""".format(htmlId_groupTree)
-        ))) &
+        ))) &*/*/
       OnLoad(
+
+
+        JsRaw(s"""
+
+           var groupManagement = angular.module('groupManagement', []);
+           groupManagement.controller('GroupCtrl', ['$$scope', function($$scope) {  $$scope.target = ${ruleTarget.toString()};  } ] ) ;
+           angular.bootstrap('#groupManagement', ['groupManagement']);
+        """) &
         //build jstree and
         //init bind callback to move
-        JsRaw("buildGroupTree('#%1$s','%3$s', %2$s, 'on');".format(
+        JsRaw("buildGroupTree('#%1$s','%3$s', [], 'on');".format(
             htmlId_groupTree,
-            serializeTargets(selectedTargets.toSeq),
+            serializeTarget(ruleTarget),
             S.contextPath
         )) &
         //function to update list of PIs before submiting form
@@ -351,6 +370,9 @@ class RuleEditForm(
         }
     )
   }
+  private[this] def serializeTarget(target:RuleTarget) : String = {
+    target.toString()
+  }
 
   /*
    * from a JSON array: [ "id1", "id2", ...], get the list of
@@ -372,6 +394,10 @@ class RuleEditForm(
     }
   }
 
+
+  private[this] def unserializeTarget(target:String) : RuleTarget = {
+      RuleTarget.unser(target).getOrElse(EmptyTarget)
+  }
 
   ////////////// Callbacks //////////////
 
@@ -407,24 +433,45 @@ class RuleEditForm(
     // update onclick to get the list of directives and groups in the hidden
     // fields before submitting
 
-    val newOnclick = "updateSelectedPis(); updateSelectedTargets(); " +
+    val newOnclick = "updateSelectedPis(); " +
       save.attributes.asAttrMap("onclick")
 
     SHtml.hidden( { ids =>
         selectedDirectiveIds = unserializedirectiveIds(ids).toSet
       }, serializedirectiveIds(selectedDirectiveIds.toSeq)
-    ) % ( "id" -> "selectedPis") ++
-    SHtml.hidden( { targets =>
-        logger.error(targets)
-        selectedTargets = unserializeTargets(targets).toSet
-      }, serializeTargets(selectedTargets.toSeq)
-    ) % ( "id" -> "selectedTargets") ++
+    ) % ( "id" -> "selectedPis") ++/*
+    SHtml.hidden( { target =>
+        logger.error(target)
+        ruleTarget = unserializeTarget(target)
+      }, ruleTarget.target
+    ) % ( "id" -> "selectedTargets" ++*/
     save % ( "onclick" -> newOnclick)
   }
 
-  private[this] def onClickRuleTarget(parentCategory: FullNodeGroupCategory, targetInfo: FullRuleTargetInfo) : JsCmd = {
-      selectedTargets = selectedTargets + targetInfo.target.target
-      Noop
+  private[this] def includeRuleTarget(targetInfo: FullRuleTargetInfo) : JsCmd = {
+      ruleTarget = ruleTarget match {
+        case t:TargetExclusion => t.updateInclude(targetInfo.target.target)
+        case _ => RuleTarget.merge(Set(ruleTarget,targetInfo.target.target))
+      }
+
+      JsRaw(s"""
+          var scope = angular.element($$("#GroupCtrl")).scope();
+          scope.$$apply(function(){
+          scope.target = ${ruleTarget.toString()};
+          })""")
+  }
+
+  private[this] def excludeRuleTarget(targetInfo: FullRuleTargetInfo) : JsCmd = {
+      ruleTarget = ruleTarget match {
+        case t:TargetExclusion => t.updateExclude(targetInfo.target.target)
+        case _ => RuleTarget.merge(Set(ruleTarget)).updateExclude(targetInfo.target.target)
+      }
+      JsRaw(s"""
+          var scope = angular.element($$("#GroupCtrl")).scope();
+          console.log(scope);
+          scope.$$apply(function(){
+          scope.target = ${ruleTarget.toString()};
+          })""")
   }
 
   /////////////////////////////////////////////////////////////////////////
@@ -473,14 +520,11 @@ class RuleEditForm(
     if(formTracker.hasErrors) {
       onFailure
     } else { //try to save the rule
-      val targetUnion = TargetUnion(selectedTargets)
-      val targetExclusion = TargetExclusion(targetUnion,None)
-      logger.info(targetExclusion)
       val newCr = rule.copy(
           name             = crName.is
         , shortDescription = crShortDescription.is
         , longDescription  = crLongDescription.is
-        , targets          = Set(targetExclusion)
+        , targets          = Set(ruleTarget)
         , directiveIds     = selectedDirectiveIds
         , isEnabledStatus  = rule.isEnabledStatus
         , categoryId       = RuleCategoryId(category.is)
@@ -577,18 +621,18 @@ class RuleEditForm(
     }
 
     val content =
-      if ( selectedTargets.size == 0 ) {
+      /*if ( selectedTargets.size == 0 ) {
         if ( selectedDirectiveIds.size == 0 ) {
           warning("This Rule is not applied to any Groups and does not have any Directives to apply.")
         } else {
           warning("This Rule is not applied to any Groups.")
         }
-      } else {
+      } else {*/
         if ( selectedDirectiveIds.size == 0 ) {
           warning("This Rule does not have any Directives to apply.")
         } else {
           NodeSeq.Empty
-      } }
+      }// }
 
     SetHtml("successDialogContent",content) &
     JsRaw(""" callPopupWithTimeout(200, "successConfirmationDialog")""")

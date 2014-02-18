@@ -67,6 +67,7 @@ object DisplayNodeGroupTree extends Loggable {
       groupLib       : FullNodeGroupCategory
     , onClickCategory: Option[FullNodeGroupCategory => JsCmd]
     , onClickTarget  : Option[(FullNodeGroupCategory, FullRuleTargetInfo) => JsCmd]
+    , targetActions  : Map[String,(FullRuleTargetInfo) => JsCmd]
     , keepCategory   : FullNodeGroupCategory => Boolean = _ => true
     , keepTargetInfo : FullRuleTargetInfo => Boolean = _ => true
   ) : NodeSeq =  {
@@ -134,7 +135,6 @@ object DisplayNodeGroupTree extends Loggable {
       val jsId = htmlId.replace(":", "\\\\:")
 
         val jsInitFunction = Script(JsRaw (s"""
-           console.log("${jsId}");
            $$('#${jsId}').mouseover( function(e) {
            e.stopPropagation();
            $$('#${jsId} .actions').show();
@@ -172,11 +172,23 @@ object DisplayNodeGroupTree extends Loggable {
       override def body = {
         val tooltipId = Helpers.nextFuncName
         val actionButtons = {
-
-        <span class="actions" style="float:left; padding-top:1px;padding-left:10px">{
-          SHtml.span(<span>+</span>     ,Noop) ++
-          SHtml.span(<span>-</span>     ,Noop)
-        } </span>
+          if (!targetActions.isEmpty) {
+            <span class="actions" style="float:left; padding-top:1px;padding-left:10px">
+              { (targetActions get ("include") match {
+                case Some (include) =>
+                  SHtml.ajaxButton("+", () => include(targetInfo))
+                case None => NodeSeq.Empty
+                }) ++
+                (targetActions get ("exclude") match {
+                  case Some (exclude) =>
+                    SHtml.ajaxButton("-", () => exclude(targetInfo))
+                  case None => NodeSeq.Empty
+                })
+              }
+            </span>
+          } else {
+              NodeSeq.Empty
+          }
         }
         val xml  = {
           <span class="treeGroupName tooltipable" tooltipid={tooltipId} title="" style="float:left">
@@ -214,12 +226,14 @@ object DisplayNodeGroupTree extends Loggable {
     , nodeId         : NodeId
     , onClickCategory: Option[FullNodeGroupCategory => JsCmd] = None
     , onClickTarget  : Option[(FullNodeGroupCategory, FullRuleTargetInfo) => JsCmd] = None
+    , targetActions  : Map[String,(FullRuleTargetInfo) => JsCmd] = Map()
   ) : NodeSeq = {
 
     displayTree(
         groupLib
       , onClickCategory
       , onClickTarget
+      , targetActions
       , keepCategory   = (cat => cat.allGroups.values.exists( _.nodeGroup.serverList.contains(nodeId)))
       , keepTargetInfo = (ti => ti match {
           case FullRuleTargetInfo(FullGroupTarget(_, g), _, _, _, _) => g.serverList.contains(nodeId)
