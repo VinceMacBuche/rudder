@@ -2742,4 +2742,35 @@ fieldset {
   list-style-type: disc;
 }
 
+.shadow
+{
+  -moz-box-shadow: 4px 4px 10px #888;  
+  -webkit-box-shadow: 4px 4px 10px #888;  
+  box-shadow:4px 4px 6px #888;
+}
+
+img.targetRemove {
+  width: 15px;
+  margin: 0 0 -3px 5px;
+  float:none;
+  cursor:pointer
+}
+
+.targetDisplay {
+  display:block;
+  float:left;
+  padding:5px;
+  margin:0 0px 5px 5px;
+  background-color: rgba(255, 255, 255, 0.8);
+}
+
+.targetContainer {
+  border:1px solid #B4B3A8;
+  padding-top:5px
+}
+
+.targetHeader {
+  font-size:1.3em;
+  font-weight:bold;
+}
 }

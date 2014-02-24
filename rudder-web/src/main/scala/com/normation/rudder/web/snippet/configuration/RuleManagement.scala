@@ -193,7 +193,6 @@ $.fn.dataTableExt.oStdClasses.sPageButtonStaticDisabled="paginate_button_disable
       case f:Failure => errorDiv(f)
       case Empty => <div id={htmlId_editRuleDiv}/>
       case Full(form) =>
-        logger.error (form.dispatch(dispatch)(NodeSeq.Empty))
         form.dispatch(dispatch)(NodeSeq.Empty) ++
         Script(JsRaw("""$("#editRuleZonePortlet").removeClass("nodisplay");
                            scrollToElement("editRuleZonePortlet");"""
@@ -273,7 +272,6 @@ $.fn.dataTableExt.oStdClasses.sPageButtonStaticDisabled="paginate_button_disable
 
   private[this] def detailsCallbackLink(workflowEnabled: Boolean, changeMsgEnabled : Boolean)(rule:Rule, id:String="showForm") : JsCmd = {
     updateEditComponent(rule, workflowEnabled, changeMsgEnabled)
-    logger.info(editRule(workflowEnabled, changeMsgEnabled, id))
     //update UI
     Replace(htmlId_editRuleDiv, editRule(workflowEnabled, changeMsgEnabled, id)) &
     JsRaw("""this.window.location.hash = "#" + JSON.stringify({'ruleId':'%s'})""".format(rule.id.value))

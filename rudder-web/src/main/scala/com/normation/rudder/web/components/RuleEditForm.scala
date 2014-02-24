@@ -174,9 +174,9 @@ class RuleEditForm(
   val extendsAt = SnippetExtensionKey(classOf[RuleEditForm].getSimpleName)
 
   def mainDispatch = Map(
-    "showForm" -> { _:NodeSeq => logger.warn(body)
+    "showForm" -> { _:NodeSeq =>
       showForm() },
-    "showEditForm" -> { _:NodeSeq => logger.warn(body)
+    "showEditForm" -> { _:NodeSeq =>
       showForm(1)}
   )
 
@@ -229,8 +229,6 @@ class RuleEditForm(
 
   private[this] def  showRuleDetails(directiveLib: FullActiveTechniqueCategory, allNodeInfos: Map[NodeId, NodeInfo]) : NodeSeq = {
     val updatedrule = roRuleRepository.get(rule.id)
-    val test_rule_target = TargetUnion( rule.targets)
-    logger.info(test_rule_target)
     (
       "#details *" #> { (n:NodeSeq) => SHtml.ajaxForm(n) } andThen
       "#nameField" #>    <div>{crName.displayNameHtml.getOrElse("Could not fetch rule name")} {updatedrule.map(_.name).openOr("could not fetch rule name")} </div> &
@@ -248,6 +246,10 @@ class RuleEditForm(
 
 
   private[this] def showCrForm(groupLib: FullNodeGroupCategory, directiveLib: FullActiveTechniqueCategory) : NodeSeq = {
+
+    val maptarget = groupLib.allTargets.map{
+      case (gt,fg) => s" '${gt.target}' : '${fg.name}'"
+    }.toList.mkString("{",",","}")
     (
       "#editForm *" #> { (n:NodeSeq) => SHtml.ajaxForm(n) } andThen
       ClearClearable &
@@ -327,9 +329,28 @@ class RuleEditForm(
 
 
         JsRaw(s"""
-
+           console.log(${maptarget});
            var groupManagement = angular.module('groupManagement', []);
-           groupManagement.controller('GroupCtrl', ['$$scope', function($$scope) {  $$scope.target = ${ruleTarget.toString()};  } ] ) ;
+           groupManagement.controller('GroupCtrl', ['$$scope', function($$scope) {
+             $$scope.mapTarget = ${maptarget};
+             $$scope.getTargetName = function (target) {
+               return $$scope.mapTarget[target];
+             };
+             $$scope.target = ${ruleTarget.toString()};
+             $$scope.updateTarget = function() {
+               $$('#selectedTargets').val(JSON.stringify($$scope.target));
+             };
+             $$scope.removeExclude = function ( excluded ) {
+               var index = $$scope.target.exclude.or.indexOf(excluded);
+               $$scope.target.exclude.or.splice(index,1);
+               $$scope.updateTarget();
+             };
+             $$scope.removeInclude = function ( included ) {
+               var index = $$scope.target.include.or.indexOf(included);
+               $$scope.target.include.or.splice(index,1);
+               $$scope.updateTarget();
+             };
+           } ] ) ;
            angular.bootstrap('#groupManagement', ['groupManagement']);
         """) &
         //build jstree and
@@ -439,39 +460,51 @@ class RuleEditForm(
     SHtml.hidden( { ids =>
         selectedDirectiveIds = unserializedirectiveIds(ids).toSet
       }, serializedirectiveIds(selectedDirectiveIds.toSeq)
-    ) % ( "id" -> "selectedPis") ++/*
+    ) % ( "id" -> "selectedPis") ++
     SHtml.hidden( { target =>
-        logger.error(target)
         ruleTarget = unserializeTarget(target)
       }, ruleTarget.target
-    ) % ( "id" -> "selectedTargets" ++*/
+    ) % ( "id" -> "selectedTargets") ++
     save % ( "onclick" -> newOnclick)
   }
 
   private[this] def includeRuleTarget(targetInfo: FullRuleTargetInfo) : JsCmd = {
-      ruleTarget = ruleTarget match {
-        case t:TargetExclusion => t.updateInclude(targetInfo.target.target)
-        case _ => RuleTarget.merge(Set(ruleTarget,targetInfo.target.target))
-      }
+      JsRaw(s"""
+          var scope = angular.element($$("#GroupCtrl")).scope();
+          scope.$$apply(function(){
+            var t = scope.target.include.or;
+            if ( t.indexOf('${targetInfo.target.target.target}')==-1 ) {
+              t.push("${targetInfo.target.target.target}");
+              scope.target.include.or = t;
+            };
+          });
+          $$('#selectedTargets').val(JSON.stringify(scope.target));
+          """)
+  }
+
+   private[this] def toggleTarget(action : String, target: RuleTarget) : JsCmd = {
 
       JsRaw(s"""
           var scope = angular.element($$("#GroupCtrl")).scope();
           scope.$$apply(function(){
-          scope.target = ${ruleTarget.toString()};
-          })""")
+           scope.target.$action.or.push("${target.target}");
+          });
+          $$('#selectedTargets').val(JSON.stringify(scope.target));
+          """)
   }
 
   private[this] def excludeRuleTarget(targetInfo: FullRuleTargetInfo) : JsCmd = {
-      ruleTarget = ruleTarget match {
-        case t:TargetExclusion => t.updateExclude(targetInfo.target.target)
-        case _ => RuleTarget.merge(Set(ruleTarget)).updateExclude(targetInfo.target.target)
-      }
       JsRaw(s"""
           var scope = angular.element($$("#GroupCtrl")).scope();
-          console.log(scope);
           scope.$$apply(function(){
-          scope.target = ${ruleTarget.toString()};
-          })""")
+            var t = scope.target.exclude.or;
+            if ( t.indexOf('${targetInfo.target.target.target}')==-1 )  {
+              t.push("${targetInfo.target.target.target}");
+              scope.target.exclude.or = t;
+            };
+          });
+          $$('#selectedTargets').val(JSON.stringify(scope.target));
+          """)
   }
 
   /////////////////////////////////////////////////////////////////////////

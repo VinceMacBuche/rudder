@@ -196,12 +196,36 @@
           <hr class="spacer"/>
     <div class="inner-portlet-header spacing-title">GROUPS</div>
           
-          <div id="selectGroupField">
+          <div id="selectGroupField" style="float:left;width:55%">
             Here comes the group selection field
           </div>
-          <div ng-app="groupManagement" id="groupManagement" >
+          <div ng-app="groupManagement" id="groupManagement" style="float:left;width:45%" >
              <div class="deca" id="GroupCtrl" ng-controller="GroupCtrl">
-             <span> {{target}}</span>
+             <div class="spacing-title targetHeader">Include Nodes from:</div>
+             <div style="background-color:#CCFFCC;" class="targetContainer">
+	             <ul>
+	               <li ng-repeat="included in target.include.or">
+	               <span class="targetDisplay shadow">
+	                 {{ getTargetName(included) }}
+	                 <img src="/images/ic_delete.png" class="targetRemove" ng-click="removeInclude(included)"/>
+	               </span>
+	               </li>
+	             </ul>
+	             <hr class="spacer"/>
+             </div>
+	             <hr class="spacer"/><br/>
+             <div class="spacing-title targetHeader">Exclude Nodes from:</div>
+             <div style="background-color:#FF6655;" class="targetContainer">
+             <ul>
+               <li ng-repeat="excluded in target.exclude.or"  >
+                 <span class="targetDisplay shadow">
+               	   {{ getTargetName(excluded) }}
+               	    <img class="targetRemove" src="/images/ic_delete.png" ng-click="removeExclude(excluded)"/>
+               	 </span>
+               </li>
+             </ul>
+             <hr class="spacer"/>
+             </div>
              </div>
           </div>
           

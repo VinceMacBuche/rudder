@@ -176,12 +176,18 @@ object DisplayNodeGroupTree extends Loggable {
             <span class="actions" style="float:left; padding-top:1px;padding-left:10px">
               { (targetActions get ("include") match {
                 case Some (include) =>
-                  SHtml.ajaxButton("+", () => include(targetInfo))
+
+                  val tooltipId = Helpers.nextFuncName
+                  <img src="/images/icadd.png" class="tooltipable" style=" margin: 0 10px 0 0; width:12px; cursor:pointer" tooltipid={tooltipId} title="" onclick={include(targetInfo).toJsCmd}/>
+                  <div class="tooltipContent" id={tooltipId}><div>Include Nodes from this group.</div></div>
                 case None => NodeSeq.Empty
                 }) ++
                 (targetActions get ("exclude") match {
                   case Some (exclude) =>
-                    SHtml.ajaxButton("-", () => exclude(targetInfo))
+
+                  val tooltipId = Helpers.nextFuncName
+                  <img src="/images/ic_remove.png" class="tooltipable" style=" margin: 0 10px 0 0; width:12px; cursor:pointer" tooltipid={tooltipId} title="" onclick={exclude(targetInfo).toJsCmd}/>
+                  <div class="tooltipContent" id={tooltipId}><div>Exclude Nodes from this group.</div></div>
                   case None => NodeSeq.Empty
                 })
               }
