@@ -151,12 +151,12 @@ object DiffDisplayer extends Loggable {
     implicit def displayNodeGroup(target: RuleTarget) : NodeSeq= {
       target match {
         case TargetUnion(targets) =>
-          <span> "or" : {targets.map(displayNodeGroup)} </span>
+          <span> all Nodes from: <ul>{targets.map(t => <li>{displayNodeGroup(t)}</li>)}</ul> </span>
         case TargetIntersection(targets) =>
-          <span> "and" : {targets.map(displayNodeGroup)} </span>
+          <span> Nodes that belongs to all these groups: <ul>{targets.map(t => <li>{displayNodeGroup(t)}</li>)}</ul> </span>
         case TargetExclusion(included,excluded) =>
-          <span> "include" : {displayNodeGroup(included)} </span>
-          <br/><span> "exclude" : {displayNodeGroup(excluded)} </span>
+          <span> Include {displayNodeGroup(included)} </span>
+          <br/><span> Exclude {displayNodeGroup(excluded)} </span>
 
         case GroupTarget(nodeGroupId) =>
           <span> Group {createGroupLink(nodeGroupId)}</span>
