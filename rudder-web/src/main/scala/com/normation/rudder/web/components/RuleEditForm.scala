@@ -81,6 +81,7 @@ import com.normation.rudder.web.model.WBSelectField
 import com.normation.rudder.rule.category.RuleCategoryId
 import com.normation.rudder.domain.policies.EmptyTarget
 import com.normation.rudder.domain.policies.TargetExclusion
+import com.normation.rudder.domain.policies.TargetComposition
 
 object RuleEditForm {
 
@@ -159,7 +160,7 @@ class RuleEditForm(
   private[this] val roChangeRequestRepo  = RudderConfig.roChangeRequestRepository
   private[this] val categoryHierarchyDisplayer = RudderConfig.categoryHierarchyDisplayer
 
-  private[this] var ruleTarget : RuleTarget = RuleTarget.merge(rule.targets)
+  private[this] var ruleTarget = RuleTarget.merge(rule.targets)
   private[this] var selectedDirectiveIds = rule.directiveIds
 
   private[this] val getFullNodeGroupLib = RudderConfig.roNodeGroupRepository.getFullGroupLibrary _
@@ -250,6 +251,18 @@ class RuleEditForm(
     val maptarget = groupLib.allTargets.map{
       case (gt,fg) => s" '${gt.target}' : '${fg.name}'"
     }.toList.mkString("{",",","}")
+
+
+    val included = ruleTarget.includedTarget match {
+      case tc: TargetComposition => tc.targets
+      case t => Set(t)
+    }
+
+    val excluded = ruleTarget.excludedTarget match {
+      case tc: TargetComposition => tc.targets
+      case t => Set(t)
+    }
+
     (
       "#editForm *" #> { (n:NodeSeq) => SHtml.ajaxForm(n) } andThen
       ClearClearable &
@@ -296,6 +309,8 @@ class RuleEditForm(
             , None
             , None
             , Map("include" -> includeRuleTarget _,"exclude" -> excludeRuleTarget _)
+            , included
+            , excluded
           )}</ul>
         </div> } &
       "#save" #> saveButton &
@@ -313,29 +328,31 @@ class RuleEditForm(
               return this.id;
             }).get()));""".format(htmlId_activeTechniquesTree)
         ))) &
-        /*
-        JsRaw(s"""    var scope = angular.element($$("#groupManagement")).scope();
-              scope.$$apply(function(){
-                scope.target = ${ruleTarget.toString()};
-              })""") &
-        /*
-        JsCrVar("updateSelectedTargets", AnonFunc(JsRaw("""
-          $('#selectedTargets').val(JSON.stringify(
-            $.jstree._reference('#%s').get_selected().map(function(){
-              return this.id;
-            }).get()));""".format(htmlId_groupTree)
-        ))) &*/*/
       OnLoad(
 
 
         JsRaw(s"""
-           console.log(${maptarget});
            var groupManagement = angular.module('groupManagement', []);
            groupManagement.controller('GroupCtrl', ['$$scope', function($$scope) {
              $$scope.mapTarget = ${maptarget};
              $$scope.getTargetName = function (target) {
                return $$scope.mapTarget[target];
              };
+             $$scope.includeExplanation = [ "<b>Add Groups here to apply this Rule to the nodes they contain.</b>"
+                                          , "Groups will be merged together (union)."
+                                          , "For example, if you add groups <b>'Datacenter 1'</b> and <b>'Production',</b>"
+                                          , "this Rule will be applied to all nodes that are either"
+                                          , "in that datacenter (production or not) or in production (in any datacenter)."
+                                          ].join("<br/>");
+             $$scope.excludeExplanation = [ "<b>Add Groups here to forbid applying this Rule to the nodes they contain.</b>"
+                                          , "Nodes in these Groups will never have this Rule applied,"
+                                          , "even if they are also in a Group applied above."
+                                          , "For example, if the above list contains groups '<b>Datacenter 1</b>' and '<b>Production</b>',"
+                                          , "and this list contains the group '<b>Red Hat Linux</b>',"
+                                          , "this Rule will be applied to all nodes that are running any OS except 'Red Hat Linux'"
+                                          , "and are either in that datacenter (production or not) or in production (in any datacenter)."
+                                          ].join("<br/>");
+             $$scope.emptyTarget = "Select groups from the tree on the left to add them here"
              $$scope.target = ${ruleTarget.toString()};
              $$scope.updateTarget = function() {
                $$('#selectedTargets').val(JSON.stringify($$scope.target));
@@ -344,14 +361,37 @@ class RuleEditForm(
                var index = $$scope.target.exclude.or.indexOf(excluded);
                $$scope.target.exclude.or.splice(index,1);
                $$scope.updateTarget();
+               var jsId = excluded.replace(':','\\\\:');
+               $$("#jstree-"+jsId).removeClass("targetExcluded");
              };
              $$scope.removeInclude = function ( included ) {
                var index = $$scope.target.include.or.indexOf(included);
                $$scope.target.include.or.splice(index,1);
                $$scope.updateTarget();
+               var jsId = included.replace(':','\\\\:');
+               $$("#jstree-"+jsId).removeClass("targetIncluded");
              };
            } ] ) ;
+           groupManagement.directive('tooltip', function () {
+    return {
+        restrict:'A',
+        link: function(scope, element, attrs)
+        {
+            $$(element)
+                .attr('title',scope.$$eval(attrs.tooltip))
+                .tooltip({placement: "right",
+             show: {
+      effect: "none",
+            delay: 0
+        },
+        hide: {
+      effect: "none",
+            delay: 0
+        },});
+        }
+    } } );
            angular.bootstrap('#groupManagement', ['groupManagement']);
+
         """) &
         //build jstree and
         //init bind callback to move
@@ -416,8 +456,8 @@ class RuleEditForm(
   }
 
 
-  private[this] def unserializeTarget(target:String) : RuleTarget = {
-      RuleTarget.unser(target).getOrElse(EmptyTarget)
+  private[this] def unserializeTarget(target:String)  = {
+      RuleTarget.unser(target).map { case res:TargetExclusion => res; case t => RuleTarget.merge(Set(t))}.getOrElse(RuleTarget.merge(Set()))
   }
 
   ////////////// Callbacks //////////////
@@ -469,17 +509,20 @@ class RuleEditForm(
   }
 
   private[this] def includeRuleTarget(targetInfo: FullRuleTargetInfo) : JsCmd = {
-      JsRaw(s"""
-          var scope = angular.element($$("#GroupCtrl")).scope();
-          scope.$$apply(function(){
-            var t = scope.target.include.or;
-            if ( t.indexOf('${targetInfo.target.target.target}')==-1 ) {
-              t.push("${targetInfo.target.target.target}");
-              scope.target.include.or = t;
-            };
-          });
-          $$('#selectedTargets').val(JSON.stringify(scope.target));
-          """)
+    val target = targetInfo.target.target.target
+    JsRaw(s"""
+      var scope = angular.element($$("#GroupCtrl")).scope();
+      scope.$$apply(function(){
+        var t = scope.target.include.or;
+        if ( t.indexOf('${target}')==-1 ) {
+          t.push("${targetInfo.target.target.target}");
+          scope.target.include.or = t;
+        };
+      });
+      $$('#selectedTargets').val(JSON.stringify(scope.target));
+      console.log($$("#jstree-${target.replace(":", "\\\\:")}"));
+      $$("#jstree-${target.replace(":", "\\\\:")}").addClass("targetIncluded");
+    """)
   }
 
    private[this] def toggleTarget(action : String, target: RuleTarget) : JsCmd = {
@@ -494,17 +537,19 @@ class RuleEditForm(
   }
 
   private[this] def excludeRuleTarget(targetInfo: FullRuleTargetInfo) : JsCmd = {
-      JsRaw(s"""
-          var scope = angular.element($$("#GroupCtrl")).scope();
-          scope.$$apply(function(){
-            var t = scope.target.exclude.or;
-            if ( t.indexOf('${targetInfo.target.target.target}')==-1 )  {
-              t.push("${targetInfo.target.target.target}");
-              scope.target.exclude.or = t;
-            };
-          });
-          $$('#selectedTargets').val(JSON.stringify(scope.target));
-          """)
+    val target = targetInfo.target.target.target
+    JsRaw(s"""
+      var scope = angular.element($$("#GroupCtrl")).scope();
+      scope.$$apply(function(){
+        var t = scope.target.exclude.or;
+        if ( t.indexOf('${target}')==-1 )  {
+          t.push("${target}");
+          scope.target.exclude.or = t;
+        };
+      });
+      $$('#selectedTargets').val(JSON.stringify(scope.target));
+      $$("#jstree-${target.replace(":", "\\\\:")}").addClass("targetExcluded");
+    """)
   }
 
   /////////////////////////////////////////////////////////////////////////

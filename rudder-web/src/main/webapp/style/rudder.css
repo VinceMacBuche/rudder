@@ -2742,35 +2742,58 @@ fieldset {
   list-style-type: disc;
 }
 
-.shadow
-{
-  -moz-box-shadow: 4px 4px 10px #888;  
-  -webkit-box-shadow: 4px 4px 10px #888;  
-  box-shadow:4px 4px 6px #888;
+img.targetRemove {
+  width  : 15px;
+  margin : 0 0 -3px 5px;
+  float  : none;
+  cursor : pointer
 }
 
-img.targetRemove {
-  width: 15px;
-  margin: 0 0 -3px 5px;
-  float:none;
-  cursor:pointer
+img.targetIcon {
+  width  : 15px;
+  margin : 0 0 -3px 0;
+  float  : none;
 }
 
 .targetDisplay {
-  display:block;
-  float:left;
-  padding:5px;
-  margin:0 0px 5px 5px;
-  background-color: rgba(255, 255, 255, 0.8);
+  display          : block;
+  float            : left;
+  padding          : 5px;
+  margin           : 0 0px 5px 5px;
+  background-color : rgba(255, 255, 255, 0.8);
 }
 
 .targetContainer {
-  border:1px solid #B4B3A8;
-  padding-top:5px
+  border      : 1px solid #B4B3A8;
+  padding-top : 5px
 }
 
 .targetHeader {
-  font-size:1.3em;
-  font-weight:bold;
+  font-size   : 1.3em;
+  font-weight : bold;
+}
+
+img.targetAction {
+  margin : 0 5px 0 0;
+  width  : 14px;
+  cursor : pointer
+}
+
+.targetActions {
+  float        : left;
+  padding-top  : 1px;
+  padding-left : 10px
+}
+
+li.targetIncluded a {
+  background: none repeat scroll 0 0 #DDFFDD;
+  border: 1px dotted #48A648;
+  padding: 0 2px 0 1px;
+}
+
+li.targetExcluded a{
+  background: none repeat scroll 0 0 #FFDDDD;
+  border: 1px dotted #A64848;
+  padding: 0 2px 0 1px;
 }
 }

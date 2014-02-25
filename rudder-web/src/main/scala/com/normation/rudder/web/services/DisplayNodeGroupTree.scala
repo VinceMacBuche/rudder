@@ -49,6 +49,8 @@ import net.liftweb.http.js.JsCmds._
 import net.liftweb.util.Helpers
 import net.liftweb.util.Helpers.{ boolean2, strToSuperArrowAssoc }
 import net.liftweb.http.js.JE.JsRaw
+import com.normation.rudder.domain.policies.FullRuleTarget
+import com.normation.rudder.domain.policies.RuleTarget
 
 /**
  *
@@ -68,6 +70,8 @@ object DisplayNodeGroupTree extends Loggable {
     , onClickCategory: Option[FullNodeGroupCategory => JsCmd]
     , onClickTarget  : Option[(FullNodeGroupCategory, FullRuleTargetInfo) => JsCmd]
     , targetActions  : Map[String,(FullRuleTargetInfo) => JsCmd]
+    , included       : Set[RuleTarget] = Set()
+    , excluded       : Set[RuleTarget] = Set()
     , keepCategory   : FullNodeGroupCategory => Boolean = _ => true
     , keepTargetInfo : FullRuleTargetInfo => Boolean = _ => true
   ) : NodeSeq =  {
@@ -125,31 +129,31 @@ object DisplayNodeGroupTree extends Loggable {
       val groupId = {
         targetInfo.target match {
           case g:FullGroupTarget =>
-             g.nodeGroup.id.value
-          case o:FullOtherTarget =>
+            g.nodeGroup.id.value
+          case o:FullRuleTarget =>
             o.target.target
         }
       }
 
-      val htmlId = s"jstree-${groupId}"
+      val htmlId = s"jstree-${targetInfo.target.target.target}"
       val jsId = htmlId.replace(":", "\\\\:")
 
         val jsInitFunction = Script(JsRaw (s"""
            $$('#${jsId}').mouseover( function(e) {
            e.stopPropagation();
-           $$('#${jsId} .actions').show();
+           $$('#${jsId} .targetActions').show();
            $$('#${jsId} a:first').addClass("treeOver jstree-hovered");
          });
 
 
            $$('#${jsId}').hover( function(e) {
-           $$('.actions').hide();
+           $$('.targetActions').hide();
            $$('.treeOver').removeClass("treeOver jstree-hovered");
-           $$('#${jsId} .actions').show();
+           $$('#${jsId} .targetActions').show();
            $$('#${jsId} a:first').addClass("treeOver jstree-hovered");
            }, function(e) {
            $$('.treeOver').removeClass("treeOver jstree-hovered");
-           $$('#${jsId} .actions').hide();
+           $$('#${jsId} .targetActions').hide();
            } );
 
            //$$('#${"edit"+jsId}').click( function(e) {
@@ -162,23 +166,29 @@ object DisplayNodeGroupTree extends Loggable {
 
       override def children = Nil
 
+      val classes = {
+        val includedClass = if (included.contains(targetInfo.target.target)) {"targetIncluded"} else ""
+        val excludedClass = if (excluded.contains(targetInfo.target.target)) {"targetExcluded"} else {""}
+        s"$includedClass $excludedClass"
+      }
 
       override val attrs = {
         ( "rel"     -> { if (targetInfo.isSystem) "system_target" else "group"} ) ::
         ( "groupId" -> groupId ) ::
         ( "id"      -> htmlId ) ::
+        ( "class"   -> classes) ::
         Nil
       }
       override def body = {
         val tooltipId = Helpers.nextFuncName
         val actionButtons = {
           if (!targetActions.isEmpty) {
-            <span class="actions" style="float:left; padding-top:1px;padding-left:10px">
+            <span class="targetActions">
               { (targetActions get ("include") match {
                 case Some (include) =>
 
                   val tooltipId = Helpers.nextFuncName
-                  <img src="/images/icadd.png" class="tooltipable" style=" margin: 0 10px 0 0; width:12px; cursor:pointer" tooltipid={tooltipId} title="" onclick={include(targetInfo).toJsCmd}/>
+                  <img src="/images/ic_add.png" class="tooltipable targetAction" tooltipid={tooltipId} title="" onclick={include(targetInfo).toJsCmd}/>
                   <div class="tooltipContent" id={tooltipId}><div>Include Nodes from this group.</div></div>
                 case None => NodeSeq.Empty
                 }) ++
@@ -186,7 +196,7 @@ object DisplayNodeGroupTree extends Loggable {
                   case Some (exclude) =>
 
                   val tooltipId = Helpers.nextFuncName
-                  <img src="/images/ic_remove.png" class="tooltipable" style=" margin: 0 10px 0 0; width:12px; cursor:pointer" tooltipid={tooltipId} title="" onclick={exclude(targetInfo).toJsCmd}/>
+                  <img src="/images/ic_remove.png" class="tooltipable targetAction" tooltipid={tooltipId} title="" onclick={exclude(targetInfo).toJsCmd}/>
                   <div class="tooltipContent" id={tooltipId}><div>Exclude Nodes from this group.</div></div>
                   case None => NodeSeq.Empty
                 })
@@ -223,7 +233,7 @@ object DisplayNodeGroupTree extends Loggable {
 
     }
 
-    displayCategory(groupLib).toXml ++ Script(JsRaw("$('.actions').hide();"))
+    displayCategory(groupLib).toXml ++ Script(JsRaw("$('.targetActions').hide();"))
   }
 
   //build the tree category, filtering only category with groups
