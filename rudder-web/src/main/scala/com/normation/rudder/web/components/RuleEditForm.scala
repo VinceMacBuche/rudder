@@ -342,7 +342,7 @@ class RuleEditForm(
                                           , "For example, if you add groups <b>'Datacenter 1'</b> and <b>'Production',</b>"
                                           , "this Rule will be applied to all nodes that are either"
                                           , "in that datacenter (production or not) or in production (in any datacenter)."
-                                          ].join("<br/>");
+                                          ].join(" ");
              $$scope.excludeExplanation = [ "<b>Add Groups here to forbid applying this Rule to the nodes they contain.</b>"
                                           , "Nodes in these Groups will never have this Rule applied,"
                                           , "even if they are also in a Group applied above."
@@ -350,7 +350,7 @@ class RuleEditForm(
                                           , "and this list contains the group '<b>Red Hat Linux</b>',"
                                           , "this Rule will be applied to all nodes that are running any OS except 'Red Hat Linux'"
                                           , "and are either in that datacenter (production or not) or in production (in any datacenter)."
-                                          ].join("<br/>");
+                                          ].join(" ");
              $$scope.emptyTarget = "Select groups from the tree on the left to add them here"
              $$scope.target = ${ruleTarget.toString()};
              $$scope.updateTarget = function() {
