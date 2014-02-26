@@ -79,7 +79,6 @@ import com.normation.rudder.domain.nodes.NodeInfo
 import org.joda.time.DateTime
 import com.normation.rudder.web.model.WBSelectField
 import com.normation.rudder.rule.category.RuleCategoryId
-import com.normation.rudder.domain.policies.EmptyTarget
 import com.normation.rudder.domain.policies.TargetExclusion
 import com.normation.rudder.domain.policies.TargetComposition
 

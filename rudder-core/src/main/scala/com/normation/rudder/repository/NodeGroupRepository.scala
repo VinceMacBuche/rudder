@@ -209,9 +209,6 @@ final case class FullNodeGroupCategory(
         logger.info(nodes)
         logger.warn(result)
         nodes ++ result
-      case (nodes,EmptyTarget) =>
-        logger.warn("should not find empty target here")
-        nodes
     }
   }
 }
