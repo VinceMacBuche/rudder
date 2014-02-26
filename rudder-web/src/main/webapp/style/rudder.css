@@ -1988,6 +1988,7 @@ popin Alert
 .spacing-title {
   padding-top:0;
   margin-bottom:5px;	
+  margin-top:5px;	
 }
 
 .tooltipable > .directiveVarValue {
@@ -2750,7 +2751,7 @@ img.targetRemove {
 }
 
 img.targetIcon {
-  width  : 15px;
+  width  : 16px;
   margin : 0 0 -3px 0;
   float  : none;
 }
