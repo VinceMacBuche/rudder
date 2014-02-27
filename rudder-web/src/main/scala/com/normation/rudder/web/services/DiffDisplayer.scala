@@ -42,17 +42,13 @@ import com.normation.rudder.web.model.JsInitContextLinkUtil._
 import scala.xml.Text
 import net.liftweb.http.SHtml
 import com.normation.rudder.repository.RoNodeGroupRepository
-import com.normation.rudder.domain.policies.RuleTarget
-import com.normation.rudder.domain.policies.GroupTarget
 import com.normation.rudder.repository.FullNodeGroupCategory
 import com.normation.rudder.rule.category.RoRuleCategoryRepository
 import com.normation.rudder.rule.category.RuleCategoryId
 import net.liftweb.common.Full
 import net.liftweb.common.EmptyBox
 import net.liftweb.common.Loggable
-import com.normation.rudder.domain.policies.TargetUnion
-import com.normation.rudder.domain.policies.TargetIntersection
-import com.normation.rudder.domain.policies.TargetExclusion
+import com.normation.rudder.domain.policies._
 
 
 
@@ -169,21 +165,53 @@ object DiffDisplayer extends Loggable {
       }
     }
 
-    val (unchanged,deleted) = oldTargets.partition(newTargets.contains)
-    val added = newTargets.filterNot(unchanged.contains).map(Added(_))
-    val deletedMap = deleted.map(Deleted(_))
-    val unchangedMap = unchanged.map(Unchanged(_))
-
-    val changeMap:Seq[DiffItem[RuleTarget]] = deletedMap ++ unchangedMap ++ added
-    <ul style="padding-left:10px">
-      { for {
-          change <- changeMap
-        } yield {
-          // Implicit used here (displayNodeGroup)
-          change.display
-        }
+    (oldTargets,newTargets) match {
+      case (Seq(TargetExclusion(newIncluded,newExcluded)),Seq(TargetExclusion(oldIncluded,oldExcluded))) =>
+        implicit def displayKind(kind: CompositionKind) : NodeSeq= {
+      kind match {
+        case Union =>
+          <span> all Nodes from: </span>
+        case Intersection =>
+          <span> Nodes that belongs to all these groups:</span>
       }
-    </ul>
+    }
+
+       val includedKind = {
+         (if(newIncluded.kind == oldIncluded.kind) {
+           Seq(Unchanged (newIncluded.kind))
+         } else {
+           (Seq(Deleted(oldIncluded.kind),Added(newIncluded.kind)))
+         }).flatMap(_.display)
+       }
+       val excludedKind = {
+         (if(newExcluded.kind == oldExcluded.kind) {
+           Seq(Unchanged (newExcluded.kind))
+         } else {
+           (Seq(Deleted(oldExcluded.kind),Added(newExcluded.kind)))
+         }).flatMap(_.display)
+       }
+       val includedTargets = displayRuleTargets(newIncluded.targets.toSeq,oldIncluded.targets.toSeq, groupLib)
+       val excludedTargets = displayRuleTargets(newExcluded.targets.toSeq,oldExcluded.targets.toSeq, groupLib)
+       <span> Include</span> ++ includedKind ++ includedTargets ++
+       <span> Exclude</span> ++ excludedKind ++ excludedTargets
+
+      case (_,_) =>
+        val (unchanged,deleted) = oldTargets.partition(newTargets.contains)
+        val added = newTargets.filterNot(unchanged.contains).map(Added(_))
+        val deletedMap = deleted.map(Deleted(_))
+        val unchangedMap = unchanged.map(Unchanged(_))
+
+        val changeMap:Seq[DiffItem[RuleTarget]] = deletedMap ++ unchangedMap ++ added
+        <ul style="padding-left:10px">
+          { for {
+              change <- changeMap
+            } yield {
+              // Implicit used here (displayNodeGroup)
+              change.display
+            }
+          }
+        </ul>
+    }
   }
 
 
