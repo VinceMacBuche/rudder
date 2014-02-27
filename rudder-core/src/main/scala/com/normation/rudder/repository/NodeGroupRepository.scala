@@ -181,22 +181,31 @@ final case class FullNodeGroupCategory(
         nodes ++ nodesForGroup
 
       case (nodes, TargetIntersection(targets)) =>
-        val intersection = targets.map(t => getNodeIds(Set(t),allNodeInfos))
-        val res = (allNodeIds/: intersection) {
-          case (result, nodes) => result.intersect(nodes)
+        val nodeSets = targets.map(t => getNodeIds(Set(t),allNodeInfos))
+        // Compute the intersection of the sets of Nodes
+        val intersection = (allNodeIds/: nodeSets) {
+          case (currentIntersection, nodes) => currentIntersection.intersect(nodes)
         }
-        nodes ++ res
+        nodes ++ intersection
+
       case (nodes, TargetUnion(targets)) =>
-        val union = targets.map(t => getNodeIds(Set(t),allNodeInfos))
-        val res = (Set[NodeId]()/: union) {
-          case (result, nodes) => result.union(nodes)
+        val nodeSets = targets.map(t => getNodeIds(Set(t),allNodeInfos))
+        // Compute the union of the sets of Nodes
+        val union = (Set[NodeId]()/: nodeSets) {
+          case (currentUnion, nodes) => currentUnion.union(nodes)
         }
-        nodes ++ res
+        nodes ++ union
+
       case (nodes, TargetExclusion(included,excluded)) =>
+        // Compute the included Nodes
         val includedNodes = getNodeIds(Set(included),allNodeInfos)
+        // Compute the excluded Nodes
         val excludedNodes = getNodeIds(Set(excluded),allNodeInfos)
+        // Remove excluded nodes from included nodes
         val result = includedNodes -- excludedNodes
         nodes ++ result
+
+
       case (nodes,target) =>
         logger.warn(s"cannot find nodes from a Rule target")
         logger.debug(s"the target is : ${target}")

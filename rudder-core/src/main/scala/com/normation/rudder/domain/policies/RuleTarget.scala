@@ -217,24 +217,39 @@ case class TargetExclusion(
   , excludedTarget : TargetComposition
 ) extends CompositeRuleTarget {
 
+  /**
+   * Json value of a composition:
+   * { "include" -> target composition, "kind" -> target composition }
+   */
   override val toJson : JValue = {
     ( "include" -> includedTarget.toJson ) ~
     ( "exclude" -> excludedTarget.toJson )
   }
+
   override def toString = {
     target
   }
 
+  /**
+   * Add a target to the included target
+   */
   def updateInclude (target : RuleTarget) = {
     val newIncluded = includedTarget + target
     copy(newIncluded)
   }
 
+
+  /**
+   * Add a target to the excluded target
+   */
   def updateExclude (target : RuleTarget) = {
     val newExcluded = excludedTarget + target
     copy(includedTarget,newExcluded)
   }
 
+  /**
+   * Remove a target from both the included and the excluded target
+   */
   def remove(target : RuleTarget) = {
 
     val updatedInclude = includedTarget.remove(target)
@@ -246,6 +261,9 @@ case class TargetExclusion(
 
 object RuleTarget extends Loggable {
 
+  /**
+   * Unserialize RuleTarget from Json
+   */
   def unserJson(json : JValue) : Box[RuleTarget] = {
 
     def unserComposition(json : JValue) : Box[TargetComposition] = {
@@ -262,7 +280,6 @@ object RuleTarget extends Loggable {
       }
     }
 
-    logger.debug(json)
     json match {
       case JString(s) => unser(s)
       case JObject(values) =>
@@ -289,18 +306,6 @@ object RuleTarget extends Loggable {
     }
   }
 
-  def merge(targets : Set[RuleTarget]) : TargetExclusion = {
-
-    val start = TargetExclusion(TargetUnion(Set()),TargetUnion(Set()))
-    val res = (start /: targets) {
-      case (res,e:TargetExclusion) =>
-       res.updateInclude(e.includedTarget).updateExclude(e.excludedTarget)
-      case (res,t) => res.updateInclude(t)
-      }
-    res
-  }
-
-
   def unser(s:String) : Option[RuleTarget] = {
     s match {
       case GroupTarget.r(g) =>
@@ -321,6 +326,26 @@ object RuleTarget extends Loggable {
         }
     }
   }
+
+  /**
+   * Create a targetExclusion from a Set of RuleTarget
+   * If the set contains only a TargetExclusion, use it
+   * else put all targets into a new target Exclusion using TargetUnion as composition
+   */
+  def merge(targets : Set[RuleTarget]) : TargetExclusion = {
+    targets.toSeq match {
+      case Seq(t:TargetExclusion) => t
+      case _ =>
+        val start = TargetExclusion(TargetUnion(Set()),TargetUnion(Set()))
+        val res = (start /: targets) {
+          case (res,e:TargetExclusion) =>
+           res.updateInclude(e.includedTarget).updateExclude(e.excludedTarget)
+          case (res,t) => res.updateInclude(t)
+          }
+        res
+    }
+  }
+
 }
 
 /** common information on a target */
