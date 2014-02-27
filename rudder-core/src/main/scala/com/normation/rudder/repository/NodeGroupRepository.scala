@@ -182,33 +182,25 @@ final case class FullNodeGroupCategory(
 
       case (nodes, TargetIntersection(targets)) =>
         val intersection = targets.map(t => getNodeIds(Set(t),allNodeInfos))
-        logger.info("AND")
-        logger.info(nodes)
-        logger.warn(intersection)
         val res = (allNodeIds/: intersection) {
           case (result, nodes) => result.intersect(nodes)
         }
-        logger.error(res)
         nodes ++ res
       case (nodes, TargetUnion(targets)) =>
         val union = targets.map(t => getNodeIds(Set(t),allNodeInfos))
-        logger.info("OR")
-        logger.info(nodes)
-        logger.warn(union)
-
         val res = (Set[NodeId]()/: union) {
           case (result, nodes) => result.union(nodes)
         }
-        logger.error( res)
         nodes ++ res
       case (nodes, TargetExclusion(included,excluded)) =>
         val includedNodes = getNodeIds(Set(included),allNodeInfos)
         val excludedNodes = getNodeIds(Set(excluded),allNodeInfos)
         val result = includedNodes -- excludedNodes
-        logger.info("NOT")
-        logger.info(nodes)
-        logger.warn(result)
         nodes ++ result
+      case (nodes,target) =>
+        logger.warn(s"cannot find nodes from a Rule target")
+        logger.debug(s"the target is : ${target}")
+        nodes
     }
   }
 }
