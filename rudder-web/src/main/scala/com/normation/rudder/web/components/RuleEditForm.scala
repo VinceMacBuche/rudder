@@ -252,15 +252,8 @@ class RuleEditForm(
     }.toList.mkString("{",",","}")
 
 
-    val included = ruleTarget.includedTarget match {
-      case tc: TargetComposition => tc.targets
-      case t => Set(t)
-    }
-
-    val excluded = ruleTarget.excludedTarget match {
-      case tc: TargetComposition => tc.targets
-      case t => Set(t)
-    }
+    val included = ruleTarget.includedTarget.targets
+    val excluded = ruleTarget.excludedTarget.targets
 
     (
       "#editForm *" #> { (n:NodeSeq) => SHtml.ajaxForm(n) } andThen
@@ -357,19 +350,38 @@ class RuleEditForm(
                $$('#selectedTargets').val(JSON.stringify($$scope.target));
              };
              $$scope.removeExclude = function ( excluded ) {
-               var index = $$scope.target.exclude.or.indexOf(excluded);
-               $$scope.target.exclude.or.splice(index,1);
+               var index = $$scope.target.exclude.targets.indexOf(excluded);
+               $$scope.target.exclude.targets.splice(index,1);
                $$scope.updateTarget();
                var jsId = excluded.replace(':','\\\\:');
                $$("#jstree-"+jsId).removeClass("targetExcluded");
              };
              $$scope.removeInclude = function ( included ) {
-               var index = $$scope.target.include.or.indexOf(included);
-               $$scope.target.include.or.splice(index,1);
+               var index = $$scope.target.include.targets.indexOf(included);
+               $$scope.target.include.targets.splice(index,1);
                $$scope.updateTarget();
                var jsId = included.replace(':','\\\\:');
                $$("#jstree-"+jsId).removeClass("targetIncluded");
              };
+             $$scope.addInclude = function ( included ) {
+               var index = $$scope.target.include.targets.indexOf(included);
+                 if ( index==-1 )  {
+                   $$scope.target.include.targets.push(included);
+                   $$scope.removeExclude(included);
+                   $$('#selectedTargets').val(JSON.stringify($$scope.target));
+                   var jsId = included.replace(':','\\\\:');
+                   $$("#jstree-"+jsId).addClass("targetIncluded");
+                 };
+              };
+             $$scope.addExclude = function ( excluded ) {
+               var index = $$scope.target.exclude.targets.indexOf(excluded);
+                 if ( index==-1 )  {
+                   $$scope.target.exclude.targets.push(excluded);
+                   $$scope.removeInclude(excluded);
+                   var jsId = excluded.replace(':','\\\\:');
+                   $$("#jstree-"+jsId).addClass("targetExcluded");
+                 };
+              };
            } ] ) ;
            groupManagement.directive('tooltip', function () {
     return {
@@ -512,27 +524,15 @@ class RuleEditForm(
     JsRaw(s"""
       var scope = angular.element($$("#GroupCtrl")).scope();
       scope.$$apply(function(){
-        var t = scope.target.include.or;
+        var t = scope.target.include.targets;
         if ( t.indexOf('${target}')==-1 ) {
           t.push("${targetInfo.target.target.target}");
-          scope.target.include.or = t;
+          scope.target.include.targets = t;
         };
       });
       $$('#selectedTargets').val(JSON.stringify(scope.target));
-      console.log($$("#jstree-${target.replace(":", "\\\\:")}"));
       $$("#jstree-${target.replace(":", "\\\\:")}").addClass("targetIncluded");
     """)
-  }
-
-   private[this] def toggleTarget(action : String, target: RuleTarget) : JsCmd = {
-
-      JsRaw(s"""
-          var scope = angular.element($$("#GroupCtrl")).scope();
-          scope.$$apply(function(){
-           scope.target.$action.or.push("${target.target}");
-          });
-          $$('#selectedTargets').val(JSON.stringify(scope.target));
-          """)
   }
 
   private[this] def excludeRuleTarget(targetInfo: FullRuleTargetInfo) : JsCmd = {
@@ -540,10 +540,10 @@ class RuleEditForm(
     JsRaw(s"""
       var scope = angular.element($$("#GroupCtrl")).scope();
       scope.$$apply(function(){
-        var t = scope.target.exclude.or;
+        var t = scope.target.exclude.targets;
         if ( t.indexOf('${target}')==-1 )  {
           t.push("${target}");
-          scope.target.exclude.or = t;
+          scope.target.exclude.targets = t;
         };
       });
       $$('#selectedTargets').val(JSON.stringify(scope.target));

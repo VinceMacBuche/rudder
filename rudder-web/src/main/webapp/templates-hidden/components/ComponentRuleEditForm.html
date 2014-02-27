@@ -205,7 +205,7 @@
              <div style="background-color:#DDFFDD;" class="targetContainer">
 	             <ul>
 	               <li ng-show="target.include.or.length === 0"><span class="targetDisplay">{{emptyTarget}}</span></li>
-	               <li ng-repeat="included in target.include.or">
+	               <li ng-repeat="included in target.include.targets">
 	               <span class="targetDisplay">
 	                 <img src="/images/tree/server_group_16x16.gif" class="targetIcon" />
 	                 {{ getTargetName(included) }}
@@ -220,7 +220,7 @@
              <div style="background-color:#FFDDDD;" class="targetContainer">
              <ul>
 	           <li ng-show="target.exclude.or.length === 0"><span class="targetDisplay">{{emptyTarget}}</span></li>
-               <li ng-repeat="excluded in target.exclude.or"  >
+               <li ng-repeat="excluded in target.exclude.targets"  >
                  <span class="targetDisplay">
 	                <img src="/images/tree/server_group_16x16.gif" class="targetIcon"/>
                	   {{ getTargetName(excluded) }}
