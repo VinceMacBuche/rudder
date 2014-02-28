@@ -156,12 +156,9 @@ object DisplayNodeGroupTree extends Loggable {
            $$('#${jsId} .targetActions').hide();
            } );
 
-           //$$('#${"edit"+jsId}').click( function(e) {
-           //  e.stopPropagation();
-           //});
-           //$$('#${"delete"+jsId}').click( function(e) {
-           //  e.stopPropagation();
-           //});
+           $$('#${jsId} .targetActions').click( function(e) {
+             e.stopPropagation();
+           });
            """))
 
       override def children = Nil
@@ -226,7 +223,8 @@ object DisplayNodeGroupTree extends Loggable {
 
         onClickNode match {
           case None                      => <a style="cursor:default">{xml}</a>
-          case _ if(targetInfo.isSystem) => <a style="cursor:default">{xml}</a>
+          // only disable click when actions are empty so we can act on them
+          case _ if(targetInfo.isSystem && targetActions.isEmpty) => <a style="cursor:default">{xml}</a>
           case Some(f)                   => SHtml.a(() => f(targetInfo), xml)
         }
       }

@@ -299,7 +299,7 @@ class RuleEditForm(
           <ul>{DisplayNodeGroupTree.displayTree(
               groupLib
             , None
-            , None
+            , Some( ( (_,target) => targetClick (target)))
             , Map("include" -> includeRuleTarget _,"exclude" -> excludeRuleTarget _)
             , included
             , excluded
@@ -371,6 +371,7 @@ class RuleEditForm(
                    $$('#selectedTargets').val(JSON.stringify($$scope.target));
                    var jsId = included.replace(':','\\\\:');
                    $$("#jstree-"+jsId).addClass("targetIncluded");
+                   $$scope.removeExclude(included);
                  };
               };
              $$scope.addExclude = function ( excluded ) {
@@ -380,7 +381,21 @@ class RuleEditForm(
                    $$scope.removeInclude(excluded);
                    var jsId = excluded.replace(':','\\\\:');
                    $$("#jstree-"+jsId).addClass("targetExcluded");
+                   $$scope.removeInclude(included);
                  };
+              };
+             $$scope.toggleTarget = function ( target ) {
+               var indexInclude = $$scope.target.include.targets.indexOf(target);
+               var indexExclude = $$scope.target.exclude.targets.indexOf(target);
+                 if ( indexInclude == -1 )  {
+                   if ( indexExclude == -1 )  {
+                     $$scope.addInclude(target);
+                   } else {
+                     $$scope.removeExclude(target);
+                   }
+                 } else {
+                   $$scope.removeInclude(target);
+                 }
               };
            } ] ) ;
            groupManagement.directive('tooltip', function () {
@@ -519,19 +534,23 @@ class RuleEditForm(
     save % ( "onclick" -> newOnclick)
   }
 
+  private[this] def targetClick(targetInfo: FullRuleTargetInfo) : JsCmd = {
+    val target = targetInfo.target.target.target
+    JsRaw(s"""
+      var scope = angular.element($$("#GroupCtrl")).scope();
+      scope.$$apply(function(){
+        scope.toggleTarget("${target}");
+      });
+    """)
+  }
+
   private[this] def includeRuleTarget(targetInfo: FullRuleTargetInfo) : JsCmd = {
     val target = targetInfo.target.target.target
     JsRaw(s"""
       var scope = angular.element($$("#GroupCtrl")).scope();
       scope.$$apply(function(){
-        var t = scope.target.include.targets;
-        if ( t.indexOf('${target}')==-1 ) {
-          t.push("${targetInfo.target.target.target}");
-          scope.target.include.targets = t;
-        };
+        scope.addInclude("${target}");
       });
-      $$('#selectedTargets').val(JSON.stringify(scope.target));
-      $$("#jstree-${target.replace(":", "\\\\:")}").addClass("targetIncluded");
     """)
   }
 
@@ -539,15 +558,9 @@ class RuleEditForm(
     val target = targetInfo.target.target.target
     JsRaw(s"""
       var scope = angular.element($$("#GroupCtrl")).scope();
-      scope.$$apply(function(){
-        var t = scope.target.exclude.targets;
-        if ( t.indexOf('${target}')==-1 )  {
-          t.push("${target}");
-          scope.target.exclude.targets = t;
-        };
+      scope.$$apply(function() {
+        scope.addExclude("${target}");
       });
-      $$('#selectedTargets').val(JSON.stringify(scope.target));
-      $$("#jstree-${target.replace(":", "\\\\:")}").addClass("targetExcluded");
     """)
   }
 
