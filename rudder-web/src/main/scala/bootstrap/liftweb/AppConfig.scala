@@ -596,6 +596,20 @@ object RudderConfig extends Loggable {
         nodeApi2
     )
 
+  val nodeApiService4 =
+    new NodeApiService4 (
+        fullInventoryRepository
+      , uuidGen
+      , restExtractorService
+      , restDataSerializer
+    )
+
+  val nodeApi4 =
+    new NodeAPI4 (
+        nodeApiService4
+      , restExtractorService
+    )
+
   val latestNodeApi = new LatestNodeAPI (nodeApi2)
 
   val genericNodeApi =

@@ -122,6 +122,7 @@ class Boot extends Loggable {
     // Node APIs
     LiftRules.statelessDispatch.append(RudderConfig.nodeApi2)
     LiftRules.statelessDispatch.append(RudderConfig.nodeApi3)
+    LiftRules.statelessDispatch.append(RudderConfig.nodeApi4)
     LiftRules.statelessDispatch.append(RudderConfig.latestNodeApi)
     LiftRules.statelessDispatch.append(RudderConfig.genericNodeApi)
     // Parameter APIs

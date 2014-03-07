@@ -47,6 +47,7 @@ import com.normation.inventory.domain.NodeId
 import com.normation.rudder.domain.parameters._
 import com.normation.inventory.domain._
 import com.normation.rudder.domain.servers.Srv
+import com.normation.rudder.web.rest.node.NodeDetailLevel
 
 
 
@@ -69,8 +70,10 @@ trait RestDataSerializer {
 
   def serializeNodeInfo(nodeInfo : NodeInfo, status : String) : JValue
 
+  // deprecated used in v < 4 ( < 2.10 )
   def serializeInventory (inventory : FullInventory, status : String) : JValue
 
+  def serializeInventory (inventory : FullInventory, detailLevel : NodeDetailLevel) : JValue
 }
 
 case class RestDataSerializerImpl (
@@ -83,13 +86,20 @@ case class RestDataSerializerImpl (
 
 
 
+
+  def serializeInventory (inventory : FullInventory, detailLevel : NodeDetailLevel) : JValue = {
+    val fields : Set[JField] = detailLevel.fields.map(field => JField(field ,NodeDetailLevel.fieldToJson(field)(inventory)))
+    JObject(fields.toList)
+  }
+
+
   def serializeNodeInfo(nodeInfo : NodeInfo, status : String) : JValue ={
     (   ("id"          -> nodeInfo.id.value)
       ~ ("status"      -> status)
       ~ ("hostname"    -> nodeInfo.hostname)
       ~ ("osName"      -> nodeInfo.osName)
       ~ ("osVersion"   -> nodeInfo.osVersion)
-      ~ ("machyneType" -> nodeInfo.machineType)
+      ~ ("machineType" -> nodeInfo.machineType)
     )
 
   }
@@ -106,7 +116,7 @@ case class RestDataSerializerImpl (
       ~ ("hostname"    -> inventory.node.main.hostname)
       ~ ("osName"      -> inventory.node.main.osDetails.os.name)
       ~ ("osVersion"   -> inventory.node.main.osDetails.version.toString)
-      ~ ("machyneType" -> machineType)
+      ~ ("machineType" -> machineType)
     )
   }
 

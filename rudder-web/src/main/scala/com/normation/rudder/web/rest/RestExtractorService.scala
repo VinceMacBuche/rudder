@@ -231,6 +231,14 @@ case class RestExtractorService (
     }
   }
 
+  private[this] def convertToNodeDetailLevel (value:String) : Box[NodeDetailLevel] = {
+  value.toLowerCase() match {
+    case "minimal" => Full(Minimal)
+    case "default" => Full(Default)
+    case _ => Failure(s"${value} is not a valid node detail level")
+  }
+  }
+
   /*
    * Convert List Functions
    */
@@ -556,6 +564,15 @@ case class RestExtractorService (
       case Full(Some(status)) => Full(status)
       case Full(None) => Failure("node status should not be empty")
       case eb:EmptyBox => eb ?~ "error with node status"
+    }
+  }
+
+  def extractNodeDetailLevel (params : Map[String,List[String]]) : Box[NodeDetailLevel] = {
+
+    extractOneValue(params,"include")(convertToNodeDetailLevel) match {
+      case Full(Some(level)) => Full(level)
+      case Full(None) => Full(Default)
+      case eb:EmptyBox => eb ?~ "error with node level detail"
     }
   }
 
