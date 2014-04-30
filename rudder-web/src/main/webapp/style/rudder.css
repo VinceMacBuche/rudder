@@ -563,14 +563,15 @@ div#Detail {
 ***********************/
 
 .dataTables_filter {
-  text-align: right;
   width:50%;
-  float:right;
+  float:left;
+  
 }
 
 .dataTables_filter input {
-  border: 1px solid #B4B3A8;
-  padding: 2px;
+  padding: 8px 5px 8px 30px;
+  border: 1px solid #ccc;
+  background: white url(/images/icMagnify.png) left center no-repeat;
 }
 
 .dataTables_length select {
@@ -579,8 +580,30 @@ div#Detail {
 }
 
 .dataTables_length {
-  widht:40%;
+  width:35%;
   float:left;
+}
+
+.dataTables_refresh{
+  float:right;
+  width:50%;
+  text-align:right
+}
+
+.dataTables_refresh .refreshButton img{
+  margin: 0;
+  float:none;
+}
+
+.dataTables_refresh .refreshButton {
+  height: auto;
+  width: auto;
+  margin: 0;
+  padding: 0;
+}
+
+.dataTables_refresh .refreshButton span {
+  padding: 8px;
 }
 
 .paginate {

@@ -220,14 +220,33 @@ class RuleGrid(
 
 
       case Full(tableData) =>
+
+        // Build refresh function for Rule grid
+        val refresh =  SHtml.ajaxCall(JsNull, (s) => {
+        val result = for {
+            rules <- roRuleRepository.getAll(false)
+        } yield {
+
+          val nodeInfo = getAllNodeInfos()
+          val groupLib = getFullNodeGroupLib()
+          val  directiveLib = getFullDirectiveLib()
+          val cmd = showRulesDetails(popup,rules,linkCompliancePopup, nodeInfo, groupLib, directiveLib) match {
+            case Full(newData) => s"""table = refreshTable("${htmlId_rulesGridId}",${newData.toJsCmd});"""
+            case _ => ""
+          }
+            Run(cmd)
+        }
+
+        result.getOrElse(Run(""))
+      })
         val onLoad =
           s"""
       var allcheckboxCallback = function(checked) { ${SHtml.ajaxCall(JsVar("checked"), (in : String) => selectAllVisibleRules(in.toBoolean))}};
-      createRuleTable ("${htmlId_rulesGridId}", ${tableData.toJsCmd}, ${showCheckboxColumn}, ${popup}, allcheckboxCallback);
+      var refresh = function() { ${refresh.toJsCmd} };
+      createRuleTable ("${htmlId_rulesGridId}", ${tableData.toJsCmd}, ${showCheckboxColumn}, ${popup}, allcheckboxCallback,refresh);
       createTooltip();
       createTooltiptr();
       $$('#${htmlId_rulesGridWrapper}').css("margin","10px 0px 0px 0px");
-      $$('#${htmlId_rulesGridWrapper} thead tr').addClass("head");
       """
     ( <div id={htmlId_rulesGridZone}>
         <div id={htmlId_modalReportsPopup} class="nodisplay">
@@ -258,7 +277,7 @@ class RuleGrid(
       nodes         <- allNodeInfos
     } yield {
       val lines = for {
-         line <- RulesToLines(directivesLib, groupsLib, nodes)
+         line <- RulesToLines(directivesLib, groupsLib, nodes, rules.toList)
       } yield {
         LineInfo(line, groupsLib, nodes)
       }
@@ -272,7 +291,8 @@ class RuleGrid(
       directivesLib: FullActiveTechniqueCategory
     , groupsLib: FullNodeGroupCategory
     , nodes: Set[NodeInfo]
-  ) : List[Line] = { rules.toList.map {
+    , rules : List[Rule]
+  ) : List[Line] = { rules.map {
     rule =>
     // we compute beforehand the compliance, so that we have a single big query
     // to the database

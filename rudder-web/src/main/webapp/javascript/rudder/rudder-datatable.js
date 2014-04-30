@@ -1,7 +1,7 @@
-var ruleTable;
+
 
 // Create Rule table
-function createRuleTable (gridId, data, needCheckbox, isPopup, allCheckboxCallback) {
+function createRuleTable (gridId, data, needCheckbox, isPopup, allCheckboxCallback, refresh) {
 
   // Define which columns should be sorted by default
   var sortingDefault;
@@ -169,19 +169,27 @@ function createRuleTable (gridId, data, needCheckbox, isPopup, allCheckboxCallba
     columns.push(actions);
   }
 
-  createTable(ruleTable,gridId,data,columns, sortingDefault);
-
+  createTable(gridId,data,columns, sortingDefault, refresh);
+ 
   // Add callback to checkbox column
   $("#checkAll").prop("checked", false);
   $("#checkAll").click( function () {
       var checked = $("#checkAll").prop("checked");
       allCheckboxCallback(checked);
   } );
+  
+}
+
+
+function refreshTable (gridId, data) {
+  var table = $('#'+gridId).dataTable();
+  table.fnClearTable();
+  table.fnAddData(data);
 }
 
 // Create a table from its id, data, columns, maybe the last one need to be all specific attributes, but for now only sorting
-function createTable(tableVar,gridId,data,columns, sortingDefault) {
-  tableVar = $('#'+gridId).dataTable(
+function createTable(gridId,data,columns, sortingDefault, refresh) {
+  $('#'+gridId).dataTable(
     { "asStripeClasses": [ 'color1', 'color2' ]
     , "bAutoWidth": false
     , "bFilter" : true
@@ -198,8 +206,20 @@ function createTable(tableVar,gridId,data,columns, sortingDefault) {
     , "aaData": data
     , "aaSorting": [[ sortingDefault, "asc" ]]
     , "aoColumns": columns
-    , "sDom": '<"dataTables_wrapper_top"fl>rt<"dataTables_wrapper_bottom"ip>'
+    , "sDom": '<"dataTables_wrapper_top"f<"dataTables_refresh">>rt<"dataTables_wrapper_bottom"lip>'
     }
   );
+  $('#'+gridId+' thead tr').addClass("head");
+  var refreshButton = $("<button><img src='/images/icRefresh.png'/></button>");
+  refreshButton.button();
+  refreshButton.attr("title","Refresh");
+  refreshButton.click( function() { refresh(); } );
+  refreshButton.addClass("refreshButton");
+  $("#"+gridId+"_wrapper .dataTables_refresh").append(refreshButton);
+  $("#"+gridId+"_wrapper .dataTables_refresh button").tooltip({
+	  show: { effect: "none", delay: 0 }
+    , hide: { effect: "none",  delay: 0 }
+    , position: { my: "left+40 bottom-10", collision: "flipfit" } 
+  } );
   $('.dataTables_filter input').attr("placeholder", "Search");
 }
