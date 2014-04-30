@@ -1,4 +1,4 @@
-var ruleTable;
+
 
 // Create Rule table
 function createRuleTable (gridId, data, needCheckbox, isPopup, allCheckboxCallback) {
@@ -153,20 +153,27 @@ function createRuleTable (gridId, data, needCheckbox, isPopup, allCheckboxCallba
     columns.push(actions);
   }
 
-  createTable(ruleTable,gridId,data,columns, sortingDefault);
-
+  createTable(gridId,data,columns, sortingDefault);
+ 
   // Add callback to checkbox column
   $("#checkAll").prop("checked", false);
   $("#checkAll").click( function () {
       var checked = $("#checkAll").prop("checked");
       allCheckboxCallback(checked);
   } );
+  
 }
 
 
+function refreshTable (gridId, data) {
+  var table = $('#'+gridId).dataTable();
+  table.fnClearTable();
+  table.fnAddData(data);
+}
+
 // Create a table from its id, data, columns, maybe the last one need to be all specific attributes, but for now only sorting
-function createTable(tableVar,gridId,data,columns, sortingDefault) {
-  tableVar = $('#'+gridId).dataTable(
+function createTable(gridId,data,columns, sortingDefault) {
+  $('#'+gridId).dataTable(
     { "asStripeClasses": [ 'color1', 'color2' ]
     , "bAutoWidth": false
     , "bFilter" : true
