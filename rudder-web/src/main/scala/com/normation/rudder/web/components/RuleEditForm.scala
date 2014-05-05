@@ -194,7 +194,7 @@ class RuleEditForm(
 
             (
               "#editForm" #> formContent &
-              "#details"  #> new RuleCompliance(rule).display(directiveLib, allNodeInfos)
+              "#details"  #> new RuleCompliance(rule,directiveLib, allNodeInfos).display
             ).apply(body)
 
           } else {
@@ -205,7 +205,7 @@ class RuleEditForm(
         def updateCompliance() = {
            roRuleRepository.get(rule.id) match {
              case Full(updatedrule) =>
-               new RuleCompliance(updatedrule).display(directiveLib, allNodeInfos)
+               new RuleCompliance(updatedrule,directiveLib, allNodeInfos).display
              case eb:EmptyBox =>
                logger.error("could not get updated version of the Rule")
                <div>Could not get updated version of the Rule, please </div>
