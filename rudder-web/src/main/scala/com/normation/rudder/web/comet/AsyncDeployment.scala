@@ -115,11 +115,11 @@ class AsyncDeployment extends CometActor with CometListener with Loggable {
       case SuccessStatus(id,start,end,configurationNodes) =>
         <span class="deploymentSuccess">
           <img src="/images/icOK.png" alt="Error" height="16" width="16" class="iconscala" />
-          Success: Policies updated at {DateFormaterService.getFormatedDate(start)} (took {formatPeriod(new Duration(start,end))})
+          Policies updated
         </span>
       case ErrorStatus(id,start,end,failure) =>
         {<span class="error deploymentError"><img src="/images/icfail.png" alt="Error" height="16" width="16" class="iconscala" />
-          Error during policy update at {DateFormaterService.getFormatedDate(start)} <br/>(took {formatPeriod(new Duration(start,end))} -
+          Error during policy update -
           <span class="errorscala" id="errorDetailsLink" onClick={
             """$('#errorDetailsDialog').modal({ minHeight:140, minWidth: 300 });
                $('#simplemodal-container').css('height', 'auto');
@@ -145,32 +145,18 @@ class AsyncDeployment extends CometActor with CometListener with Loggable {
     deploymentStatus.processing match {
       case IdleDeployer =>
         <lift:authz role="deployment_write"> {
-          SHtml.ajaxButton("Update", { () =>
+          SHtml.a({ () =>
             asyncDeploymentAgent ! ManualStartDeployment(ModificationId(uuidGen.newUuid), CurrentUser.getActor, "User requested a manual policy update") //TODO: let the user fill the cause
             Noop
-          }, ( "class" , "deploymentButton")) }
+          }, <span class="glyphicon glyphicon-refresh"></span>, ( "class" , "btn btn-default")) }
         </lift:authz>
-      case Processing(id, start) =>
-        <span>
-          <img src="/images/deploying.gif" alt="Updating..." height="16" width="16" class="iconscala" />
-          Updating policies (started at {DateFormaterService.getFormatedDate(start)})
-        </span>
-      case ProcessingAndPendingAuto(asked, Processing(id, start), actor, logId) =>
-        <span>
-          <img src="/images/deploying.gif" alt="Updating..." height="16" width="16" class="iconscala" />
-          Updating policies (started at {DateFormaterService.getFormatedDate(start)}). Another update is pending since {DateFormaterService.getFormatedDate(asked)}
-        </span>
-      case ProcessingAndPendingManual(asked, Processing(id, start), actor, logId, cause) =>
-        <span>
-          <img src="/images/deploying.gif" alt="Updating..." height="16" width="16" class="iconscala" />
-          Updating policies (started at {DateFormaterService.getFormatedDate(start)}). Another update is pending since {DateFormaterService.getFormatedDate(asked)}
-        </span>
+      case _ =>
+          <img src="/images/ajax-loader.gif" alt="Updating..." height="16" width="16" class="iconscala" />
     }
   }
 
   private[this] def layout = {
     <div id="deploymentStatus">
-      <div style="font-size: 14px; font-weight: bold; margin-bottom:7px;">Rudder status</div>
       <lift:ignore>
         Here come the status of the last finised policy update.
         Status can be: no previous policy update, correctly updated, warning, error.

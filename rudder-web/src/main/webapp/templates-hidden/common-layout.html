@@ -62,7 +62,7 @@
       var bootstrapAlert = $.fn.alert.noConflict();
       var bootstrapCarousel = $.fn.carousel.noConflict();
       var bootstrapCollapse = $.fn.collapse.noConflict();
-      var bootstrapDropdown = $.fn.dropdown.noConflict();
+      // var bootstrapDropdown = $.fn.dropdown.noConflict();
       var bootstrapModal = $.fn.modal.noConflict();
       var bootstrapTooltip = $.fn.tooltip.noConflict();
       var bootstrapPopover = $.fn.popover.noConflict();
@@ -82,14 +82,7 @@
 <div id="container">
 
   <!--Infos utilisateurs-->
-  <div id="infosUser" class="lift:UserInformation.userCredentials">
-    <p class="whoUser">Welcome, <a id="openerAccount">Patrick MARTIN</a> <noscript class="error">WARNING: JavaScript must be enabled to use Rudder</noscript> </p>
-    <!--popin compte utilisateur-->
-    <div id="dialog" title="Account management">
-    <!-- TODO: Inserer le snippet account -->
-    </div>
-    <!--Fin popin compte utilisateur-->
-    <p class="detailsUser">&nbsp;| <a id="logout">Log out</a></p>
+
     <!--popin Login-->
     <div id="dialogLogOut">
       <div class="simplemodal-title">
@@ -116,39 +109,58 @@
           </span>
         </div>
       </div>
-    </div>
     <!--Fin popin Login-->
   <!--Fin infos utilisateurs-->  
   
   
-  <!-- documentation link -->
-  <div id="documentation">
-    <a href="/rudder-doc">User manual</a>
-  </div>
   
   <!-- top right quick search -->
-  <lift:QuickSearchNode.render />
   
   </div>
+  <div class="tw-bs">
   
-  <!--Début Logo-->
-  <div id="logo"> 
+  <nav class="navbar navbar-default" role="navigation">
+  <div class="container-fluid">
+    <!-- Brand and toggle get grouped for better mobile display -->
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a href="/secure/"><img src="/images/logoRudder.jpg" alt="Rudder" /></a>
+    </div>
+    <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+    <span class="lift:BootstrapMenu?linkToSelf=true;expandAll=true"></span>
+    <lift:QuickSearchNode.render />
+    <ul class="nav navbar-nav navbar-right">
+    
+    
     <lift:authz role="deployment_read">
-    <lift:comet type="AsyncDeployment" name="deploymentStatus" />
+    <li>
+      <lift:comet type="AsyncDeployment" name="deploymentStatus" />
+    </li>
     </lift:authz>
+        <li><a href="/rudder-doc">User manual</a></li>
+        <li class="dropdown">
+          <a href="#" class="dropdown-toggle lift:UserInformation.userCredentials"  data-toggle="dropdown"><span id="openerAccount">[User name]</span> <span class="caret"></span></a>
+          <ul class="dropdown-menu" role="menu">
+            <li><a id="logout">Log out</a></li>
+          </ul>
+        </li>
+      </ul>
+    </div>
+  <!--Début Logo-->
+  </div>
+  </nav>
+  <div id="logo"> 
       <lift:comet type="WorkflowInformation" name="workflowInfo" />
     
-    <h1><a href="/secure/"><img src="/images/logoRudder.jpg" alt="Rudder" /></a></h1>
-  </div>
-  <!--Fin Logo-->
-  <!--Début Menu principal-->
-  <security:authorize access="isAnonymous()">
-  <div id="menu">
-   <lift:Menu.builder expand="false" linkToSelf="true" a:class="onMenu" li_item:class="onMenu" li_path:class="onMenu" />
-  </div>
-  </security:authorize>
-  <!--Fin Menu principal-->
 
+  </div>
+
+</div>
 <img alt="" 
   id="ajax-loader" 
   width="31px"
