@@ -98,34 +98,38 @@ class AsyncDeployment extends CometActor with CometListener with Loggable {
   }
 
   override def render = {
-    new RenderOut((
-      ClearClearable &
-      "#deploymentLastStatus *" #> lastStatus &
-      "#deploymentProcessing *" #> currentStatus
-    )(layout) , JsRaw("""$("button.deploymentButton").button(); """))
+    new RenderOut(layout)
   }
 
 
   val deployementErrorMessage = """(.*)!errormessage!(.*)""".r
 
-  private[this] def lastStatus : NodeSeq = {
+  private[this] def statusIcon : NodeSeq = {
+    deploymentStatus.processing match {
+      case IdleDeployer =>
+        deploymentStatus.current match {
+          case NoStatus => <span class="glyphicon glyphicon-question-sign"></span>
+          case _:SuccessStatus => <span class="glyphicon glyphicon-ok-sign"></span>
+          case _:ErrorStatus => <span class="glyphicon glyphicon-remove-circle"></span>
+        }
+      case _ =>
+          <img src="/images/ajax-loader.gif" height="14" width="14" />
+    }
+  }
+
+
+  private[this] def lastStatus : String = {
 
     deploymentStatus.current match {
-      case NoStatus => <span>Policy update status unavailable</span>
-      case SuccessStatus(id,start,end,configurationNodes) =>
-        <span class="deploymentSuccess">
-          <img src="/images/icOK.png" alt="Error" height="16" width="16" class="iconscala" />
-          Policies updated
-        </span>
-      case ErrorStatus(id,start,end,failure) =>
-        {<span class="error deploymentError"><img src="/images/icfail.png" alt="Error" height="16" width="16" class="iconscala" />
-          Error during policy update -
-          <span class="errorscala" id="errorDetailsLink" onClick={
+      case NoStatus => "Policy update status unavailable"
+      case SuccessStatus(id,start,end,configurationNodes) => "Policies updated"
+      case ErrorStatus(id,start,end,failure) => "Error during policy update"
+          /*<span class="errorscala" id="errorDetailsLink" onClick={
             """$('#errorDetailsDialog').modal({ minHeight:140, minWidth: 300 });
                $('#simplemodal-container').css('height', 'auto');
                correctButtons();
-               return false;"""}>details</span>)
-        </span>} ++ {
+               return false;"""}>details</span>
+        </span>}/* ++ {
           ("#errorDetailsMessage" #> { failure.messageChain match {
             case  deployementErrorMessage(chain, error) =>
               <span>{chain.split("<-").map(x => Text("⇨ " + x) ++ {<br/>})}</span>
@@ -134,45 +138,38 @@ class AsyncDeployment extends CometActor with CometListener with Loggable {
               <br/>
               <fieldset id="deploymentErrorMsg" style="display:none;"><legend><b>Technical details</b></legend>
                 <span>{error.split("<-").map(x => Text("⇨ " + x) ++ {<br/>})}<br/></span>
-              </fieldset>
+              </fieldset>*/
             case _ => <span>{failure.messageChain.split("<-").map(x => Text("⇨ " + x) ++ {<br/>})}</span>
           } }).apply(errorPopup)
-        }
+        }*/
     }
   }
 
   private[this] def currentStatus : NodeSeq = {
-    deploymentStatus.processing match {
-      case IdleDeployer =>
-        <lift:authz role="deployment_write"> {
-          SHtml.a({ () =>
+
+    <lift:authz role="deployment_write"> {
+      SHtml.a( {
+          () =>
             asyncDeploymentAgent ! ManualStartDeployment(ModificationId(uuidGen.newUuid), CurrentUser.getActor, "User requested a manual policy update") //TODO: let the user fill the cause
             Noop
-          }, <span class="glyphicon glyphicon-refresh"></span>, ( "class" , "btn btn-default")) }
-        </lift:authz>
-      case _ =>
-          <img src="/images/ajax-loader.gif" alt="Updating..." height="16" width="16" class="iconscala" />
+        }
+        , Text("Update")
+      )
     }
+    </lift:authz>
+
   }
 
   private[this] def layout = {
-    <div id="deploymentStatus">
-      <lift:ignore>
-        Here come the status of the last finised policy update.
-        Status can be: no previous policy update, correctly updated, warning, error.
-      </lift:ignore>
-      <div id="deploymentLastStatus">
-        [Here comes the status of the last finished deployement]
-      </div>
 
-      <lift:ignore>
-        Here comes an indication of the current deployement.
-        May be : not updating (a button is shown to start a policy update), updating (give an idea of the time remaining ?), updating + one pending
-      </lift:ignore>
-      <div id="deploymentProcessing">
-        [Here comes the current deployment processing]
-      </div>
-    </div>
+        <li class="dropdown">
+          <a href="#" class="dropdown-toggle"  data-toggle="dropdown">
+            Status {statusIcon}<span class="caret" style="margin-left:5px"></span></a>
+          <ul class="dropdown-menu" role="menu">
+            <li class="dropdown-header">{lastStatus}</li>
+            <li>{currentStatus}</li>
+          </ul>
+        </li>
   }
 
   private[this] def errorPopup = {

@@ -62,7 +62,6 @@
       var bootstrapAlert = $.fn.alert.noConflict();
       var bootstrapCarousel = $.fn.carousel.noConflict();
       var bootstrapCollapse = $.fn.collapse.noConflict();
-      // var bootstrapDropdown = $.fn.dropdown.noConflict();
       var bootstrapModal = $.fn.modal.noConflict();
       var bootstrapTooltip = $.fn.tooltip.noConflict();
       var bootstrapPopover = $.fn.popover.noConflict();
@@ -78,6 +77,46 @@
     <![endif]-->
   </head>
 <body>
+<div class="tw-bs">
+  
+  <nav class="navbar navbar-rudder navbar-fixed-top" role="navigation">
+  <div class="container-fluid">
+    <!-- Brand and toggle get grouped for better mobile display -->
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a href="/secure/"><img src="/images/test_logo.png" alt="Rudder" /></a>
+    </div>
+    <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+    <span class="lift:BootstrapMenu?linkToSelf=true;expandAll=true"></span>
+    <lift:QuickSearchNode.render />
+    <ul class="nav navbar-nav navbar-right">  
+    <li><lift:comet type="WorkflowInformation" name="workflowInfo" /></li>  
+    <lift:authz role="deployment_read">
+      <lift:comet type="AsyncDeployment" name="deploymentStatus" />
+    </lift:authz>
+        <li><a href="/rudder-doc">User manual</a></li>
+        <li class="dropdown">
+          <a href="#" class="dropdown-toggle lift:UserInformation.userCredentials"  data-toggle="dropdown">
+            <span style="margin-right:5px;" class="glyphicon glyphicon-user"></span>
+            <span id="openerAccount">[User name]</span>
+            <span class="caret"></span>
+          </a>
+          <ul class="dropdown-menu" role="menu">
+            <li><a id="logout">Log out</a></li>
+          </ul>
+        </li>
+      </ul>
+    </div>
+  <!--Début Logo-->
+  </div>
+  </nav>
+</div>
+
 <div id="bodyContainer">
 <div id="container">
 
@@ -117,50 +156,7 @@
   <!-- top right quick search -->
   
   </div>
-  <div class="tw-bs">
   
-  <nav class="navbar navbar-default" role="navigation">
-  <div class="container-fluid">
-    <!-- Brand and toggle get grouped for better mobile display -->
-    <div class="navbar-header">
-      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
-        <span class="sr-only">Toggle navigation</span>
-        <span class="icon-bar"></span>
-        <span class="icon-bar"></span>
-        <span class="icon-bar"></span>
-      </button>
-      <a href="/secure/"><img src="/images/logoRudder.jpg" alt="Rudder" /></a>
-    </div>
-    <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
-    <span class="lift:BootstrapMenu?linkToSelf=true;expandAll=true"></span>
-    <lift:QuickSearchNode.render />
-    <ul class="nav navbar-nav navbar-right">
-    
-    
-    <lift:authz role="deployment_read">
-    <li>
-      <lift:comet type="AsyncDeployment" name="deploymentStatus" />
-    </li>
-    </lift:authz>
-        <li><a href="/rudder-doc">User manual</a></li>
-        <li class="dropdown">
-          <a href="#" class="dropdown-toggle lift:UserInformation.userCredentials"  data-toggle="dropdown"><span id="openerAccount">[User name]</span> <span class="caret"></span></a>
-          <ul class="dropdown-menu" role="menu">
-            <li><a id="logout">Log out</a></li>
-          </ul>
-        </li>
-      </ul>
-    </div>
-  <!--Début Logo-->
-  </div>
-  </nav>
-  <div id="logo"> 
-      <lift:comet type="WorkflowInformation" name="workflowInfo" />
-    
-
-  </div>
-
-</div>
 <img alt="" 
   id="ajax-loader" 
   width="31px"
@@ -174,7 +170,7 @@
   <hr class="spacer" />
 </div>
 <div id="footer">
-  <p>Rudder v2.3 - &copy; <a href="http://www.normation.com/">Normation</a> with <a href="http://www.cfengine.com/">CFEngine</a></p>
+  <p>Rudder v2.3 - &copy; <a href="http://www.normation.com/">Normation</a></p>
 </div>
 <div id="successConfirmationDialog" class="nodisplay">
     <div class="simplemodal-title">

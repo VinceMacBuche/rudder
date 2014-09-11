@@ -1247,9 +1247,12 @@ body {
    font-size: 11px;
    font-family: Tahoma, Geneva, Arial, Helvetica, sans-serif;
    background: #2e2d2d url(../images/fondBody.jpg) repeat-x top left; 
+   margin:0;
+   padding-top:70px;
+   height:100%;
 }
 
-html, body {
+html {
    margin:0;
    padding:0;
    height:100%;
@@ -1300,17 +1303,7 @@ div#logo {
    display: inline;
 }
 
-#deploymentStatus {
-  float:right;
-  width:280px;
-  padding:10px;
-  padding-right:25px;
-  font-size:0.9em;
-  color:white;
-}
-
 #deploymentLastStatus  {
-  margin-right:10px;
   float:left
 }
 
@@ -1521,6 +1514,10 @@ menu secondaire
    border-radius: 0 0 0 0;
 }
 }
+
+.portlet {
+	border-radius: 0 !important;
+}
 *html #navigation.minimized #slickbox {
    width: 10px;
 }
@@ -1623,8 +1620,8 @@ div#contenu {
    margin: 0 auto;
    position: relative;
    float: left;
-   width: 90%;
-   padding-left: 5%;
+   width: 94%;
+   padding-left: 3%;
    background-color: #2e2d2d;
 }
 #contenu h1 {
@@ -2908,3 +2905,45 @@ li.targetExcluded a{
 .simplemodal-wrap{
 	overflow:auto !important
 }
+
+.tw-bs {
+	
+}
+
+.navbar-rudder {
+	background-image: linear-gradient(#ffa033, #ee7f00 50%, #b86200);
+  border: none;
+      font-family: sans-serif;
+    font-size: 14px;
+}
+
+.tw-bs .navbar-rudder .navbar-nav > li > a, .tw-bs .navbar-rudder .navbar-nav li.dropdown > a {
+	color : #fff;
+}
+
+.tw-bs .navbar-rudder .navbar-nav > .active > a, .tw-bs .navbar-rudder .navbar-nav > .active > a:hover, .tw-bs .navbar-rudder .navbar-nav > .active > a:focus,
+.tw-bs .navbar-rudder .navbar-nav .dropdown.active > a, .tw-bs .navbar-rudder .navbar-nav .dropdown.active > a:hover, .tw-bs .navbar-rudder .navbar-nav .dropdown.active > a:focus {
+	    background-color: #2e2d2d;
+    color: #e78f08;
+}
+
+.tw-bs .nav > li > a:hover, .tw-bs .nav > li > a:focus,
+.tw-bs .nav li.dropdown > a:hover, .tw-bs .nav li.dropdown > a:focus {
+  background-color: #2e2d2d !important;
+  color: #e78f08;
+  text-decoration:none;
+}
+
+.tw-bs .navbar-rudder.navbar-fixed-top {
+  border: none;
+}
+
+  .tw-bs .navbar-nav li.dropdown {
+    float: left;
+  }
+  .tw-bs .navbar-nav li.dropdown > a {
+    padding: 15px;
+    line-height: 20px;
+    display:block;
+    position:relative;
+  }
