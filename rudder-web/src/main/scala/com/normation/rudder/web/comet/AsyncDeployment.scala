@@ -118,18 +118,21 @@ class AsyncDeployment extends CometActor with CometListener with Loggable {
   }
 
 
-  private[this] def lastStatus : String = {
+  private[this] def lastStatus  = {
 
     deploymentStatus.current match {
-      case NoStatus => "Policy update status unavailable"
-      case SuccessStatus(id,start,end,configurationNodes) => "Policies updated"
-      case ErrorStatus(id,start,end,failure) => "Error during policy update"
-          /*<span class="errorscala" id="errorDetailsLink" onClick={
+      case NoStatus => <li class="dropdown-header">Policy update status unavailable</li>
+      case SuccessStatus(id,start,end,configurationNodes) =>
+        <li class="dropdown-header">Policies updated</li>
+        <li class="dropdown-header">Update took {formatPeriod(new Duration(start,end))}</li>
+      case ErrorStatus(id,start,end,failure) =>
+        <li class="dropdown-header">Error during policy update</li>
+        <li class="dropdown-header">Error occured in {formatPeriod(new Duration(start,end))}</li>
+        <li><a href="#" onClick={
             """$('#errorDetailsDialog').modal({ minHeight:140, minWidth: 300 });
                $('#simplemodal-container').css('height', 'auto');
                correctButtons();
-               return false;"""}>details</span>
-        </span>}/* ++ {
+               return false;"""}>Details</a></li> ++ {
           ("#errorDetailsMessage" #> { failure.messageChain match {
             case  deployementErrorMessage(chain, error) =>
               <span>{chain.split("<-").map(x => Text("⇨ " + x) ++ {<br/>})}</span>
@@ -138,10 +141,10 @@ class AsyncDeployment extends CometActor with CometListener with Loggable {
               <br/>
               <fieldset id="deploymentErrorMsg" style="display:none;"><legend><b>Technical details</b></legend>
                 <span>{error.split("<-").map(x => Text("⇨ " + x) ++ {<br/>})}<br/></span>
-              </fieldset>*/
+              </fieldset>
             case _ => <span>{failure.messageChain.split("<-").map(x => Text("⇨ " + x) ++ {<br/>})}</span>
           } }).apply(errorPopup)
-        }*/
+        }
     }
   }
 
@@ -166,7 +169,7 @@ class AsyncDeployment extends CometActor with CometListener with Loggable {
           <a href="#" class="dropdown-toggle"  data-toggle="dropdown">
             Status {statusIcon}<span class="caret" style="margin-left:5px"></span></a>
           <ul class="dropdown-menu" role="menu">
-            <li class="dropdown-header">{lastStatus}</li>
+            {lastStatus}
             <li>{currentStatus}</li>
           </ul>
         </li>
