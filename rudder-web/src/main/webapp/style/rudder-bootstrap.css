@@ -88,8 +88,13 @@
 }
 
 
-.tw-bs a .badge {
+.tw-bs .badge {
   background-color: #2e2d2d;
+}
+
+.tw-bs .badge a {
+  color: #e78f08;
+  font-weight:bold;
 }
 
 
@@ -312,4 +317,8 @@
 #cfagentSchedule .control-label {
   padding-left: 15px;
   padding-right: 15px;
+}
+
+#globalCompliance .progress {
+	height:30px;
 }
