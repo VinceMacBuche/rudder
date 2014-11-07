@@ -144,7 +144,7 @@ class HomePage extends Loggable {
         case (a:YellowChart,_:GreenChart) => false
         case (a:YellowChart,_) => true
         case (_:OrangeChart,(_:GreenChart|_:YellowChart)) => false
-        case (a:OrangeChart,_) => false
+        case (a:OrangeChart,_) => true
         case (a:OtherChart,_:RedChart) => true
         case (a:OtherChart,_) => false
         case (a:RedChart,_) => false

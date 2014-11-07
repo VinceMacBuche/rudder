@@ -322,3 +322,15 @@
 #globalCompliance .progress {
 	height:30px;
 }
+
+.tw-bs .nav-pills  > li > a {
+	border-radius : 0px;
+  color : #2e2d2d;
+} 
+
+
+.tw-bs .nav-pills.navbar-rudder {
+	padding-right : 0px;
+  background-color: #fff;
+  background-image:none;
+} 
