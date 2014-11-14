@@ -68,6 +68,8 @@ sealed trait ComplianceLevelPieChart{
       , "label" -> label
       , "highlight" -> highlight
       , "color" -> color
+      , "labelColor" -> "white"
+      , "labelFontSize" -> "16"
     )
   }
 }
@@ -78,13 +80,11 @@ case class GreenChart (value : Int) extends ComplianceLevelPieChart{
   val highlight = "#369836"
 }
 
-
-case class YellowChart (value : Int) extends ComplianceLevelPieChart{
+case class BlueChart (value : Int) extends ComplianceLevelPieChart{
   val label = "75-100%"
-  val color = "#FFFF66"
-  val highlight = "#E4E43F"
+  val color = "#5bc0de"
+  val highlight = "#39ACCD"
 }
-
 
 case class OrangeChart (value : Int) extends ComplianceLevelPieChart{
   val label = "50-75%"
@@ -92,16 +92,8 @@ case class OrangeChart (value : Int) extends ComplianceLevelPieChart{
   val highlight = "#DE9226"
 }
 
-
-case class OtherChart (value : Int) extends ComplianceLevelPieChart{
-  val label = "25-50%"
-  val color = "#FF6600"
-  val highlight = "#FF6700"
-}
-
-
 case class RedChart (value : Int) extends ComplianceLevelPieChart{
-  val label = "0-25%"
+  val label = "0-50%"
   val color = "#d9534f"
   val highlight = "#BE2F2B"
 }
@@ -127,26 +119,22 @@ class HomePage extends Loggable {
 
       val complianceDiagram : List[ComplianceLevelPieChart] = ((100.toFloat :: 75.toFloat :: 50.toFloat :: 25.toFloat :: complianceByNode).groupBy{compliance =>
       if (compliance == 100) GreenChart else
-        if (compliance >= 75) YellowChart else
+        if (compliance >= 75) BlueChart else
           if (compliance >= 50) OrangeChart else
-            if (compliance >= 25) OtherChart else
               RedChart
       }.map {
         case (GreenChart,compliance) => GreenChart(compliance.size)
-        case (YellowChart,compliance) => YellowChart(compliance.size)
+        case (BlueChart,compliance) => BlueChart(compliance.size)
         case (OrangeChart,compliance) => OrangeChart(compliance.size)
-        case (OtherChart,compliance) => OtherChart(compliance.size)
         case (RedChart,compliance) => RedChart(compliance.size)
       }).toList
 
      val sorted = complianceDiagram.sortWith{
         case (a:GreenChart,_) => true
-        case (a:YellowChart,_:GreenChart) => false
-        case (a:YellowChart,_) => true
-        case (_:OrangeChart,(_:GreenChart|_:YellowChart)) => false
+        case (a:BlueChart,_:GreenChart) => false
+        case (a:BlueChart,_) => true
+        case (_:OrangeChart,(_:GreenChart|_:BlueChart)) => false
         case (a:OrangeChart,_) => true
-        case (a:OtherChart,_:RedChart) => true
-        case (a:OtherChart,_) => false
         case (a:RedChart,_) => false
       }
 
@@ -168,7 +156,7 @@ class HomePage extends Loggable {
             $$("#globalCompliance").append(buildComplianceBar(${array.toJsCmd}));
             createTooltip();
             var ctx = $$("#nodeCompliance").get('0').getContext("2d");
-            var canvas = new Chart(ctx).Pie(${diagramData.toJsCmd});
+            var canvas = new Chart(ctx).Doughnut(${diagramData.toJsCmd});
 
         """)))
     } ) match {
@@ -225,16 +213,8 @@ class HomePage extends Loggable {
   }
 
   def pendingNodes(html : NodeSeq) : NodeSeq = {
-    countPendingNodes match {
-      case Empty => <li>There are no pending nodes</li>
-      case m:Failure =>
-          logger.error("Could not fetch the number of pending nodes. reason : %s".format(m.messageChain))
-          <div>Could not fetch the number of pending nodes</div>
-      case Full(x) if x == 0 => <li>There are no pending nodes</li>
-      case Full(x) => <li>There are <a href="/secure/nodeManager/manageNewNode">{x} pending nodes</a></li>
-    }
+    displayCount(countPendingNodes, "pending nodes")
   }
-
 
   def acceptedNodes(html : NodeSeq) : NodeSeq = {
     displayCount(countAcceptedNodes, "accepted nodes")

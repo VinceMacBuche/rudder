@@ -2,12 +2,13 @@
 
   <head>
   <title>Rudder - Home</title>
+  
+  
   </head>
-
   
    <div class="tw-bs">
       <div class="panel panel-default col-sm-12">
-	    <h4>Global compliance</h4>
+	    <h3>Global compliance</h3>
       <lift:HomePage.getAllCompliance/>
     </div>
  <!-- 
@@ -74,11 +75,20 @@
 
   </div>
    -->
+      
+      
+      
+      <div class=" panel panel-default col-sm-2">
         
-        <ul   class="nav nav-pills nav-stacked navbar-rudder col-sm-2">
+      <h3>Statistics</h3>
+        <ul   class="nav nav-pills nav-stacked navbar-rudder" style="border-radius:4px">
           <li ><a href="/secure/nodeManager/nodes">
             <span class="badge pull-right"><lift:HomePage.acceptedNodes/></span>
             Nodes</a>
+          </li>
+          <li ><a href="/secure/nodeManager/manageNewNode">
+            <span class="badge pull-right"><lift:HomePage.pendingNodes/></span>
+            Pending nodes</a>
           </li>
           <li><a href="/secure/configurationManager/ruleManagement">
             Rules <span class="badge pull-right"><lift:HomePage.rules/></span>
@@ -97,15 +107,16 @@
             Techniques</a>
           </li>
         </ul>
+        </div>
         
-        
-        <div class="col-sm-3">
-         <canvas id="nodeCompliance"></canvas>
+      <div class=" panel panel-default pull-right">
+      <h3>Nodes overview</h3>
+         <canvas height="300px" width="450px"  id="nodeCompliance"></canvas>
         </div>
         
         
+
+      
       </div>
-      
-      
   </lift:surround>
 

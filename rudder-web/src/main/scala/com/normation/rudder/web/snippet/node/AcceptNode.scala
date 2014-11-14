@@ -137,10 +137,24 @@ class AcceptNode {
    * and it's moved to the Banned Node branch.
    * On accept, isAccepted = accepted
    */
-  def list(html:NodeSeq) :  NodeSeq =  {
-    var errors : Option[String] = None
 
-    // Retrieve the list of selected server when submiting
+
+  var errors : Option[String] = None
+
+  def list(html:NodeSeq) :  NodeSeq =  {
+
+
+    newNodeManager.listNewNodes match {
+      case Empty => <div>Error, no server found</div>
+      case f@Failure(_,_,_) => <div>Error while retriving server to confirm</div>
+      case Full(seq) => display(html,seq)
+    }
+  }
+
+
+
+
+      // Retrieve the list of selected server when submiting
     def nodeIdsFromClient() : Seq[NodeId] = {
       S.params("serverids").map(x => NodeId(x))
     }
@@ -310,6 +324,8 @@ class AcceptNode {
         }
     }
 
+
+
   /**
    * retrieve the list of all checked servers with JS
    * and then show the popup
@@ -331,11 +347,10 @@ class AcceptNode {
     OnLoad(JsRaw("""createPopup("expectedPolicyPopup")""") )
   }
 
-    newNodeManager.listNewNodes match {
-      case Empty => <div>Error, no server found</div>
-      case f@Failure(_,_,_) => <div>Error while retriving server to confirm</div>
-      case Full(seq) => bind("pending",html,
-      "servers" -> serverGrid.displayAndInit(seq,"acceptNodeGrid",
+
+  def display(html:NodeSeq, nodes: Seq[Srv]) = {
+    bind("pending",html,
+      "servers" -> serverGrid.displayAndInit(nodes,"acceptNodeGrid",
         Seq(
             (Text("Since"),
                    {e => Text(DateFormaterService.getFormatedDate(e.creationDate))}),
@@ -354,19 +369,19 @@ class AcceptNode {
         """,{ "sWidth": "60px" },{ "sWidth": "70px", "bSortable":false },{ "sWidth": "15px", "bSortable":false }"""
         ,true
       ),
-      "accept" -> {if (seq.size > 0 ) { SHtml.ajaxButton("Accept into Rudder", {
+      "accept" -> {if (nodes.size > 0 ) { SHtml.ajaxButton("Accept into Rudder", {
         () =>  showConfirmPopup(acceptTemplate, "confirmPopup")
       }) % ("style", "width:170px")} else NodeSeq.Empty},
-      "refuse" -> {if (seq.size > 0 ) { SHtml.ajaxButton("Refuse", {
+      "refuse" -> {if (nodes.size > 0 ) { SHtml.ajaxButton("Refuse", {
         () => showConfirmPopup(refuseTemplate, "refusePopup")
       }) } else NodeSeq.Empty},
       "errors" -> (errors match {
         case None => NodeSeq.Empty
         case Some(x) => <div>x</div>
       }),
-      "selectall" -> {if (seq.size > 0 ) {selectAll} else NodeSeq.Empty}
+      "selectall" -> {if (nodes.size > 0 ) {selectAll} else NodeSeq.Empty}
       )
-    }
+
   }
 
   /**
