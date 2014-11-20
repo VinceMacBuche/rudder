@@ -62,7 +62,7 @@ sealed trait ComplianceLevelPieChart{
   def highlight : String
   def value : Int
 
-  def jsValue = {
+  def jsValue = {/*
     JsObj (
         "value" -> value
       , "label" -> label
@@ -70,7 +70,8 @@ sealed trait ComplianceLevelPieChart{
       , "color" -> color
       , "labelColor" -> "white"
       , "labelFontSize" -> "16"
-    )
+    )*/
+    JsArray(label, value)
   }
 }
 
@@ -114,6 +115,14 @@ class HomePage extends Loggable {
     } yield {
       val compliance = ComplianceLevel.sum(reports.map(_.compliance))
 
+
+      val machines = nodeInfos.values.groupBy(_.machineType).mapValues(_.size).map{case (a,b) => JsArray(a, b)}
+      val machinesArray = JsArray(machines.toList)
+
+      val os = nodeInfos.values.groupBy(_.osName).mapValues(_.size).map{case (a,b) => JsArray(a, b)}
+      val osArray = JsArray(os.toList)
+
+
       val complianceByNode = reports.groupBy(_.nodeId).mapValues(reports => ComplianceLevel.sum(reports.map(_.compliance)).compliance).values.toList
 
 
@@ -155,8 +164,30 @@ class HomePage extends Loggable {
         Script(OnLoad(JsRaw(s"""
             $$("#globalCompliance").append(buildComplianceBar(${array.toJsCmd}));
             createTooltip();
-            var ctx = $$("#nodeCompliance").get('0').getContext("2d");
-            var canvas = new Chart(ctx).Doughnut(${diagramData.toJsCmd});
+        var chart = c3.generate({
+        bindto: '#nodeCompliance',
+        data: {
+        // iris data from R
+        columns: ${diagramData.toJsCmd}
+      ,  type : 'pie'
+    }
+});
+        c3.generate({
+        bindto: '#nodeMachine',
+        data: {
+        // iris data from R
+        columns: ${machinesArray.toJsCmd}
+      ,  type : 'pie'
+    }
+});
+        c3.generate({
+        bindto: '#nodeOs',
+        data: {
+        // iris data from R
+        columns: ${osArray.toJsCmd}
+      ,  type : 'pie'
+    }
+});
 
         """)))
     } ) match {
