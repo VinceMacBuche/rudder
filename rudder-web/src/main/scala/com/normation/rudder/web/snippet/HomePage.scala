@@ -54,6 +54,7 @@ import com.normation.ldap.sdk.RoLDAPConnection
 import bootstrap.liftweb.RudderConfig
 import com.normation.ldap.sdk.FALSE
 import com.normation.rudder.domain.reports.ComplianceLevel
+import com.normation.inventory.domain.AcceptedInventory
 
 
 sealed trait ComplianceLevelPieChart{
@@ -72,6 +73,10 @@ sealed trait ComplianceLevelPieChart{
       , "labelFontSize" -> "16"
     )*/
     JsArray(label, value)
+  }
+
+  def jsColor = {
+    (label -> Str(color))
   }
 }
 
@@ -107,6 +112,7 @@ class HomePage extends Loggable {
   private[this] val rudderDit       = RudderConfig.rudderDit
   private[this] val nodeInfosService  = RudderConfig.nodeInfoService
   private[this] val reportingService  = RudderConfig.reportingService
+  private[this] val softwareService  = RudderConfig.readOnlySoftwareDAO
 
   def getAllCompliance = {
     ( for {
@@ -138,6 +144,18 @@ class HomePage extends Loggable {
         case (RedChart,compliance) => RedChart(compliance.size)
       }).toList
 
+     val agents = for {
+       (nodeId,_) <- nodeInfos.toSeq
+       softs <- softwareService.getSoftware(nodeId, AcceptedInventory).toSeq
+
+         soft <- softs
+         if soft.name.getOrElse("") == "rudder-agent"
+     } yield {
+         soft.version
+     }
+
+     val agentsValue = agents.groupBy(_.map(_.value).getOrElse("Unknown")).mapValues(_.size).map{case (a,b) => JsArray(a, b)}
+     val agentsData =JsArray(agentsValue.toList)
      val sorted = complianceDiagram.sortWith{
         case (a:GreenChart,_) => true
         case (a:BlueChart,_:GreenChart) => false
@@ -149,6 +167,7 @@ class HomePage extends Loggable {
 
      val diagramData = JsArray(sorted.map(_.jsValue):_*)
 
+     val diagramColor = JsObj(sorted.map(_.jsColor):_*)
 
       val array = JsArray(
             JE.Num(compliance.pc_notApplicable)
@@ -164,28 +183,66 @@ class HomePage extends Loggable {
         Script(OnLoad(JsRaw(s"""
             $$("#globalCompliance").append(buildComplianceBar(${array.toJsCmd}));
             createTooltip();
+        var width = $$("#nodeOverview").width() * 2 / 3 ;
         var chart = c3.generate({
+        legend: {
+        position: 'right'
+    },
+      size: {
+        height: width,
+        width: width
+    },
         bindto: '#nodeCompliance',
         data: {
         // iris data from R
         columns: ${diagramData.toJsCmd}
-      ,  type : 'pie'
-    }
+      ,  type : 'donut'
+      ,  order : null
+      , colors : ${diagramColor.toJsCmd}
+
+      , color: function (color, d) {
+            // d will be 'id' when called for legends
+            return color
+        }
+    }     , donut : {
+          title : 'Compliance'
+      }
 });
+      console.log($$('#nodeCompliance').height());
         c3.generate({
+      size: {
+        height: $$('#nodeCompliance').height() / 3,
+        width: $$('#nodeCompliance').height() /2 -10
+    },
         bindto: '#nodeMachine',
         data: {
         // iris data from R
         columns: ${machinesArray.toJsCmd}
-      ,  type : 'pie'
+      ,  type : 'donut'
     }
 });
         c3.generate({
+      size: {
+        height: $$('#nodeCompliance').height() / 3,
+        width: $$('#nodeCompliance').height() / 2 -10
+    },
         bindto: '#nodeOs',
         data: {
         // iris data from R
         columns: ${osArray.toJsCmd}
-      ,  type : 'pie'
+      ,  type : 'donut'
+    }
+});
+        c3.generate({
+      size: {
+        height: $$('#nodeCompliance').height() / 3,
+        width: $$('#nodeCompliance').height() / 2 -10
+    },
+        bindto: '#nodeAgents',
+        data: {
+        // iris data from R
+        columns: ${agentsData.toJsCmd}
+      ,  type : 'donut'
     }
 });
 

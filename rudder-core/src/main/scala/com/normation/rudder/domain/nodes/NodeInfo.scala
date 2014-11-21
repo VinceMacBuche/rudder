@@ -58,6 +58,7 @@ case class NodeInfo(
   , inventoryDate : DateTime
   , publicKey     : String
   , agentsName    : Seq[AgentType]
+  //, agentVersion  : String
   , policyServerId: NodeId
   , localAdministratorAccountName: String
   , creationDate  : DateTime
