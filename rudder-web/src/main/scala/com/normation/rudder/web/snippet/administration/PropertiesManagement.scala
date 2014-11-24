@@ -53,6 +53,7 @@ import com.normation.rudder.reports.ComplianceMode
 import com.normation.rudder.reports.ChangesOnly
 import com.normation.rudder.web.components.AgentScheduleEditForm
 import com.normation.rudder.reports.AgentRunInterval
+import com.normation.rudder.web.components.AgentHeartbeatEditForm
 
 
 /**
@@ -471,6 +472,11 @@ class PropertiesManagement extends DispatchSnippet with Loggable {
     , saveSchedule
     , () => startNewPolicyGeneration
   )
+  val agentHeartbeatEditForm = new AgentHeartbeatEditForm(
+      getSchedule
+    , saveSchedule
+    , () => startNewPolicyGeneration
+  )
 
   def getSchedule() : Box[AgentRunInterval] = {
     for {
@@ -502,6 +508,7 @@ class PropertiesManagement extends DispatchSnippet with Loggable {
   }
 
   def cfagentScheduleConfiguration = agentScheduleEditForm.cfagentScheduleConfiguration
+  def cfagentHeartbeatConfiguration = agentHeartbeatEditForm.cfagentHeartbeatConfiguration
 
 
   def cfengineGlobalProps = { xml : NodeSeq =>
