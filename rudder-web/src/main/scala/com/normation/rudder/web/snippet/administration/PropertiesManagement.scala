@@ -53,7 +53,7 @@ import com.normation.rudder.reports.ComplianceMode
 import com.normation.rudder.reports.ChangesOnly
 import com.normation.rudder.web.components.AgentScheduleEditForm
 import com.normation.rudder.reports.AgentRunInterval
-import com.normation.rudder.web.components.AgentHeartbeatEditForm
+import com.normation.rudder.web.components.ComplianceModeEditForm
 
 
 /**
@@ -77,9 +77,10 @@ class PropertiesManagement extends DispatchSnippet with Loggable {
     case "workflow"      => workflowConfiguration
     case "denyBadClocks" => cfserverNetworkConfiguration
     case "cfagentSchedule" => (xml) => cfagentScheduleConfiguration
+    case "complianceMode" => (xml) =>
+      complianceModeConfiguration
     case "cfengineGlobalProps" => cfengineGlobalProps
     case "loggingConfiguration" => loggingConfiguration
-    case "complianceModeConfiguration" => complianceModeConfiguration
   }
 
 
@@ -472,9 +473,10 @@ class PropertiesManagement extends DispatchSnippet with Loggable {
     , saveSchedule
     , () => startNewPolicyGeneration
   )
-  val agentHeartbeatEditForm = new AgentHeartbeatEditForm(
-      getSchedule
-    , saveSchedule
+  val complianceModeEditForm = new ComplianceModeEditForm(
+      () => configService.rudder_compliance_mode().map(a => (a._1,a._2,true))
+    , (complianceMode,frequency,_) => {logger.info(complianceMode)
+          configService.set_rudder_compliance_mode(complianceMode,frequency)}
     , () => startNewPolicyGeneration
   )
 
@@ -508,7 +510,7 @@ class PropertiesManagement extends DispatchSnippet with Loggable {
   }
 
   def cfagentScheduleConfiguration = agentScheduleEditForm.cfagentScheduleConfiguration
-  def cfagentHeartbeatConfiguration = agentHeartbeatEditForm.cfagentHeartbeatConfiguration
+  def complianceModeConfiguration = complianceModeEditForm.complianceModeConfiguration
 
 
   def cfengineGlobalProps = { xml : NodeSeq =>
@@ -636,7 +638,7 @@ class PropertiesManagement extends DispatchSnippet with Loggable {
       }
     ) apply (xml ++ Script(Run("correctButtons();") & check()))
   }
-
+/*
   def complianceModeConfiguration = { xml : NodeSeq =>
     // form value, defaulted to save value
     // the semantic is "Use compliance mode", i.e checkbox checked (true) => fullCompliance
@@ -650,13 +652,13 @@ class PropertiesManagement extends DispatchSnippet with Loggable {
       startNewPolicyGeneration
       S.notice("complianceModeMsg", complianceMode match {
         case Full(FullCompliance)  => "Compliance will be enabled on next agents runs on nodes"
-        case Full(ChangesOnly) => "Compliance will be disabled for next agent runs on nodes. Only errors and repaired will be reported"
+        case Full(ChangesOnly(heartbeatFrequency)) => "Compliance will be disabled for next agent runs on nodes. Only errors and repaired will be reported"
         case eb: EmptyBox => "There was an error when updating the value of the compliance"
       })
     }
 
     def compliance(x: Boolean) : Box[ComplianceMode] = {
-      if(x) Full(FullCompliance) else Full(ChangesOnly)
+      if(x) Full(FullCompliance) else Full(ChangesOnly(1))
     }
 
     ( "#complianceMode" #> {
@@ -678,7 +680,7 @@ class PropertiesManagement extends DispatchSnippet with Loggable {
       }
     ) apply (xml ++ Script(Run("correctButtons();")))
 
-  }
+  }*/
 }
 
 

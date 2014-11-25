@@ -1,6 +1,8 @@
 var cfagentScheduleModule = angular.module("cfagentSchedule", [])
 cfagentScheduleModule.controller("cfagentScheduleController", function($scope) {
 
+  
+
   $scope.agentRun = {
       'overrides'   : undefined
     , 'interval'    : 5
@@ -102,6 +104,9 @@ cfagentScheduleModule.controller("cfagentScheduleController", function($scope) {
   $scope.save = function() {
     var run = JSON.stringify($scope.agentRun);
     $scope.callback(run);
+    if (updateAgentRun !== undefined) {
+      updateAgentRun($scope.agentRun.interval)
+    }
     $scope.savedValue = angular.copy($scope.agentRun);
   }
 
