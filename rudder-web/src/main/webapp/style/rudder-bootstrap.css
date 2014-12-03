@@ -32,7 +32,15 @@
 *************************************************************************************
 */
 
-.tw-bs .navbar-rudder, .tw-bs .modal-header {
+.tw-bs .modal-header {
+	background-color : #f5f5f5
+}
+
+.tw-bs .modal-body {
+  font-size : 13px; 
+}
+
+.tw-bs .navbar-rudder  {
   background-image: linear-gradient(#ffa033, #ee7f00 50%, #b86200);
   border: none;
   font-family: sans-serif;

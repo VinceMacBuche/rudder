@@ -645,8 +645,8 @@ class PropertiesManagement extends DispatchSnippet with Loggable {
     var sendMetrics = configService.send_server_metrics
 
     def submit() = {
-      println(sendMetrics)
-      sendMetrics.foreach(x => configService.set_send_server_metrics(x))
+      val oldSendMetrics = configService.send_server_metrics.getOrElse(None)
+      sendMetrics.foreach(x => configService.set_send_server_metrics(x,oldSendMetrics,CurrentUser.getActor))
       sendMetrics = configService.send_server_metrics
 
       // start a promise generation, Since we may have change the mode, if we got there it mean that we need to redeploy
@@ -657,7 +657,7 @@ class PropertiesManagement extends DispatchSnippet with Loggable {
       })
     }
 
-    ( "#sendMetrics" #> {
+    ( "#sendMetricsCheckbox" #> {
       sendMetrics match {
         case Full(value) =>
           SHtml.ajaxCheckbox(
