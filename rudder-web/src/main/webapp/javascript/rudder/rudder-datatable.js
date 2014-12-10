@@ -965,6 +965,95 @@ function createChangesTable(gridId, data, contextPath, refresh) {
 
 
 /*
+ *   Javascript object containing all data to create a line in the DataTable
+ *   { "executionDate" : Date report was executed [DateTime]
+ *   , "node": node hostname [String]
+ *   , "directiveName": Directive name [String]
+ *   , "component" : Report component [String]
+ *   , "value" : Report value [String]
+ *   , "message" : Report message [String]
+ *   }
+ */
+function createEventLogTable(gridId, data, contextPath, refresh) {
+  console.log(refresh)
+  var columns = [ {
+      "sWidth": "10%"
+      , "mDataProp": "id"
+      , "sTitle": "Id"
+      , "sClass" : "eventId"
+      , "fnCreatedCell" : function (nTd, sData, oData, iRow, iCol) {
+        if( oData.hasDetails ) {
+          $(nTd).addClass("listopen");
+        }
+      }
+  } , {
+      "sWidth": "20%"
+    , "mDataProp": "date"
+    , "sTitle": "Date"
+  } , {
+      "sWidth": "10%"
+    , "mDataProp": "actor"
+    , "sTitle": "Actor"
+  } , {
+      "sWidth": "30%"
+    , "mDataProp": "type"
+    , "sTitle": "Type"
+  } , {
+      "sWidth": "30%"
+    , "mDataProp": "description"
+    , "sTitle": "Description"
+  } ];
+
+  var params = {
+      "bFilter" : true
+    , "bPaginate" : true
+    , "bLengthChange": true
+    , "sPaginationType": "full_numbers"
+    , "bStateSave": true
+    , "sCookiePrefix": "Rudder_DataTables_"
+    , "oLanguage": {
+        "sSearch": ""
+    }
+    , "aaSorting": [[ 0, "asc" ]]
+    , "sDom": '<"dataTables_wrapper_top newFilter"f>rt<"dataTables_wrapper_bottom"lip>'
+  };
+
+  createTable(gridId,data, columns, params, contextPath, refresh);
+
+  var myTable = $("#"+gridId).dataTable();
+  console.log(myTable);
+  var lines = $(myTable.fnGetNodes());
+  lines.each( function () {
+    var jTr = $(this);
+    var fnData = myTable.fnGetData( this );
+    if (fnData.hasDetails) {
+      jTr.addClass("curspoint")
+    }
+    jTr.click( function () {
+      var IdTD =  jTr.find("td.eventId");
+      if (IdTD.hasClass("listclose")) {
+        myTable.fnClose(this);
+      } else {
+        var detailsId =  'details-'+fnData.id;
+        // Set data with the ajax call
+        fnData.details(detailsId);
+        var row =$(myTable.fnOpen(this,'',detailsId));
+        var td = $("."+detailsId)
+        td.attr("id",detailsId);
+        var color = 'color1';
+        if(jTr.hasClass('color2'))
+          color = 'color2';
+        $(row).addClass(color + ' eventLogDescription')
+      }
+      IdTD.toggleClass('listopen');
+      IdTD.toggleClass('listclose');
+    } );
+  })
+  
+}
+
+
+/*
  * A function that build a compliance bar with colored zone for compliance
  * status cases based on Twitter Bootstrap: http://getbootstrap.com/components/#progress
  * 
