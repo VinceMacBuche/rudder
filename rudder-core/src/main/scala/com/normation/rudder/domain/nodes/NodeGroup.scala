@@ -61,6 +61,8 @@ case class NodeGroup(
   , query      : Option[Query]
   , isDynamic  : Boolean = true
   , serverList : Set[NodeId]
-  , isEnabled  : Boolean
   , isSystem   : Boolean = false
- ) extends HashcodeCaching
+ ) extends HashcodeCaching {
+  //
+  val isEnabled = true
+}

@@ -165,7 +165,7 @@ case class GroupApiService2 (
                 readGroup.getNodeGroup(NodeGroupId(sourceId)) match {
                   case Full((sourceGroup,category)) =>
                     // disable rest Group if cloning
-                    actualGroupCreation(restGroup.copy(enabled = Some(false)),sourceGroup.copy(id=groupId),category)
+                    actualGroupCreation(restGroup,sourceGroup.copy(id=groupId),category)
                   case eb:EmptyBox =>
                     val fail = eb ?~ (s"Could not find Group ${sourceId}" )
                     val message = s"Could not create Group ${name} (id:${groupId.value}) based on Group ${sourceId} : cause is: ${fail.msg}."
@@ -174,36 +174,13 @@ case class GroupApiService2 (
 
               // Create a new Group
               case None =>
-                // If enable is missing in parameter consider it to true
-                val defaultEnabled = restGroup.enabled.getOrElse(true)
-
-                // if only the name parameter is set, consider it to be enabled
-                // if not if workflow are enabled, consider it to be disabled
-                // if there is no workflow, use the value used as parameter (default to true)
-                // code extract :
-                /*re
-                 * if (restGroup.onlyName) true
-                 * else if (workflowEnabled) false
-                 * else defaultEnabled
-                 */
-
-
-                workflowEnabled() match {
-                  case Full(enabled) =>
-                    val enableCheck = restGroup.onlyName || (!enabled && defaultEnabled)
-                    val baseGroup = NodeGroup(groupId,name,"",None,true,Set(),enableCheck)
-                    restGroup.category match {
-                      case Some(category) =>
-                        // The enabled value in restGroup will be used in the saved Group
-                        actualGroupCreation(restGroup.copy(enabled = Some(enableCheck)),baseGroup,category)
-                      case None =>
-                        //use root category
-                        actualGroupCreation(restGroup.copy(enabled = Some(enableCheck)),baseGroup,readGroup.getRootCategory.id)
-                    }
-                  case eb : EmptyBox =>
-                    val fail = eb ?~ (s"Could not check workflow property" )
-                    val msg = s"Change request creation failed, cause is: ${fail.msg}."
-                    toJsonError(Some(groupId.value), msg)
+                val baseGroup = NodeGroup(groupId,name,"",None,true,Set())
+                restGroup.category match {
+                  case Some(category) =>
+                    actualGroupCreation(restGroup,baseGroup,category)
+                  case None =>
+                    //use root category
+                    actualGroupCreation(restGroup,baseGroup,readGroup.getRootCategory.id)
                 }
               // More than one source, make an error
               case _ =>

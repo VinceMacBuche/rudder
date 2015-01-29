@@ -358,7 +358,6 @@ object SerializedGroups {
         , None
         , status
         , nodes.map(x => NodeId(x.nodes)).toSet
-        , true
         , false
         ))
       case _ => None

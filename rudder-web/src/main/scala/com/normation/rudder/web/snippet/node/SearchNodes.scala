@@ -95,7 +95,6 @@ class SearchNodes extends StatefulSnippet with Loggable {
               query,
               true,
               serverList.openOr(Seq[NodeInfo]()).map(_.id).toSet,
-              true,
               false
               )
           )

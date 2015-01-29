@@ -231,7 +231,6 @@ class NodeGroupUnserialisationImpl(
                           } else {
                             (group \ "nodeIds" \ "id" ).map( n => NodeId( n.text ) ).toSet
                           }
-      isEnabled       <- (group \ "isEnabled").headOption.flatMap(s => tryo { s.text.toBoolean } ) ?~! ("Missing attribute 'isEnabled' in entry type nodeGroup : " + entry)
       isSystem        <- (group \ "isSystem").headOption.flatMap(s => tryo { s.text.toBoolean } ) ?~! ("Missing attribute 'isSystem' in entry type nodeGroup : " + entry)
     } yield {
       NodeGroup(
@@ -241,7 +240,6 @@ class NodeGroupUnserialisationImpl(
         , query = query
         , isDynamic = isDynamic
         , serverList = serverList
-        , isEnabled = isEnabled
         , isSystem = isSystem
       )
     }

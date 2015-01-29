@@ -132,7 +132,7 @@ class DynGroupServiceImpl(
       mapGroupAndNodes <- sequence(dyngroups) { g =>
         (for {
           matchedIds <- g match {
-            case NodeGroup(id, _, _, Some(query), true, _, _, _) =>
+            case NodeGroup(id, _, _, Some(query), true, _, _) =>
               queryChecker.check(query,nodeIds)
             case g => { //what ?
               logger.error("Found a group without a query or not dynamic: %s".format(g))

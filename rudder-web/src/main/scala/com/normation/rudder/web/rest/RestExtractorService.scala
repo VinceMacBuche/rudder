@@ -519,12 +519,11 @@ case class RestExtractorService (
     for {
       name        <- extractOneValue(params, "displayName")(convertToMinimalSizeString(3))
       description <- extractOneValue(params, "description")()
-      enabled     <- extractOneValue(params, "enabled")( convertToBoolean)
       dynamic     <- extractOneValue(params, "dynamic")( convertToBoolean)
       query       <- extractOneValue(params, "query")(convertToQuery)
       category    <- extractOneValue(params, "category")(convertToGroupCategoryId)
     } yield {
-      RestGroup(name,description,query,dynamic,enabled,category)
+      RestGroup(name,description,query,dynamic,category)
     }
   }
 
@@ -587,13 +586,12 @@ case class RestExtractorService (
     for {
       name        <- extractOneValueJson(json, "displayName")(convertToMinimalSizeString(3))
       description <- extractOneValueJson(json, "description")()
-      enabled     <- extractJsonBoolean(json, "enabled")
       dynamic     <- extractJsonBoolean(json, "dynamic")
       stringQuery <- queryParser.jsonParse(json \\ "query")
       query       <- queryParser.parse(stringQuery)
       category    <- extractOneValueJson(json, "category")(convertToGroupCategoryId)
     } yield {
-      RestGroup(name,description,Some(query),dynamic,enabled,category)
+      RestGroup(name,description,Some(query),dynamic,category)
     }
   }
 

@@ -53,7 +53,6 @@ case class RestGroup(
     , description : Option[String] = None
     , query       : Option[Query] = None
     , isDynamic   : Option[Boolean] = None
-    , enabled     : Option[Boolean] = None
     , category    : Option[NodeGroupCategoryId] = None
   ) {
 
@@ -61,20 +60,17 @@ case class RestGroup(
                    description.isEmpty &&
                    query.isEmpty       &&
                    isDynamic.isEmpty   &&
-                   enabled.isEmpty     &&
                    category.isEmpty
 
     def updateGroup(group:NodeGroup) = {
       val updateName  = name.getOrElse(group.name)
       val updateDesc  = description.getOrElse(group.description)
       val updateisDynamic = isDynamic.getOrElse(group.isDynamic)
-      val updateEnabled = enabled.getOrElse(group.isEnabled)
       group.copy(
           name        = updateName
         , description = updateDesc
         , query       = query
         , isDynamic   = updateisDynamic
-        , isEnabled   = updateEnabled
       )
 
     }

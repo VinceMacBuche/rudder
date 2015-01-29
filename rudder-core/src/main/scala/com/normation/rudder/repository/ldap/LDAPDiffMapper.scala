@@ -295,8 +295,6 @@ class LDAPDiffMapper(
                   Full(diff.copy(modDescription = Some(SimpleDiff(oldGroup.description, mod.getAttribute().getValue))))
                 case A_IS_DYNAMIC =>
                   tryo(diff.copy(modIsDynamic = Some(SimpleDiff(oldGroup.isDynamic, mod.getAttribute().getValueAsBoolean))))
-                case A_IS_ENABLED =>
-                  tryo(diff.copy(modIsActivated = Some(SimpleDiff(oldGroup.isEnabled, mod.getAttribute().getValueAsBoolean))))
                 case A_IS_SYSTEM =>
                   tryo(diff.copy(modIsSystem = Some(SimpleDiff(oldGroup.isSystem,mod.getAttribute().getValueAsBoolean))))
                 case x => Failure("Unknown diff attribute: " + x)

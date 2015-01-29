@@ -392,7 +392,7 @@ class LDAPEntityMapper(
         isSystem = e.getAsBoolean(A_IS_SYSTEM).getOrElse(false)
         description = e(A_DESCRIPTION).getOrElse("")
       } yield {
-         NodeGroup(NodeGroupId(id), name, description, query, isDynamic, nodeIds, isEnabled, isSystem)
+         NodeGroup(NodeGroupId(id), name, description, query, isDynamic, nodeIds, isSystem)
       }
     } else Failure("The given entry is not of the expected ObjectClass '%s'. Entry details: %s".format(OC_RUDDER_NODE_GROUP, e))
   }
