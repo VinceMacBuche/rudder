@@ -14,6 +14,7 @@ import com.normation.rudder.repository.FullNodeGroupCategory
 import com.normation.rudder.domain.nodes.NodeGroupCategoryId
 import com.normation.rudder.reports.FullCompliance
 import com.normation.rudder.reports.ReportingConfiguration
+import com.normation.rudder.reports.EnforceMode
 
 @RunWith(classOf[JUnitRunner])
 class RuleTargetTest extends Specification with Loggable {
@@ -37,6 +38,7 @@ class RuleTargetTest extends Specification with Loggable {
         , "", DateTime.now
         , false, false, false, Set()
         , ReportingConfiguration(None,None)
+        , EnforceMode
       )
     )
   }.toMap
@@ -154,6 +156,5 @@ class RuleTargetTest extends Specification with Loggable {
       }
     }
   }
-
 
 }

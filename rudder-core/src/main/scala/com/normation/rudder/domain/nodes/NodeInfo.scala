@@ -40,6 +40,7 @@ import com.normation.inventory.domain.NodeId
 import com.normation.utils.HashcodeCaching
 import com.normation.inventory.domain.ServerRole
 import com.normation.rudder.reports.ReportingConfiguration
+import com.normation.rudder.reports.AgentMode
 
 /**
  * A NodeInfo is a read only object containing the information that will be
@@ -70,4 +71,5 @@ case class NodeInfo(
   //      on role everywhere.
   , serverRoles   : Set[ServerRole]
   , nodeReportingConfiguration: ReportingConfiguration
+  , agentMode : AgentMode
 ) extends HashcodeCaching

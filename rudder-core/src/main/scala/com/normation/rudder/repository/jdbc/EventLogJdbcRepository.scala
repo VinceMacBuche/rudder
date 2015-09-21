@@ -138,7 +138,6 @@ class EventLogJdbcRepository(
      }
   }
 
-
   def getEventLog(id : Int) : Box[EventLog] = {
     val list = jdbcTemplate.query(SELECT_SQL + " and id = ?" ,
         Array[AnyRef](id.asInstanceOf[AnyRef]),
@@ -149,7 +148,6 @@ class EventLogJdbcRepository(
       case _ => Failure("Too many event log for this id")
     }
   }
-
 
   def getEventLogByChangeRequest(
       changeRequest   : ChangeRequestId
@@ -345,7 +343,6 @@ object EventLogReportsMapper extends RowMapper[EventLog] with Loggable {
         TechniqueEventLogsFilter.eventList :::
         ParameterEventsLogsFilter.eventList :::
         ModifyGlobalPropertyEventLogsFilter.eventList
-
 
   private[this] def mapEventLog(
       eventType     : EventLogType

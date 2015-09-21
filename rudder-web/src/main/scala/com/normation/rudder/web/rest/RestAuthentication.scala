@@ -37,21 +37,21 @@ package com.normation.rudder.web.rest
 import com.normation.rudder.authorization.Read
 import com.normation.rudder.authorization.Write
 import com.normation.rudder.web.model.CurrentUser
-
 import net.liftweb.common.Loggable
 import net.liftweb.http.JsonResponse
 import net.liftweb.http.LiftSession
 import net.liftweb.http.rest.RestHelper
 import net.liftweb.json.JsonDSL._
+import org.springframework.security.core.context.SecurityContextHolder
 
 object RestAuthentication extends RestHelper with Loggable {
-
 
   serve {
 
     case Get("authentication" :: Nil,  req) => {
       val session = LiftSession(req)
 
+      logger.info( SecurityContextHolder.getContext.getAuthentication )
       //the result depends upon the "acl" param value, defaulted to "non read" (write).
       val (message, status) = req.param("acl").openOr("write").toLowerCase match {
         case "read" => //checking if current user has read rights on techniques
@@ -71,7 +71,6 @@ object RestAuthentication extends RestHelper with Loggable {
             (msg,RestError)
           }
       }
-
 
       val content =
         ( "action" -> "authentication" ) ~

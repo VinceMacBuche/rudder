@@ -1,0 +1,73 @@
+<property:agentmode>
+
+<div  id="agentMode">
+  <div class="inner-portlet"  id="agentModeController" ng-controller="agentModeController" ng-class="{'tw-bs': isNodePage}">
+  <div class="page-title" >Agent policy mode</div>
+  <div class="portlet-content">
+    <div class="intro">
+      <div>
+        Configuration rules in Rudder can operate in one of two modes:<br/>
+        <ol>
+          <li><b>Verify:</b> the agent will examine configurations and report any differences, but will not make any changes</li>
+          <li><b>Enforce:</b> the agent will make changes to fix any configurations that differ from your directives</li>
+        </ol>
+        <span ng-if="! isNodePage">This setting is a global switch and will apply to all nodes and all directives as the default mode.<br/>
+        You may also override this mode on a per-node and per-directive basis.</span>
+        <span ng-if="isNodePage">By default all nodes and all directives operate in the global mode defined in <a href="{{contextPath}}/secure/administration/policyServerManagement#agentMode">Settings</a>, which is currently {{globalMode.name}}.</span>
+      </div>
+    </div>
+    <div ng-if="isNodePage && ! globalMode.allow_override">Current global settings do not allow this mode to be overridden on a per-node basis. You may change this in <a href="{{contextPath}}/secure/administration/policyServerManagement#agentMode">Settings</a>, or contact your Rudder administrator about this.</div>
+    
+    <form role="form" name="agentModeForm" class="form-horizontal" ng-if="! isNodePage || globalMode.allow_override">
+
+      <div class="deca">
+        <div class="tw-bs">
+          <div class="radio" ng-show="isNodePage">
+            <label>
+              <input type="radio" ng-model="agentMode.name" value="default" />
+              Use global default mode. This may be overridden on a per-Directive basis
+            </label>
+          </div>
+          <div class="radio">
+            <label>
+              <input type="radio" ng-model="agentMode.name" value="verify" />
+              Verify<span  ng-show="isNodePage">. Directives will never be enforced on this node, regardless of their policy mode.</span>
+            </label>
+          </div>
+          <div class="radio">
+            <label>
+              <input type="radio" ng-model="agentMode.name"  value="enforce"/>
+              Enforce<span  ng-show="isNodePage">. All Directives will apply necessary changes on this node, except Directives with a Verify only override setting.</span>
+            </label>
+          </div>
+          <div ng-if="! isNodePage">
+          Allow overrides on this global setting?
+            <div class="radio">
+              <label>
+                <input type="radio" ng-model="agentMode.allow_override" ng-value="false" />
+                No, this setting may not be overridden per-node or per-directive. All Rudder configuration rules will operate in this mode.
+               </label>
+            </div>
+            <div class="radio">
+              <label>
+                <input type="radio" ng-model="agentMode.allow_override"  ng-value="true"/>
+                Yes, make this setting a default only and allow overrides on a per-node or per-directive basis.
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="form-group">
+        <div class="pull-left control-label">
+          <button type="submit" class="btn btn-xs btn-default" ng-click="save()" ng-disabled="agentModeForm.$invalid || isUnchanged()" id="agentModeSubmit">Save changes</button>
+        </div>
+        <div id="agentModeMessage" class="pull-left control-label">
+          <lift:Msg id="agentModeMessage">[messages]</lift:Msg>
+        </div>
+      </div>
+          
+    </form>
+  </div>
+  </div>
+</div>
+</property:agentmode>

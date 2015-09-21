@@ -56,7 +56,6 @@ final case object GlobalPropertyEventLogCategory extends EventLogCategory
 final case object SettingsLogCategory extends EventLogCategory
 final case object NodeLogCategory extends EventLogCategory
 
-
 // the promises related event type
 final case object AutomaticStartDeployementEventType extends NoRollbackEventLogType {
   def serialize = "AutomaticStartDeployement"
@@ -225,11 +224,13 @@ final case object ModifyGlobalParameterEventType extends RollbackEventLogType {
   def serialize = "GlobalParameterModified"
 }
 
-
-
 // node properties: properties, heartbeat, agent run.
 final case object ModifyHeartbeatNodeEventType extends RollbackEventLogType {
   def serialize = "NodeHeartbeatModified"
+}
+
+final case object ModifyNodeAgentModeEventType extends RollbackEventLogType {
+  def serialize = "NodeAgentModetModified"
 }
 
 final case object ModifyAgentRunIntervalNodeEventType extends RollbackEventLogType {
@@ -284,6 +285,16 @@ final case object ModifyRudderSyslogProtocolEventType extends ModifyGlobalProper
   val propertyName = "Rudder syslog protocol"
 }
 
+final case object ModifyGlobalAgentModeEventType extends ModifyGlobalPropertyEventType {
+  def serialize = "GlobalAgentModeModified"
+  val propertyName = "Global agent mode"
+}
+
+final case object ModifyGlobalAgentModeOverridableEventType extends ModifyGlobalPropertyEventType {
+  def serialize = "GlobalAgentModeOverridableModified"
+  val propertyName = "Global agent mode overridable"
+}
+
 /**
  * List of event generating a modification of promises
  */
@@ -323,7 +334,6 @@ object ModificationWatchList {
   ) ++ ModifyGlobalPropertyEventLogsFilter.eventTypes
 
 }
-
 
 object EventTypeFactory {
   val eventTypes = List[EventLogType](

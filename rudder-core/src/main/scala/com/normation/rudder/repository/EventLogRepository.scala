@@ -48,13 +48,10 @@ import com.normation.rudder.domain.workflows.ChangeRequestId
 import com.normation.rudder.domain.workflows.WorkflowStepChange
 import com.normation.rudder.services.eventlog.EventLogFactory
 
-
-
 import net.liftweb.common._
 
 trait EventLogRepository {
   def eventLogFactory : EventLogFactory
-
 
   /**
    * Save an eventLog
@@ -322,7 +319,6 @@ trait EventLogRepository {
     )
   }
 
-
   /**
    * Node properties: heartbeat, agent run, properties
    */
@@ -354,6 +350,22 @@ trait EventLogRepository {
         )
     )
   }
+
+  def saveModifyNodeAgentMode(
+      modId: ModificationId
+    , principal: EventActor
+    , modifyDiff: ModifyNodeAgentModeDiff
+    , reason:Option[String]) = {
+    saveEventLog(
+        modId
+      , eventLogFactory.getModifyNodeAgentModeFromDiff (
+            principal  = principal
+          , modifyDiff = modifyDiff
+          , reason = reason
+        )
+    )
+  }
+
   def saveModifyNodeProperties(
       modId: ModificationId
     , principal: EventActor
@@ -378,7 +390,6 @@ trait EventLogRepository {
    * For the moment it only a string, it should be something else in the future
    */
   def getEventLogByCriteria(criteria : Option[String], limit:Option[Int] = None, orderBy:Option[String] = None) : Box[Seq[EventLog]]
-
 
   def getEventLogByChangeRequest(changeRequest : ChangeRequestId, xpath:String, optLimit:Option[Int] = None, orderBy:Option[String] = None, eventTypeFilter : Option[Seq[EventLogFilter]] = None) : Box[Seq[EventLog]]
 

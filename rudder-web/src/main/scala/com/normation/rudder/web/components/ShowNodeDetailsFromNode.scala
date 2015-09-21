@@ -62,6 +62,7 @@ import com.normation.plugins.SnippetExtensionKey
 import com.normation.plugins.SpringExtendableSnippet
 import com.normation.rudder.reports.HeartbeatConfiguration
 import com.normation.rudder.web.model.JsNodeId
+import com.normation.rudder.reports.AgentMode
 
 object ShowNodeDetailsFromNode {
 
@@ -89,7 +90,7 @@ class ShowNodeDetailsFromNode(
   private[this] val uuidGen              = RudderConfig.stringUuidGenerator
   private[this] val nodeRepo             = RudderConfig.woNodeRepository
   private[this] val asyncDeploymentAgent = RudderConfig.asyncDeploymentAgent
-  private[this] val configService = RudderConfig.configService
+  private[this] val configService        = RudderConfig.configService
 
   def extendsAt = SnippetExtensionKey(classOf[ShowNodeDetailsFromNode].getSimpleName)
 
@@ -100,6 +101,13 @@ class ShowNodeDetailsFromNode(
       , saveHeart
       , () => Unit
       , () => Some(configService.rudder_compliance_heartbeatPeriod)
+    )
+
+   def agentModeEditForm = new AgentModeEditForm(
+        nodeInfoService.getNode(nodeId).map(_.agentMode)
+      , saveAgentMode
+      , () => Unit
+      , configService.rudder_global_agent_mode()
     )
 
   def getHeartBeat : Box[(String,Int, Boolean)] = {
@@ -116,7 +124,6 @@ class ShowNodeDetailsFromNode(
     }
   }
 
-
   def saveHeart(complianceMode : String, frequency: Int, overrides : Boolean) : Box[Unit] = {
     val heartbeatConfiguration = HeartbeatConfiguration(overrides, frequency)
     val modId = ModificationId(uuidGen.newUuid)
@@ -127,7 +134,14 @@ class ShowNodeDetailsFromNode(
     }
   }
 
-
+  def saveAgentMode(agentMode : AgentMode) : Box[Unit] = {
+    val modId = ModificationId(uuidGen.newUuid)
+    for {
+      result <- nodeRepo.updateNodeAgentMode(nodeId, agentMode, modId, CurrentUser.getActor, None)
+    } yield {
+      asyncDeploymentAgent ! AutomaticStartDeployment(modId, CurrentUser.getActor)
+    }
+  }
 
    def agentScheduleEditForm = new AgentScheduleEditForm(
         () => getSchedule
@@ -223,14 +237,13 @@ class ShowNodeDetailsFromNode(
       "#nodeInventory *" #> DisplayNode.show(inventory, false) &
       "#reportsDetails *" #> reportDisplayer.asyncDisplay(node) &
       "#logsDetails *" #> logDisplayer.asyncDisplay(node.id)&
-      "#node_parameters -*" #>  agentScheduleEditForm.cfagentScheduleConfiguration &
+      "#node_parameters -*" #>  (agentModeEditForm.agentModeConfiguration ++ agentScheduleEditForm.cfagentScheduleConfiguration) &
       "#node_parameters *+" #> complianceModeEditForm.complianceModeConfiguration &
       "#extraHeader" #> DisplayNode.showExtraHeader(inventory) &
       "#extraContent" #> DisplayNode.showExtraContent(Some(node), inventory) &
       "#node_tabs [id]" #> s"details_${id}"
     ).apply(serverDetailsTemplate)
   }
-
 
   /**
    * Javascript to initialize a tree.

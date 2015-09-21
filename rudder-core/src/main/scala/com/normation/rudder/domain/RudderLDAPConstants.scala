@@ -87,9 +87,9 @@ object RudderLDAPConstants extends Loggable {
   val A_SERIALIZED_AGENT_RUN_INTERVAL = "serializedAgentRunInterval"
   val A_SERIALIZED_HEARTBEAT_RUN_CONFIGURATION = "serializedHeartbeatRunConfiguration"
 
+  val A_AGENT_MODE = "agentMode"
 
   val A_NODE_PROPERTY = "serializedNodeProperty"
-
 
   val A_PRIORITY = "directivePriority"
   val A_LONG_DESCRIPTION = "longDescription"
@@ -106,7 +106,6 @@ object RudderLDAPConstants extends Loggable {
   val A_TARGET_HOSTNAME = "targetNodeHostname"
   val A_TARGET_AGENTS_NAME = "targetAgentName"
   val A_TARGET_ROOT_USER = "targetLocalAdministratorAccountName"
-
 
   // Creation date of an object
   // it's an operational attribute of OpenLDAP
@@ -165,7 +164,7 @@ object RudderLDAPConstants extends Loggable {
 
   OC += (OC_RUDDER_NODE,
     must = Set(A_NODE_UUID, A_NAME, A_IS_BROKEN, A_IS_SYSTEM),
-    may = Set(A_DESCRIPTION, A_SERIALIZED_AGENT_RUN_INTERVAL, A_SERIALIZED_HEARTBEAT_RUN_CONFIGURATION))
+    may = Set(A_DESCRIPTION, A_SERIALIZED_AGENT_RUN_INTERVAL, A_SERIALIZED_HEARTBEAT_RUN_CONFIGURATION, A_AGENT_MODE))
 
   OC += (OC_POLICY_SERVER_NODE, sup = OC(OC_RUDDER_NODE),
     must = Set(A_HOSTNAME, A_PKEYS, A_LIST_OF_IP, A_INVENTORY_DATE,
@@ -222,7 +221,6 @@ object RudderLDAPConstants extends Loggable {
   OC += (OC_ACTIVE_TECHNIQUE_LIB_VERSION,
     may = Set(A_INIT_DATETIME))
 
-
   OC += (OC_API_ACCOUNT
       , must = Set(A_API_UUID, A_NAME, A_CREATION_DATETIME, A_API_TOKEN, A_API_TOKEN_CREATION_DATETIME)
       , may = Set(A_DESCRIPTION)
@@ -239,7 +237,6 @@ object RudderLDAPConstants extends Loggable {
   OC += ( OC_NODES_CONFIG,
     must = Set(A_NAME),
     may = Set(A_DESCRIPTION, A_NODE_CONFIG))
-
 
   /**
    * Serialize and unserialize variables in A_DIRECTIVE_VARIABLES

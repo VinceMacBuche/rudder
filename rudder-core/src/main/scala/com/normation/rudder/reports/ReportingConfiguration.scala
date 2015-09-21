@@ -152,3 +152,31 @@ object SyslogUDP extends SyslogProtocol {
   val value = "UDP"
 }
 
+sealed trait AgentMode {
+  def value : String
+}
+
+object AgentMode {
+  def apply(mode : String) : Box[AgentMode] = {
+    mode match {
+      case VerifyMode.value => Full(VerifyMode)
+      case EnforceMode.value => Full(EnforceMode)
+      case a => Failure(s"'${a}' is not a valid agent mode name")
+    }
+  }
+}
+
+object VerifyMode extends AgentMode {
+  val value = "verify"
+}
+
+object EnforceMode extends AgentMode {
+  val value = "enforce"
+}
+
+case class GlobalAgentMode (
+    agentMode : AgentMode
+  , canBeOverridden : Boolean
+) extends AgentMode {
+  val value = agentMode.value
+}

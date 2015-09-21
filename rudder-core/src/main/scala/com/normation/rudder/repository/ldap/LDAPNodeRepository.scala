@@ -45,11 +45,8 @@ import com.normation.rudder.domain.nodes._
 import com.normation.rudder.domain.policies.SimpleDiff
 import com.normation.rudder.reports.AgentRunInterval
 import com.normation.rudder.reports.HeartbeatConfiguration
-
-
-
 import net.liftweb.common._
-
+import com.normation.rudder.reports.AgentMode
 
 class WoLDAPNodeRepository(
     nodeDit             : NodeDit
@@ -93,6 +90,24 @@ class WoLDAPNodeRepository(
     update(nodeId, updateNode, log)
   }
 
+  /**
+   * Change the configuration of  gent mode for the given node
+   */
+  def updateNodeAgentMode(nodeId: NodeId, heartbeat: AgentMode, modId: ModificationId, actor:EventActor, reason:Option[String]) : Box[Node] = {
+    val updateNode = (node: Node) =>   node.copy(agentMode = heartbeat)
+    val log = (oldNode: Node, newNode: Node) => {
+      val agentDiff =
+        if (oldNode.agentMode == newNode.agentMode) {
+          None
+        } else {
+          Some(SimpleDiff(oldNode.agentMode, newNode.agentMode))
+        }
+      val diff = ModifyNodeAgentModeDiff(nodeId,agentDiff)
+      actionLogger.saveModifyNodeAgentMode(modId, principal = actor, modifyDiff = diff, reason = reason)
+    }
+    update(nodeId, updateNode, log)
+
+  }
 
   /**
    * Update the list of properties for the node, setting the content to exactly

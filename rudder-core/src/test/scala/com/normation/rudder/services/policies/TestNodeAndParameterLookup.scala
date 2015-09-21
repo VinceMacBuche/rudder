@@ -52,15 +52,13 @@ import com.normation.rudder.domain.policies.InterpolationContext
 import InterpolationContext._
 import com.normation.rudder.reports.FullCompliance
 import com.normation.rudder.reports.ReportingConfiguration
-
-
+import com.normation.rudder.reports.EnforceMode
 
 /**
  * Test how parametrized variables are replaced for
  * parametrization with ${rudder.param.XXX} and
  * ${rudder.node.YYYY}
  */
-
 
 @RunWith(classOf[JUnitRunner])
 class TestNodeAndParameterLookup extends Specification {
@@ -78,7 +76,6 @@ class TestNodeAndParameterLookup extends Specification {
   val rootAdmin = "root"
 
   private val emptyNodeReportingConfiguration = ReportingConfiguration(None,None)
-
 
   val node1 = NodeInfo(
       id            = id1
@@ -101,6 +98,7 @@ class TestNodeAndParameterLookup extends Specification {
     , isPolicyServer= true
     , serverRoles   = Set()
     , emptyNodeReportingConfiguration
+    , EnforceMode
   )
 
   val root = NodeInfo(
@@ -124,6 +122,7 @@ class TestNodeAndParameterLookup extends Specification {
     , isPolicyServer= true
     , serverRoles   = Set()
     , emptyNodeReportingConfiguration
+    , EnforceMode
   )
 
   val nodeInventory1: NodeInventory = NodeInventory(
@@ -168,7 +167,6 @@ class TestNodeAndParameterLookup extends Specification {
       , nodeContext     = Map()
   )
 
-
   def lookup(
       variables: Seq[Variable]
     , context: InterpolationContext
@@ -181,8 +179,6 @@ class TestNodeAndParameterLookup extends Specification {
       case Full(res) => test(res.values.map( _.values ).toSeq)
     }
   }
-
-
 
   //two variables
   val var1 = InputVariableSpec("var1", "").toVariable(Seq("== ${rudder.param.foo} =="))
@@ -208,7 +204,6 @@ class TestNodeAndParameterLookup extends Specification {
     , "{${rudder.node.policyserver.hostname}&"
     , "!${rudder.node.policyserver.admin}^"
   ))
-
 
   val badEmptyRudder = InputVariableSpec("empty", "").toVariable(Seq("== ${rudder.} =="))
   val badUnclosed = InputVariableSpec("empty", "").toVariable(Seq("== ${rudder.param.foo =="))
@@ -298,7 +293,6 @@ class TestNodeAndParameterLookup extends Specification {
    */
   "Interpretation of a parsed interpolated string" should {
 
-
     val nodeId = compileAndGet("${rudder.node.uuid}")
     val policyServerId = compileAndGet("${rudder.node.id}")
     val paramVar = compileAndGet("${rudder.node.uuid}")
@@ -311,7 +305,6 @@ class TestNodeAndParameterLookup extends Specification {
         , compileAndGet(s"$${rudder.node.${accessor}}")
         , expected
       )
-
 
       //map of server.param -> AST
       val accessors = List(
@@ -341,7 +334,6 @@ class TestNodeAndParameterLookup extends Specification {
       }
     }
 
-
     "correctly interpret simple param" in {
       val res = "p1 replaced"
       val i = compileAndGet("${rudder.param.p1}")
@@ -350,7 +342,6 @@ class TestNodeAndParameterLookup extends Specification {
       ))
       i(c) must beEqualTo(Full(res))
     }
-
 
     "fails on missing param in context" in {
       val res = "p1 replaced"
@@ -428,7 +419,6 @@ class TestNodeAndParameterLookup extends Specification {
 
   }
 
-
   "A single parameter" should {
     "be replaced by its value" in {
       lookup(Seq(var1), context.copy(parameters =  p(fooParam)))( values =>
@@ -480,7 +470,6 @@ class TestNodeAndParameterLookup extends Specification {
 
   }
 
-
   "A double parameter" should {
     "be replaced by its value" in {
       lookup(Seq(var1_double), context.copy(parameters = p(fooParam, barParam)))( values =>
@@ -511,7 +500,6 @@ class TestNodeAndParameterLookup extends Specification {
       )
     }
   }
-
 
   "Case" should {
     "not matter in the path" in {

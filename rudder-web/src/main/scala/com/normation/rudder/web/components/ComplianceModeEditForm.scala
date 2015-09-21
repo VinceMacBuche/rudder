@@ -34,7 +34,6 @@
 
 package com.normation.rudder.web.components
 
-
 import bootstrap.liftweb.RudderConfig
 import net.liftweb.http.DispatchSnippet
 import net.liftweb.common._
@@ -58,8 +57,6 @@ import ComplianceModeEditForm._
 import com.normation.eventlog.EventActor
 import com.normation.rudder.web.model.CurrentUser
 
-
-
 /**
  * Component to display and configure the compliance Mode (and it's heartbeat)
  */
@@ -71,7 +68,6 @@ class ComplianceModeEditForm (
   , getGlobalConfiguration : () => Option[Box[Int]] = () => None
 ) extends DispatchSnippet with Loggable  {
 
-
   // Html template
   def templatePath = List("templates-hidden", "components", "ComponentComplianceMode")
   def template() =  Templates(templatePath) match {
@@ -79,7 +75,7 @@ class ComplianceModeEditForm (
        error(s"Template for Compliance mode configuration not found. I was looking for ${templatePath.mkString("/")}.html")
      case Full(n) => n
   }
-  def agentScheduleTemplate = chooseTemplate("property", "complianceMode", template)
+  def agentScheduleTemplate = chooseTemplate("property", "compliancemode", template)
 
   def dispatch = {
     case "complianceMode" => (xml) => complianceModeConfiguration
@@ -128,7 +124,6 @@ class ComplianceModeEditForm (
   }
 
   def complianceModeConfiguration = {
-
 
     val transform = (for {
       (complianceMode, frequency,overrides) <- getConfigureCallback()

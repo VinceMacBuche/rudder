@@ -32,41 +32,47 @@
 *************************************************************************************
 */
 
-package com.normation.rudder.repository
 
-import com.normation.eventlog.EventActor
-import com.normation.eventlog.ModificationId
-import com.normation.rudder.domain.nodes._
-import com.normation.rudder.reports.AgentRunInterval
-import com.normation.rudder.reports.HeartbeatConfiguration
-import net.liftweb.common._
-import com.normation.inventory.domain.NodeId
-import com.normation.rudder.reports.AgentMode
 
-/**
- * Node Repository
- * To update the Node Run Configuration
- */
-trait WoNodeRepository {
+function agentModeForm(agentMode, globalMode, isNodePage,callback ) {
+  console.log(agentMode)
+  console.log(globalMode)
+  console.log(isNodePage)
+  var agentModeModule = angular.module("agentMode", ['ngAnimate'])
 
-  /**
-   * Change the configuration of agent run period for the given node
-   */
-  def updateAgentRunPeriod(nodeId: NodeId, agentRun: AgentRunInterval, modId: ModificationId, actor:EventActor, reason:Option[String]) : Box[Node]
+  agentModeModule.controller("agentModeController", function($scope) {
+  
+    $scope.agentMode = agentMode;
+    $scope.globalMode = globalMode;
+    $scope.isNodePage = isNodePage;
+    $scope.callback = callback;
+    
+    console.log(agentMode)
+    console.log(globalMode)
+    console.log(isNodePage)
+    
+    // contextPath is a globally defined var, When agentModeForm is called, it should be defined ....
+    $scope.contextPath = contextPath;
+    
 
-  /**
-   * Change the configuration of heartbeat frequency for the given node
-   */
-  def updateNodeHeartbeat(nodeId: NodeId, heartbeat: HeartbeatConfiguration, modId: ModificationId, actor:EventActor, reason:Option[String]) : Box[Node]
-
-  /**
-   * Change the configuration of run mode for the given node
-   */
-  def updateNodeAgentMode(nodeId: NodeId, heartbeat: AgentMode, modId: ModificationId, actor:EventActor, reason:Option[String]) : Box[Node]
-
-  /**
-   * Update the list of properties for the node, setting the content to exactly
-   * what is given in paramater
-   */
-  def updateNodeProperties(nodeId: NodeId, properties: Seq[NodeProperty], modId: ModificationId, actor:EventActor, reason:Option[String]) : Box[Node]
+    $scope.savedValue= angular.copy($scope.agentMode)
+  
+    $scope.onChange = function() {
+      $("#agentModeMessage").empty();
+    }
+    
+    $scope.save = function() {
+      var mode = JSON.stringify($scope.agentMode);
+      $scope.callback(mode);
+      $scope.savedValue = angular.copy($scope.agentMode);
+    }
+  
+    $scope.isUnchanged = function() {
+      return angular.equals($scope.agentMode, $scope.savedValue);
+    };
+  });
+  
+  angular.element(document).ready(function() {
+    angular.bootstrap("#agentMode", ['agentMode']);
+  });
 }

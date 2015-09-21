@@ -58,6 +58,8 @@ import com.normation.rudder.domain.eventlog.ModifyAgentRunStartMinuteEventType
 import com.normation.rudder.domain.eventlog.ModifyAgentRunSplaytimeEventType
 import com.normation.rudder.reports._
 import com.normation.rudder.domain.eventlog.ModifyRudderSyslogProtocolEventType
+import com.normation.rudder.domain.eventlog.ModifyGlobalAgentModeEventType
+import com.normation.rudder.domain.eventlog.ModifyGlobalAgentModeOverridableEventType
 
 /**
  * A service that Read mutable (runtime) configuration properties
@@ -109,7 +111,6 @@ trait ReadConfigService {
    */
   def rudder_store_all_centralized_logs_in_file(): Box[Boolean]
 
-
   /**
    * Compliance mode:
    * - "compliance": full compliance mode, where "success" execution reports are sent
@@ -129,7 +130,6 @@ trait ReadConfigService {
 
   def rudder_compliance_heartbeatPeriod(): Box[Int]
 
-
   /**
    * Send Metrics
    */
@@ -139,6 +139,11 @@ trait ReadConfigService {
    * Report protocol
    */
   def rudder_syslog_protocol(): Box[SyslogProtocol]
+
+  /**
+   * Agent mode
+   */
+  def rudder_global_agent_mode(): Box[GlobalAgentMode]
 
 }
 
@@ -209,6 +214,11 @@ trait UpdateConfigService {
   def set_rudder_compliance_heartbeatPeriod(frequency : Int, actor: EventActor, reason: Option[String]) : Box[Unit]
 
   /**
+   * Agent mode
+   */
+  def set_rudder_global_agent_mode(globalMode : AgentMode, actor : EventActor, reason: Option[String]): Box[Unit]
+
+  /**
    * Report protocol
    */
   def set_rudder_syslog_protocol(value : SyslogProtocol, actor : EventActor, reason: Option[String]): Box[Unit]
@@ -242,6 +252,8 @@ class LDAPBasedConfigService(configFile: Config, repos: ConfigRepository, workfl
        rudder.compliance.mode=${FullCompliance.name}
        rudder.compliance.heartbeatPeriod=1
        rudder.syslog.protocol=UDP
+       rudder.global.agent.mode.name=${EnforceMode.value}
+       rudder.global.agent.mode.override=true
     """
 
   val configWithFallback = configFile.withFallback(ConfigFactory.parseString(defaultConfig))
@@ -342,7 +354,6 @@ class LDAPBasedConfigService(configFile: Config, repos: ConfigRepository, workfl
         }
     }
 
-
   }
   def set_agent_run_interval(value: Int, actor: EventActor, reason: Option[String]): Box[Unit] = {
     cacheExecutionInterval = Some(value)
@@ -398,7 +409,6 @@ class LDAPBasedConfigService(configFile: Config, repos: ConfigRepository, workfl
     save("rudder_compliance_heartbeatPeriod", value, Some(info))
   }
 
-
   /**
    * Send Metrics
    */
@@ -410,7 +420,6 @@ class LDAPBasedConfigService(configFile: Config, repos: ConfigRepository, workfl
     save("send_server_metrics",newVal,Some(info))
   }
 
-
   /**
    * Report protocol
    */
@@ -418,6 +427,33 @@ class LDAPBasedConfigService(configFile: Config, repos: ConfigRepository, workfl
   def set_rudder_syslog_protocol(protocol : SyslogProtocol, actor : EventActor, reason: Option[String]): Box[Unit] =  {
     val info = ModifyGlobalPropertyInfo(ModifyRudderSyslogProtocolEventType,actor,reason)
     save("rudder_syslog_protocol", protocol.value, Some(info))
+  }
+
+    /**
+   * Agent mode
+   */
+  def rudder_global_agent_mode(): Box[GlobalAgentMode] = {
+    for {
+      modeName <- get("rudder.global.agent.mode.name")
+      mode <- AgentMode(modeName)
+      overrideGlobal <- get("rudder.global.agent.mode.override")
+    } yield {
+      GlobalAgentMode(mode,overrideGlobal)
+    }
+  }
+  def set_rudder_global_agent_mode(agentMode: AgentMode, actor : EventActor, reason: Option[String]): Box[Unit] = {
+
+    val info = ModifyGlobalPropertyInfo(ModifyGlobalAgentModeEventType,actor,reason)
+    val infoOverride = ModifyGlobalPropertyInfo(ModifyGlobalAgentModeOverridableEventType,actor,reason)
+
+    agentMode match {
+      case globalAgentMode : GlobalAgentMode =>
+        for {
+          modeName <- save("rudder.global.agent.mode.name", globalAgentMode.value, Some(info))
+          overrideGlobal <- save("rudder.global.agent.mode.override", globalAgentMode.canBeOverridden, Some(infoOverride))
+        } yield { }
+      case notGlobal => Failure(s"Cannot save a global agent mode with non global agent mode ${notGlobal}")
+    }
   }
 
 }

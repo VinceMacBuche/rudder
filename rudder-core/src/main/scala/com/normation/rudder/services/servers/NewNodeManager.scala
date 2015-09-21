@@ -108,7 +108,6 @@ trait NewNodeManager {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-
 /**
  * Default implementation: a new server manager composed with a sequence of
  * "unit" accept, one by main goals of what it means to accept a server;
@@ -131,7 +130,6 @@ class NewNodeManagerImpl(
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-
 trait ListNewNode extends NewNodeManager with Loggable {
   def ldap:LDAPConnectionProvider[RoLDAPConnection]
   def serverSummaryService:NodeSummaryServiceImpl
@@ -151,7 +149,6 @@ trait ListNewNode extends NewNodeManager with Loggable {
     }
   }
 }
-
 
 trait UnitRefuseInventory {
 
@@ -217,7 +214,6 @@ trait ComposedNewNodeManager extends NewNodeManager with Loggable {
   def serverSummaryService:NodeSummaryService
   def unitAcceptors:Seq[UnitAcceptInventory]
   def unitRefusors:Seq[UnitRefuseInventory]
-
 
   def inventoryHistoryLogRepository : InventoryHistoryLogRepository
   def eventLogRepository : EventLogRepository
@@ -362,7 +358,6 @@ trait ComposedNewNodeManager extends NewNodeManager with Loggable {
     }
   }
 
-
   /**
    * Accept one server.
    * Accepting mean that the server went to all unitAccept items and that all of them
@@ -390,7 +385,6 @@ trait ComposedNewNodeManager extends NewNodeManager with Loggable {
         e
     }
   }
-
 
   override def accept(id: NodeId, modId: ModificationId, actor:EventActor) : Box[FullInventory] = {
     //
@@ -421,7 +415,6 @@ trait ComposedNewNodeManager extends NewNodeManager with Loggable {
       }
     }
 
-
     //
     //now, execute unit acceptor
     //
@@ -437,7 +430,6 @@ trait ComposedNewNodeManager extends NewNodeManager with Loggable {
         logger.error(e.messageChain)
         return eb
     }
-
 
     //
     //now, execute global post process
@@ -460,7 +452,6 @@ trait ComposedNewNodeManager extends NewNodeManager with Loggable {
         e
     }
   }
-
 
   override def accept(ids: Seq[NodeId], modId: ModificationId, actor:EventActor, actorIp : String) : Box[Seq[FullInventory]] = {
 
@@ -582,7 +573,6 @@ trait ComposedNewNodeManager extends NewNodeManager with Loggable {
 
 }
 
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
@@ -634,7 +624,6 @@ class AcceptInventory(
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-
 /**
  * Accept FullInventory at ou=node level: just add it
  * TODO: use NodeRepository
@@ -646,7 +635,6 @@ class AcceptFullInventoryInNodeOu(
   ldapEntityMapper: LDAPEntityMapper,
   inventoryStatus:InventoryStatus //expected inventory status of nodes for that processor
 ) extends UnitAcceptInventory with UnitRefuseInventory with Loggable {
-
 
   override def preAccept(sms:Seq[FullInventory], modId: ModificationId, actor:EventActor) : Box[Seq[FullInventory]] = Full(sms) //nothing to do
 
@@ -676,6 +664,7 @@ class AcceptFullInventoryInNodeOu(
       , isPolicyServer
       , DateTime.now // won't be used on save - dummy value
       , ReportingConfiguration(None,None) // use global schedule
+      , EnforceMode
       , Seq() //no user properties for now
     )
 
@@ -706,7 +695,6 @@ class AcceptFullInventoryInNodeOu(
     }
   }
 
-
   //////////// refuse ////////////
   override def refuseOne(srv:Srv, modId: ModificationId, actor:EventActor) : Box[Srv] = {
     //refuse ou=nodes: delete it
@@ -720,7 +708,6 @@ class AcceptFullInventoryInNodeOu(
   }
 
 }
-
 
 class RefuseGroups(
     override val name:String
@@ -768,10 +755,6 @@ class AcceptHostnameAndIp(
   , ditQueryData     : DitQueryData
   , policyServerNet  : PolicyServerManagementService
 ) extends UnitAcceptInventory {
-
-
-
-
 
   //return the list of ducplicated hostname from user input - we want that to be empty
   private[this] def checkDuplicateString(attributes:Seq[String], attributeName:String) : Box[Unit]= {

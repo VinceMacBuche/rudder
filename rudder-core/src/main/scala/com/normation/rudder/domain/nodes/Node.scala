@@ -43,6 +43,8 @@ import com.normation.rudder.reports.AgentRunInterval
 import com.normation.rudder.reports.HeartbeatConfiguration
 import com.normation.rudder.domain.policies.SimpleDiff
 import com.normation.inventory.domain.FullInventory
+import com.normation.rudder.reports.EnforceMode
+import com.normation.rudder.reports.AgentMode
 
 /**
  * The entry point for a REGISTERED node in Rudder.
@@ -59,6 +61,7 @@ case class Node(
   , isPolicyServer            : Boolean
   , creationDate              : DateTime
   , nodeReportingConfiguration: ReportingConfiguration
+  , agentMode                 : AgentMode
   , properties                : Seq[NodeProperty]
 ) extends HashcodeCaching
 
@@ -73,13 +76,13 @@ case object Node {
       , false
       , inventory.node.inventoryDate.getOrElse(new DateTime(0))
       , ReportingConfiguration(None,None)
+      , EnforceMode
       , Seq()
     )
   }
 }
 
 case class NodeProperty(name: String, value: String)
-
 
 /**
  * Node diff for event logs:
@@ -101,13 +104,20 @@ final case class ModifyNodeHeartbeatDiff(
   , modHeartbeat: Option[SimpleDiff[Option[HeartbeatConfiguration]]]
 ) extends NodeDiff with HashcodeCaching
 
-
 /**
  * Diff on a change on agent run period
  */
 final case class ModifyNodeAgentRunDiff(
     id         : NodeId
   , modAgentRun: Option[SimpleDiff[Option[AgentRunInterval]]]
+) extends NodeDiff with HashcodeCaching
+
+/**
+ * Denote a change on the agent run mode.
+ */
+final case class ModifyNodeAgentModeDiff(
+    id          : NodeId
+  , modHeartbeat: Option[SimpleDiff[AgentMode]]
 ) extends NodeDiff with HashcodeCaching
 
 /**
@@ -126,7 +136,6 @@ object JsonSerialisation {
 
   import net.liftweb.json.JsonDSL._
   import net.liftweb.json._
-
 
   implicit class JsonNodeProperty(x: NodeProperty) {
     def toLdapJson(): JObject = (
@@ -157,4 +166,3 @@ object JsonSerialisation {
   }
 
 }
-

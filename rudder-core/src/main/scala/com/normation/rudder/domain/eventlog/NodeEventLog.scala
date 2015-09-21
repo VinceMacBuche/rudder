@@ -34,14 +34,12 @@
 
 package com.normation.rudder.domain.eventlog
 
-
 import com.normation.eventlog._
 import scala.xml._
 import com.normation.rudder.domain.policies._
 import org.joda.time.DateTime
 import net.liftweb.common._
 import com.normation.utils.HashcodeCaching
-
 
 sealed trait NodeEventLog extends EventLog { override final val eventLogCategory = NodeLogCategory }
 
@@ -57,6 +55,17 @@ object ModifyNodeHeartbeat extends EventLogFilter {
   override def apply(x : (EventLogType, EventLogDetails)) : ModifyNodeHeartbeat = ModifyNodeHeartbeat(x._2)
 }
 
+final case class ModifyNodeAgentMode(
+    override val eventDetails : EventLogDetails
+) extends NodeEventLog with HashcodeCaching {
+  override val eventType = ModifyNodeAgentMode.eventType
+}
+
+object ModifyNodeAgentMode extends EventLogFilter {
+  override val eventType = ModifyNodeAgentModeEventType
+
+  override def apply(x : (EventLogType, EventLogDetails)) : ModifyNodeAgentMode = ModifyNodeAgentMode(x._2)
+}
 
 final case class ModifyNodeAgentRun(
     override val eventDetails : EventLogDetails
@@ -69,7 +78,6 @@ object ModifyNodeAgentRun extends EventLogFilter {
 
   override def apply(x : (EventLogType, EventLogDetails)) : ModifyNodeAgentRun = ModifyNodeAgentRun(x._2)
 }
-
 
 final case class ModifyNodeProperties(
     override val eventDetails : EventLogDetails
@@ -88,5 +96,6 @@ object NodeEventLogsFilter {
       ModifyNodeHeartbeat
     , ModifyNodeAgentRun
     , ModifyNodeProperties
-    )
+    , ModifyNodeAgentMode
+  )
 }

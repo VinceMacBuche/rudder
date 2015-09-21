@@ -53,8 +53,7 @@ import com.normation.rudder.domain.policies.DirectiveId
 import net.liftweb.common.Box
 import net.liftweb.common.Full
 import com.normation.rudder.reports.ReportingConfiguration
-
-
+import com.normation.rudder.reports.EnforceMode
 
 @RunWith(classOf[JUnitRunner])
 class PathComputerTest extends Specification {
@@ -80,6 +79,7 @@ class PathComputerTest extends Specification {
   , isPolicyServer= false
   , serverRoles = Set()
   , nodeReportingConfiguration = ReportingConfiguration(None,None)
+  , agentMode = EnforceMode
   )
 
   private val nodeInfo = NodeInfo(
@@ -103,6 +103,7 @@ class PathComputerTest extends Specification {
   , isPolicyServer= false
   , serverRoles = Set()
   , nodeReportingConfiguration = ReportingConfiguration(None,None)
+  , agentMode = EnforceMode
   )
 
   private val nodeInfo2 = nodeInfo.copy(id = NodeId("name2"), name = "name2", policyServerId = nodeInfo.id )
@@ -134,7 +135,6 @@ class PathComputerTest extends Specification {
   , isRootServer= false
   )
 
-
   val allNodeConfig = Map(root.id -> rootNodeConfig, nodeInfo.id -> nodeConfig, nodeInfo2.id -> nodeConfig2)
 
   val pathComputer = new PathComputerImpl("/var/rudder/backup/")
@@ -154,6 +154,5 @@ class PathComputerTest extends Specification {
     }
 
   }
-
 
 }

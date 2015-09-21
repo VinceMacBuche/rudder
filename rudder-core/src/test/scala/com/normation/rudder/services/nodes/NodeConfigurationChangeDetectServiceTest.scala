@@ -53,13 +53,10 @@ import com.normation.rudder.domain.policies.DirectiveId
 import com.normation.rudder.reports.FullCompliance
 import com.normation.rudder.reports.ReportingConfiguration
 import com.normation.cfclerk.domain.BundleOrder
-
-
+import com.normation.rudder.reports.EnforceMode
 
 @RunWith(classOf[JUnitRunner])
 class NodeConfigurationChangeDetectServiceTest extends Specification {
-
-
 
   /* Test the change in node */
   def newTechnique(id: TechniqueId) = Technique(id, "tech" + id, "", Seq(), Seq(), TrackerVariableSpec(), SectionSpec("plop"), None, Set(), None)
@@ -154,10 +151,10 @@ class NodeConfigurationChangeDetectServiceTest extends Specification {
   , isPolicyServer= false
   , serverRoles   = Set()
   , nodeReportingConfiguration = emptyNodeReportingConfiguration
+  , agentMode = EnforceMode
   )
 
   private val nodeInfo2 = nodeInfo.copy(name = "name2")
-
 
   val emptyNodeConfig = NodeConfiguration(
     nodeInfo    = nodeInfo
@@ -193,7 +190,6 @@ class NodeConfigurationChangeDetectServiceTest extends Specification {
       ) must beTheSameAs(Set())
     }
   }
-
 
   "An node with one easy CR " should {
     "not have a change if everything is equal" in {
@@ -320,6 +316,5 @@ class NodeConfigurationChangeDetectServiceTest extends Specification {
       ) === Set(new RuleId("ruleId1"))
     }
   }
-
 
 }

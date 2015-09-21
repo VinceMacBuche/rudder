@@ -88,10 +88,7 @@ class LDAPEntityMapper(
   , cmdbQueryParser: CmdbQueryParser
 ) extends Loggable {
 
-
     //////////////////////////////    Node    //////////////////////////////
-
-
 
   def nodeToEntry(node:Node) : LDAPEntry = {
     val entry =
@@ -104,6 +101,7 @@ class LDAPEntityMapper(
     entry +=! (A_DESCRIPTION, node.description)
     entry +=! (A_IS_BROKEN, node.isBroken.toLDAPString)
     entry +=! (A_IS_SYSTEM, node.isSystem.toLDAPString)
+    entry +=! (A_AGENT_MODE, node.agentMode.value)
 
     node.nodeReportingConfiguration.agentRunInterval match {
       case Some(interval) => entry +=! (A_SERIALIZED_AGENT_RUN_INTERVAL, Printer.compact(JsonAST.render(serializeAgentRunInterval(interval))))
@@ -124,7 +122,6 @@ class LDAPEntityMapper(
     }
     entry
   }
-
 
   def serializeAgentRunInterval(agentInterval: AgentRunInterval) : JObject = {
     import net.liftweb.json.JsonDSL._
@@ -157,6 +154,7 @@ class LDAPEntityMapper(
         date <- e.getAsGTime(A_OBJECT_CREATION_DATE) ?~! s"Can not find mandatory attribute '${A_OBJECT_CREATION_DATE}' in entry"
         agentRunInterval = e(A_SERIALIZED_AGENT_RUN_INTERVAL).map(unserializeAgentRunInterval(_))
         heartbeatConf = e(A_SERIALIZED_HEARTBEAT_RUN_CONFIGURATION).map(unserializeNodeHeartbeatConfiguration(_))
+        agentMode <- e(A_AGENT_MODE).map(AgentMode(_)).getOrElse(Full(EnforceMode))
       } yield {
         Node(
             id
@@ -170,6 +168,7 @@ class LDAPEntityMapper(
                 agentRunInterval
               , heartbeatConf
             )
+          , agentMode
           , e.valuesFor(A_NODE_PROPERTY).map(unserializeLdapNodeProperty(_)).toSeq
         )
       }
@@ -222,6 +221,7 @@ class LDAPEntityMapper(
       // get the ReportingConfiguration
       agentRunInterval = nodeEntry(A_SERIALIZED_AGENT_RUN_INTERVAL).map(unserializeAgentRunInterval(_))
       heartbeatConf = nodeEntry(A_SERIALIZED_HEARTBEAT_RUN_CONFIGURATION).map(unserializeNodeHeartbeatConfiguration(_))
+      agentMode <- nodeEntry(A_AGENT_MODE).map(AgentMode(_)).getOrElse(Full(EnforceMode))
 
     } yield {
       // fetch the inventory datetime of the object
@@ -252,6 +252,7 @@ class LDAPEntityMapper(
               agentRunInterval
             , heartbeatConf
           )
+        , agentMode
       )
     }
   }
@@ -317,7 +318,6 @@ class LDAPEntityMapper(
     }
   }
 
-
   def nodeDn2OptNodeId(dn:DN) : Box[NodeId] = {
     val rdn = dn.getRDN
     if(!rdn.isMultiValued && rdn.hasAttribute(A_NODE_UUID)) {
@@ -326,7 +326,6 @@ class LDAPEntityMapper(
   }
 
   //////////////////////////////    ActiveTechniqueCategory    //////////////////////////////
-
 
   /**
    * children and items are left empty
@@ -379,7 +378,6 @@ class LDAPEntityMapper(
     }
   }
 
-
   /**
    * Build a ActiveTechnique from and LDAPEntry.
    * children directives are left empty
@@ -412,7 +410,6 @@ class LDAPEntityMapper(
   }
 
    //////////////////////////////    NodeGroupCategory    //////////////////////////////
-
 
   /**
    * children and items are left empty
@@ -477,7 +474,6 @@ class LDAPEntityMapper(
     } else Failure("The given entry is not of the expected ObjectClass '%s'. Entry details: %s".format(OC_RUDDER_NODE_GROUP, e))
   }
 
-
   //////////////////////////////    Special Policy target info    //////////////////////////////
 
   def entry2RuleTargetInfo(e:LDAPEntry) : Box[RuleTargetInfo] = {
@@ -501,8 +497,6 @@ class LDAPEntityMapper(
       RuleTargetInfo(target, name , description , isEnabled , isSystem)
     }
   }
-
-
 
   //////////////////////////////    Directive    //////////////////////////////
 
@@ -549,7 +543,6 @@ class LDAPEntityMapper(
 
   //////////////////////////////    Rule Category    //////////////////////////////
 
-
   /**
    * children and items are left empty
    */
@@ -573,7 +566,6 @@ class LDAPEntityMapper(
   def ruleCategory2ldap(category:RuleCategory, parentDN:DN) = {
     rudderDit.RULECATEGORY.ruleCategoryModel(category.id.value, parentDN, category.name,category.description,category.isSystem)
   }
-
 
   //////////////////////////////    Rule    //////////////////////////////
   def entry2OptTarget(optValue:Option[String]) : Box[Option[RuleTarget]] = {
@@ -632,7 +624,6 @@ class LDAPEntityMapper(
     }
   }
 
-
   /**
    * Map a rule to an LDAP Entry.
    * WARN: serial is NEVER mapped.
@@ -652,8 +643,6 @@ class LDAPEntityMapper(
     entry +=! (A_LONG_DESCRIPTION, rule.longDescription.toString)
     entry
   }
-
-
 
   //////////////////////////////    API Accounts    //////////////////////////////
 
@@ -739,6 +728,5 @@ class LDAPEntityMapper(
     entry +=! (A_DESCRIPTION, property.description)
     entry
   }
-
 
 }
