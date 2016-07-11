@@ -273,7 +273,7 @@ class ReportDisplayer(
   private[this] def showReportDetail(reports: NodeStatusReport, node: NodeInfo): NodeSeq = {
     val data = getComplianceData(node.id, reports).map(_.json).getOrElse(JsArray())
 
-    <table id="reportsGrid" class="fixedlayout tablewidth" cellspacing="0"></table> ++
+    <table id="reportsGrid" class="tablewidth" cellspacing="0"></table> ++
     Script(JsRaw(s"""
       createRuleComplianceTable("reportsGrid",${data.toJsCmd},"${S.contextPath}", ${refreshReportDetail(node).toJsCmd});
       createTooltip();
