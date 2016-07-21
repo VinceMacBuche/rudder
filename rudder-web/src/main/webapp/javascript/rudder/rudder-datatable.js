@@ -1235,9 +1235,20 @@ function createEventLogTable(gridId, data, contextPath, refresh) {
  * (pending, success, repaired, error, noAnswer, notApplicable)
  *
  */
-function buildComplianceBar(compliance) {
+function buildComplianceBar(compliance, minPxSize) {
+
+  function compliancePercentValue(complianceValue ) {
+    var value = Number((complianceValue).toFixed(0));
+    if (value == 0) {
+      return "<1";
+    } else {
+      return value;
+    }
+  }
   var content = $('<div class="tw-bs progress"></div>');
 
+  // set the default minimal size of array if not defined
+  if (minPxSize === undefined) minPxSize = 20;
   // Correct compliance array, if sum is over 100, fix it y removing the excedent amount to the max value
   var sum = compliance.reduce(function(pv, cv) { return pv + cv; }, 0);
 
@@ -1248,22 +1259,22 @@ function buildComplianceBar(compliance) {
     compliance[index] = compliance[index] - toRemove;
   }
 
-  var widthArr = [];
   var notApplicable = compliance[0];
-  var success = compliance[1];
-  var repaired = compliance[2];
-  var okStatus = success + repaired;
-  var error = compliance[3];
-  var pending = compliance[4];
-  var noreport = compliance[5];
-  var missing = compliance[6];
-  var unknown = compliance[7];
-  var unexpected = missing + unknown;
-  widthArr = getWidthProgressBar([notApplicable, okStatus, pending, noreport, unexpected, error]);
+  var success       = compliance[1];
+  var repaired      = compliance[2];
+  var okStatus      = success + repaired;
+  var error         = compliance[3];
+  var pending       = compliance[4];
+  var noreport      = compliance[5];
+  var missing       = compliance[6];
+  var unknown       = compliance[7];
+  var unexpected    = missing + unknown;
+
+  var widthArr = getWidthProgressBar([notApplicable, okStatus, pending, noreport, unexpected, error], minPxSize);
 
   if(notApplicable != 0) {
-    var value = Number((notApplicable).toFixed(0));
-    content.append('<div class="progress-bar progress-bar-notapplicable" style="width:'+widthArr[0]+'" title="Not applicable: '+notApplicable+'%">'+value+'%</div>');
+    var value = compliancePercentValue(notApplicable);
+    content.append('<div class="progress-bar progress-bar-notapplicable" style=" width:'+widthArr[0]+'" title="Not applicable: '+notApplicable+'%">'+value+'%</div>');
   }
 
   if(okStatus != 0) {
@@ -1274,18 +1285,18 @@ function buildComplianceBar(compliance) {
     if (repaired != 0) {
       text.push("Repaired: "+repaired+"%");
     }
-    var value = Number((okStatus).toFixed(0));
+    var value = compliancePercentValue(okStatus);
     content.append('<div class="progress-bar progress-bar-success" style="width:'+widthArr[1]+'" title="'+text.join("\n")+'">'+value+'%</div>');
   }
 
   if(pending != 0) {
-    var value = Number((pending).toFixed(0));
+    var value = compliancePercentValue(pending);
     content.append('<div class="progress-bar progress-bar-pending active progress-bar-striped" style="width:'+widthArr[2]+'" title="Applying: '+pending+'%">'+value+'%</div>');
   }
 
   if(noreport != 0) {
-    var value = Number((noreport).toFixed(0));
-    content.append('<div class="progress-bar progress-bar-no-report" style="width:'+widthArr[3]+'" title="No report: '+noreport+'%">'+value+'%</div>');
+    var value = compliancePercentValue(noreport);
+    content.append('<div class="progress-bar progress-bar-no-report" style=" width:'+widthArr[3]+'" title="No report: '+noreport+'%">'+value+'%</div>');
   }
 
   if(unexpected != 0) {
@@ -1296,12 +1307,12 @@ function buildComplianceBar(compliance) {
     if (unknown != 0) {
       text.push("Unknown reports: "+unknown+"%");
     }
-    var value = Number((unexpected).toFixed(0));
+    var value = compliancePercentValue(unexpected);
     content.append('<div class="progress-bar progress-bar-unknown" style="width:'+widthArr[4]+'" title="'+text.join("\n")+'">'+value+'%</div>');
   }
 
   if(error != 0) {
-    var value = Number((error).toFixed(0));
+    var value = compliancePercentValue(error);
     content.append('<div class="progress-bar progress-bar-error" style="width:'+widthArr[5]+'" title="Error: '+error+'%">'+value+'%</div>');
   }
 
@@ -1309,39 +1320,33 @@ function buildComplianceBar(compliance) {
 
 }
 
-function getWidthProgressBar(arr){
+function getWidthProgressBar(arr, minPxSize){
   var finalWidth = [];
-  var hash = {};
-  //Check if we are trying to display compliance bars on a Node Details page.
 
-  try{
-    hash = JSON.parse(window.location.hash.substr(1));
-  }catch(e){};
   //Recalculate the compliance bars size only on a Node Details page.
   //If it isn't the case, this function does nothing.
-  if((Math.min.apply(Math,arr)<5)&&(hash.hasOwnProperty('nodeId'))){
+  if((Math.min.apply(Math,arr)<9)){
     var totalSmallBarsPercent = totalSmallBarsPx = 0;
     // Minimum given size (in px) of a bar
-    var minPxSize = 22;
     var barWitdh;
     //We calculate the total percentage of the bars which are less than 5%.
     //Then we calculate the total size taken by them after have been resized.
     $(arr).each(function(index,compliancePercent) {
-      if((compliancePercent<5)&&(compliancePercent>0)){
+      if((compliancePercent<9)&&(compliancePercent>0)){
         totalSmallBarsPercent += compliancePercent;
         totalSmallBarsPx += minPxSize;
       }
     });
     //Here, we set the new width for each bar.
     $(arr).each(function(index,compliancePercent){
-      if(compliancePercent<5){
+      if(compliancePercent<9){
         barWitdh = minPxSize+"px";
       }else{
         //We calculate the remaining free space of the Compliance Bar
-        var baseSize = "(100% + " + totalSmallBarsPercent + "% - " + totalSmallBarsPx + "px)";
+        var baseSize = "(100% - " + totalSmallBarsPx + "px)";
         //Then we calculate the percentage of each bar with respect to this space.
-        var percentBar = "(" +compliancePercent+ " / 100)";
-        barWitdh = "calc( "+baseSize+" * "+percentBar+ " )";
+        var percentBar = compliancePercent / (100 - totalSmallBarsPercent );
+        barWitdh = "calc( "+baseSize+" * "+percentBar+")";
       }
       finalWidth.push(barWitdh);
     });
