@@ -134,21 +134,6 @@ function createTooltiptr() {
     });
   }
 
-/* popups */
-
-/*
- * That function allow to refresh the display of popup
- * It corrects the buttons (was called anyway on a stand alone)
- * then trigger the event resize.simplemodal on the window element
- * Which adapt the popup to the window (autoResize is on)
- *
- * That function should be called in every popup refresh function
- */
-function updatePopup() {
-  correctButtons();
-  $(window).trigger('resize.simplemodal');
-}
-
 
 function callPopupWithTimeout(timeout, popupName){
   setTimeout("createPopup('"+popupName+"')", timeout);
@@ -353,20 +338,10 @@ function jqCheckAll( id, name )
     });
   });
 
-  $(function() {
-    // Bouton rouge
-    $('#openAlert').click(function() {
-    $('#dialogAlert').bsModal('show');
-    $('#simplemodal-container').css('height', 'auto');
-	return false;
-  });
-
   // Logout
   $('#logout').click(function() {
     $('#ModalLogOut').bsModal('show');
     return false;
-  });
-
   });
 
 /* button */
@@ -638,26 +613,29 @@ function makeDiff(beforeId,afterId,resultId) {
 }
 
 function filterTableInclude(tableId, filter, include) {
-  if (typeof filter === 'undefined') {
-    return;
-  } else {
   var finalFilter = "^"+filter+"$";
-    var includeFilter;
+  var includeFilter;
+  
+  console.log(filter)
+  console.log(include)
+  // No filter defined or table is not initialized
+  if (filter === undefined || ! $.fn.dataTable.isDataTable( tableId )) {
+    return;
+  }
+
+  
   if (filter === "") {
     includeFilter = filter;
   } else {
     includeFilter = finalFilter +"|^"+filter+" »";
   }
-    if (typeof include === 'undefined') {
-      $(tableId).dataTable().fnFilter(includeFilter ,column,true,false,true );
-    } else {
-      if (include) {
-        $(tableId).dataTable().fnFilter(includeFilter,column,true,false,true );
-      } else {
-
-        $(tableId).dataTable().fnFilter(finalFilter,column,true,false,true );
-      }
-    }
+   
+  var table = $(tableId).DataTable({"retrieve": true});
+  console.log(table)
+  if (include === undefined || include) {
+    table.column(column).search(includeFilter,true,false,true ).draw();
+  } else {
+    table.column(column).search(finalFilter,true,false,true ).draw();
   }
 }
 

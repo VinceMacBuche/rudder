@@ -113,11 +113,11 @@ a.sidebar-toggle{
 }
 .content-wrapper {
     height: auto;
-    margin-top:50px;
+    padding-top:50px;
 }
 @media (max-width: 767px){
 	.content-wrapper {
-	    margin-top:100px;
+	    padding-top:100px;
 	}
 }
 .tw-bs .wrapper{

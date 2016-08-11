@@ -183,11 +183,6 @@
   box-sizing: border-box;
 }
 
-
-.simplemodal-container {
-  box-sizing: unset;
-}
-
 .container {
    height:100%;
    padding:80px 0 30px;

@@ -526,16 +526,6 @@ table.dataTable td img, table.dataTable th img {
 .openDetail:hover {
    text-decoration: none;
 }
-div#Detail {
-   height: auto;
-   min-height: 100%;
-   background: url(../images/popin/fdLoginFootG.png) no-repeat left bottom;
-   display: block;
-   min-height: 107px;
-}
-#Detail div {
-   padding: 10px;
-}
 
 .head th input, .foot td input {
    padding: 0.1em;
@@ -615,7 +605,7 @@ div#Detail {
   padding: 0;
 }
 
-.dataTables_refresh .refreshButton .ui-button-text, .recentChange_refresh .refreshButton span {
+.dataTables_refresh .refreshButton.ui-button, .recentChange_refresh .refreshButton span {
   padding: 8px;
   line-height: 0;
 }
@@ -681,6 +671,8 @@ table.noMarginGrid {
   border-right: 1px solid #B4B3A8;
   border-top-left-radius: 4px;
   border-top-right-radius: 4px;
+}
+
 @media screen and (min-width: 993px) {
   #reportsGrid tr>th:last-child,#reportsGrid tr>td:last-child{
     width:30% !important;
@@ -1564,10 +1556,6 @@ Home portlet
    float: left;
 }
 
-.portlet img {
-   float: left;
-   margin: 0px 20px 20px 10px;
-}
 
 p img {
    float: none !important;
@@ -1646,18 +1634,6 @@ p img {
    visibility: hidden;
 }
 
-/**************************************
-popin
-**************************************/
-
-div#login,
-div#account,
-#addPopupContent {
-   height: auto;
-   background: url(../images/popin/fdLoginFootG.png) no-repeat left bottom;
-   display: block;
-   min-height: 107px;
-}
 /********************
 * Popup
 ********************/
@@ -1800,82 +1776,6 @@ span.verifValid {
 popin Alert
 **************************************/
 
-#dialogAlert {
-  display:none;
-  }
-#simplemodal-container {
-  color:#000000;
-  background-color:#FFFFFF;
-  border:4px solid #F79D10;
-  padding:0px;
-  font-family: Trebuchet MS,Tahoma,Verdana,Arial,sans-serif;
-    }
-#simplemodal-container .simplemodal-data {
-  padding:0px;
-  }
-#simplemodal-container .simplemodal-title hr {
- margin: 0px;
- width:100%;
-}
-#simplemodal-container .simplemodal-title h1 {
- margin: 4px 0 2px 10px;
-}
-#simplemodal-container .simplemodal-bottom {
-  align: right;
-}
-#simplemodal-container .simplemodal-bottom button,
-#simplemodal-container .simplemodal-bottom input {
-  width:130px;
-  text-align: center;
-}
-
-#simplemodal-container .simplemodal-bottom input.wideButton {
-  width:190px;
-  text-align: center;
-}
-
-#simplemodal-container .simplemodal-bottom hr {
- margin: 0px;
- width:100%;
-}
-
-#simplemodal-container .simplemodal-bottom p {
- margin: 3px 0px 3px -5px;
- padding:0px;
- width:100%;
-}
-
-#simplemodal-container .simplemodal-content {
-  padding:10px;
-  font-size: 1.1em;
-}
-#simplemodal-container .simplemodal-content-no-zoom {
-  padding:6px;
-}
-#simplemodal-container code {
-  background:#141414;
-  border-left:3px solid #65B43D;
-  color:#bbb;
-  display:block;
-  font-size:12px;
-  margin-bottom:12px;
-  padding:4px 6px 6px;
-}
-#simplemodal-container a.modalCloseImg {
-  background:url("../images/popin/croix.png") no-repeat;
-  width:31px;
-  height:30px;
-  display:inline;
-  z-index:3200;
-  position:absolute;
-  top:-15px;
-  right:-16px;
-  cursor:pointer;
-}
-#simplemodal-overlay {
-    background-color: #777777;
-}
-
 
 /*****************************************
 * Popup creation groupe/category
@@ -1888,33 +1788,6 @@ popin Alert
   height: 400px;
 }
 
-#openAlert .ui-button-text{
-  padding:0px !important;
-  // this is because of the button()
-}
-
-#openAlert {
-   border: none;
-   background: none;
-   text-decoration: underline;
-   color: #999999;
-   cursor: pointer;
-   width: auto;
-}
-#openAlert:hover {
-   text-decoration: none;
-}
-#Alerte p {
-   font-size: 1.2em;
-   font-weight: 800;
-   text-align: center;
-}
-#Alerte a {
-   color: #000;
-}
-#Alerte a:hover {
-   text-decoration: none;
-}
 /*************************
 *  plugins         *
 **************************/
@@ -2059,8 +1932,7 @@ td.complianceTd, td.parametersTd {
   text-align:center;
 }
 .greyscala{
-  color:grey;
-  border-bottom:1px dotted grey;
+  color: #999;
 }
 .checkbox{
   float:right;
@@ -2537,12 +2409,13 @@ div.topQuickSearchResults.ac_results {
 }
 
 .treeActiveTechniqueName , .treeActiveTechniqueCategoryName , .treeGroupCategoryName, .treeRuleCategoryName {
-  font-weight: bold;
+  font-weight: 600;
+  color: #555
 }
 
 
-li.disableTreeNode > a {
-  color: grey;
+li.disableTreeNode > a.jstree-anchor {
+  color: #999;
   font-style:italic;
 }
 
@@ -2761,7 +2634,6 @@ img.treeAction.noRight {
 }
 
 .treeActions {
-  float        : left;
   padding-top  : 1px;
   padding-left : 5px
 }
@@ -2794,10 +2666,6 @@ li.excluded a{
   font-weight:bold;
   font-size:13px;
   margin-top:-5px;
-}
-
-.simplemodal-bottom {
-  height:45px;
 }
 
 .searchNodes tr td {
@@ -2972,3 +2840,51 @@ label span.text-fit{
   top 0;
   font-size : 11px;
 }
+
+.jstree {
+	color : #333;
+}
+
+.jstree-default .jstree-node {
+  min-height: 20px;
+  line-height: 20px;
+  margin-left: 20px;
+  min-width: 20px;
+}
+.jstree-default .jstree-anchor {
+  line-height: 20px;
+  height: 20px;
+}
+.jstree-default .jstree-icon {
+  width: 20px;
+  height: 20px;
+  line-height: 20px;
+}
+.jstree-default .jstree-icon:empty {
+  width: 20px;
+  height: 20px;
+  line-height: 20px;
+}
+.jstree-default.jstree-rtl .jstree-node {
+  margin-right: 20px;
+}
+.jstree-default .jstree-wholerow {
+  height: 20px;
+}
+
+.jstree-anchor > .jstree-themeicon {
+	margin-right: 0px;
+}
+
+.jstree a.jstree-anchor, .jstree a.jstree-anchor:hover {
+    white-space: normal !important;
+    height: auto;
+    padding: 1px 2px;
+    text-decoration: none;
+}
+
+.jstree a.jstree-anchor .greyscala {
+  color: #999
+}
+
+

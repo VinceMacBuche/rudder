@@ -157,36 +157,11 @@
    position: relative;
    background: none;
 }
-.ui-dialog .ui-dialog-title {
-   float: left;
-   padding: 25px 0 0 20px;
-   width: 80%;
-   font-size: 1.5em;
-   color: #f49d10;
-   display: block;
-   cursor: move;
-   background: url(../images/popin/fdLoginHead.png) no-repeat top left;
-}
-.ui-dialog #ui-dialog-title-dialog {
-   width: 90%;
-   
-}
-.ui-dialog .ui-dialog-titlebar-close {
-   position: absolute;
-   right: 0;
-   width: 50px;
-   height: 50px;
-   background: url(../images/popin/fdLoginCroix.png) no-repeat top right;
-}
 
 .ui-dialog .ui-dialog-titlebar-close:hover, .ui-dialog .ui-dialog-titlebar-close:focus {
    padding: 0;
 }
 
-.ui-dialog .ui-dialog-content {
-   background: url(../images/popin/fdLoginFootD.png) no-repeat right bottom;
-   zoom: 1;
-}
 
 .ui-dialog .ui-dialog-buttonpane {
    text-align: left;
@@ -409,11 +384,7 @@ input .ui-button {
     overflow: visible; 
  } /* the overflow property removes extra width in IE */
  
-.ui-button {
-  padding: 0; 
-}
 
-.ui-button .ui-button-text { display: block;}
 
 .head .ui-state-default {
   font-weight: bold;

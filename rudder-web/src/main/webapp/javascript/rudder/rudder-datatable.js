@@ -48,7 +48,7 @@ var nodeCompliances = {};
  * This function is used to resort a table after its sorting datas were changed ( like sorting function below)
  */
 function resortTable (tableId) {
-  var table = $("#"+tableId).dataTable();
+  var table = $("#"+tableId).DataTable({"retrieve" : true});
   var sortingColumns = table.dataTableSettings[0].aaSorting;
   table.fnSort(sortingColumns);
 }
@@ -1497,7 +1497,7 @@ function getWidthProgressBar(arr, minPxSize){
 }
 
 function refreshTable (gridId, data) {
-  var table = $('#'+gridId).DataTable();
+  var table = $('#'+gridId).DataTable({"retrieve": true});
   table.clear();
   table.rows.add(data);
   table.draw();
@@ -1576,6 +1576,7 @@ function createTable(gridId,data,columns, customParams, contextPath, refresh, st
     , "bJQueryUI": true
     , "lengthMenu": [ [10, 25, 50, 100, 500, 1000, -1], [10, 25, 50, 100, 500, 1000, "All"] ]
     , "pageLength": 25
+    , "retrieve" : true
   };
 
   if (storageId !== undefined) {
@@ -1593,7 +1594,8 @@ function createTable(gridId,data,columns, customParams, contextPath, refresh, st
   }
 
   var params = $.extend({},defaultParams,customParams);
-  $('#'+gridId).dataTable( params );
+  var table = $('#'+gridId).DataTable( params );
+
   $('#'+gridId+' thead tr').addClass("head");
   if (!( typeof refresh === 'undefined')) {
     var refreshButton = $("<button><img src='"+contextPath+"/images/icRefresh.png'/></button>");
@@ -1615,10 +1617,10 @@ function createTable(gridId,data,columns, customParams, contextPath, refresh, st
   $('#grid_remove_popup_grid').parent().addClass("table-responsive");
   $('#grid_remove_popup_grid').parents('.modal-dialog').addClass("modal-lg");
   
-   
+
   $('.dataTables_filter input').css("background","white url("+contextPath+"/images/icMagnify.png) left center no-repeat");
 
-  return $('#'+gridId).DataTable();
+  return table;
 }
 
 

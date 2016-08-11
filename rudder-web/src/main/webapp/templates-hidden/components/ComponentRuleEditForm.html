@@ -55,9 +55,6 @@
       margin-right:9px;
     }
 
-    .simplemodal-content {
-      margin-top:5px;
-    }
   </style>
 </head>
 </component:staticInit>
@@ -284,85 +281,5 @@
 </div>
 
 </component:form>
-
-<component:popupRemoveForm>
-    <div id="removeActionDialog" class="nodisplay">
-      <div class="simplemodal-title">
-        <h1>Delete a Rule</h1>
-        <hr/>
-      </div>
-      <div class="simplemodal-content">
-        <div>
-          <img src="/images/icWarn.png" alt="Warning!" height="32" width="32" class="warnicon"/>
-	        <h2>Are you sure that you want to completely delete this item?</h2>
-        </div>
-        <br />
-<!--         <div id="errorDisplay"> -->
-<!--         	[Replace this div with potential errors] -->
-<!--         </div> -->
-        <div>Deleting this Rule will also delete its history and compliance reports.</div>
-        <hr class="spacer" />
-       	<div class="reasonsFieldsetPopup">
-            <h4 class="col-lg-12 col-sm-12 col-xs-12 audit-title">Change Audit Log</h4>
-		    <div id="explanationMessage">
-		      Here comes the explanation to reasons field
-		    </div>
-		    <div id="reasonsField">
-		      Here comes the reasons field
-		    </div>
-	    </div>
-
-        <br />
-        <hr class="spacer" />
-      </div>
-      <div class="simplemodal-bottom">
-        <hr/>
-         <div class="popupButton">
-           <span>
-             <button class="simplemodal-close" onClick="$.modal.close();">Cancel</button>
-             <button id="dialogRemoveButton">Delete</button>
-           </span>
-         </div>
-      </div>
-    </div>
-</component:popupRemoveForm>
-
-<component:popupDisactivateForm>
-    <div id="desactivateActionDialog" class="nodisplay">
-      <div class="simplemodal-title">
-        <h1><span id="dialogDeactivateTitle">Disable</span> a Rule</h1>
-        <hr/>
-      </div>
-      <div class="simplemodal-content">
-        <img src="/images/icWarn.png" alt="Warning!" height="32" width="32" class="warnicon"/>
-        <h2>Are you sure that you want to <span id="dialogDisactivateLabel">disable</span> this Rule?</h2>
-
-     	<br />
-        <hr class="spacer" />
-<!--         <div id="errorDisplay"> -->
-<!--         	[Replace this div with potential errors] -->
-<!--         </div> -->
-
-       	<div class="reasonsFieldsetPopup">
-		    <div id="explanationMessage">
-		      Here comes the explanation to reasons field
-		    </div>
-		    <div id="reasonsField">
-		      Here comes the reasons field
-		    </div>
-	    </div>
-        <hr class="spacer" />
-      </div>
-      <div class="simplemodal-bottom">
-        <hr/>
-         <div class="popupButton">
-           <span>
-             <button class="simplemodal-close" onClick="$.modal.close();">Cancel</button>
-             <button id="dialogDisactivateButton">Disable</button>
-           </span>
-          </div>
-       </div>
-    </div>
-</component:popupDisactivateForm>
 
 </xml:group>

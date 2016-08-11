@@ -73,7 +73,6 @@ import com.normation.rudder.web.model.JsInitContextLinkUtil._
  */
 object DisplayDirectiveTree extends Loggable {
 
-
   /**
    * Display the directive tree, optionaly filtering out
    * some category or group by defining which one to
@@ -137,10 +136,9 @@ object DisplayDirectiveTree extends Loggable {
           }
       )
 
-
-      override val attrs = ( "rel" -> "category") :: ( "id" -> nodeId) :: Nil
+      override val attrs =
+        ("data-jstree" -> """{ "type" : "category" }""") :: ( "id" -> nodeId) :: Nil
     }
-
 
    /////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -153,11 +151,7 @@ object DisplayDirectiveTree extends Loggable {
       private[this] val localOnClickDirective = onClickDirective.map( f => f(activeTechnique) )
 
       override val attrs = (
-        ( "rel" -> "template") :: Nil :::
-        ( if(!activeTechnique.isEnabled)
-            ("class" -> "disableTreeNode") :: Nil
-          else Nil
-        )
+        ("data-jstree" -> s"""{ "type" : "template" , "state" : { "disabled" : ${ !activeTechnique.isEnabled} } }""") :: Nil
       )
 
       override def children = {
@@ -209,7 +203,6 @@ object DisplayDirectiveTree extends Loggable {
 
       override def children = Nil
 
-
       val classes = {
         val includedClass = if (included.contains(directive.id)) {"included"} else ""
         val disabled = if(directive.isEnabled) "" else "disableTreeNode"
@@ -217,21 +210,21 @@ object DisplayDirectiveTree extends Loggable {
       }
       val htmlId = s"jsTree-${directive.id.value}"
       override val attrs = (
-                  ( "rel" -> "directive") ::
+                  ("data-jstree" -> """{ "type" : "directive" }""") ::
                   ( "id" -> htmlId) ::
                   ("class" -> classes ) ::
                   Nil
 
       )
 
-
-        val jsInitFunction = Script(JsRaw (s"""
+        val jsInitFunction = Script(After(50,(JsRaw (s"""
+             console.log($$('#${htmlId}'))
            $$('#${htmlId}').mouseover( function(e) {
+             console.log($$('#${htmlId}'))
              e.stopPropagation();
              $$('#${htmlId} .treeActions').show();
              $$('#${htmlId} a:first').addClass("treeOver jstree-hovered");
            } );
-
 
            $$('#${htmlId}').hover( function(e) {
              $$('.treeActions').hide();
@@ -246,7 +239,7 @@ object DisplayDirectiveTree extends Loggable {
            $$('#${htmlId} .treeActions').click( function(e) {
              e.stopPropagation();
            } );
-           """))
+           """))))
 
       override def body = {
 
@@ -254,7 +247,7 @@ object DisplayDirectiveTree extends Loggable {
           if (addEditLink && ! directive.isSystem) {
             val tooltipId = Helpers.nextFuncName
             <span class="treeActions">
-              <img src="/images/icPen.png" class="tooltipable treeAction noRight directiveDetails" tooltipid={tooltipId} title="" onclick={redirectToDirectiveLink(directive.id).toJsCmd}/>
+              <span  class="tooltipable treeAction noRight directiveDetails fa fa-pencil" tooltipid={tooltipId} title="" onclick={redirectToDirectiveLink(directive.id).toJsCmd}> </span>
 						  <div class="tooltipContent" id={tooltipId}><div>Configure this Directive.</div></div>
 						</span>
           } else {
@@ -274,16 +267,17 @@ object DisplayDirectiveTree extends Loggable {
 
         val xml  = {
           val tooltipId = Helpers.nextFuncName
-          <span class="treeDirective tooltipable tw-bs" tooltipid={tooltipId} title="" style="float:left">
-            {deprecated} [{directive.techniqueVersion.toString}] {directive.name}
-          </span> ++
+           deprecated ++
+          <span class="treeDirective tooltipable" tooltipid={tooltipId} title="" >
+             [{directive.techniqueVersion.toString}] {directive.name}
           {
               if(isAssignedTo <= 0) {
-                <span style="float:left; padding-left:5px"><img style="margin:0;padding:0" src="/images/icWarn.png" witdth="14" height="14" /></span>
+                <span style="padding-left:5px" class="fa fa-warning text-warning"></span>
               } else {
                 NodeSeq.Empty
               }
-          } ++ editButton ++
+          }
+              </span> ++ {editButton} ++
           <div class="tooltipContent" id={tooltipId}>
             <h3>{directive.name}</h3>
             <div>{directive.shortDescription}</div>
