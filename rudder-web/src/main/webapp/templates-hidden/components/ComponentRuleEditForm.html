@@ -202,7 +202,7 @@
               </li>
               <li ng-repeat="directive in sortDirectives(directives)">
                 <span class="targetDisplay">
-                    <img src="/images/tree/server_group_16x16.gif" class="targetIcon" />
+                    <span class="fa fa-file-text"></span>
                     {{ directive.name }}
                     <img src="/images/ic_delete.png" class="targetRemove" ng-click="removeInclude(directive.id)"/>
                 </span>
@@ -245,7 +245,7 @@
 	          </li>
 	          <li ng-repeat="included in target.include.or">
 	            <span class="targetDisplay">
-                  <img src="/images/tree/server_group_16x16.gif" class="targetIcon" />
+                    <span class="fa fa-sitemap"></span>
                   {{ getTargetName(included) }}
                   <img src="/images/ic_delete.png" class="targetRemove" ng-click="removeInclude(included)"/>
 	            </span>
@@ -265,7 +265,7 @@
 	          </li>
               <li ng-repeat="excluded in target.exclude.or"  >
                 <span class="targetDisplay">
-	              <img src="/images/tree/server_group_16x16.gif" class="targetIcon"/>
+                    <span class="fa fa-sitemap"></span>
                   {{ getTargetName(excluded) }}
                   <img class="targetRemove" src="/images/ic_delete.png" ng-click="removeExclude(excluded)"/>
                 </span>
