@@ -40,10 +40,6 @@
 /**********************************
  *Node inventory details
  **********************************/
-.hostnamecurs{
-  cursor:pointer;
-  text-decoration:underline;
-}
 .querylinecolor{
   color:#EEEEEE;
 }
@@ -291,14 +287,6 @@ form .center input {
 form span.inputDetail {
    color: #666;
    font-weight: 500;
-}
-form input.button {
-   margin: 10px 0;
-   padding: 10px;
-   color: #fff;
-   font-weight: bold;
-   border: none;
-   background: url(../images/fdBtnUpdate.jpg) no-repeat left 50%;
 }
 form div.entete {
    margin: 10px;
@@ -724,21 +712,6 @@ table.noMarginGrid {
 
 }
 
-.paginate_disabled_previous {
-  background-image: url('../images/back_disabled.jpg');
-}
-
-.paginate_enabled_previous {
-  background-image: url('../images/back_enabled.jpg');
-}
-
-.paginate_disabled_next {
-  background-image: url('../images/forward_disabled.jpg');
-}
-
-.paginate_enabled_next {
-  background-image: url('../images/forward_enabled.jpg');
-}
 
 .reportIcon {
   padding-left: 6px !important;
@@ -1346,182 +1319,6 @@ span.ui-button-text {
 }
 
 /**************************************
-menu principal
-**************************************/
-
-div#menu {
-   padding-top :7px;
-   padding-top/*\**/: 3px\9;
-   height: 55px;
-   color: #000;
-   background: #2e2d2d url(../images/fondMenu.jpg) repeat-x;
-}
-*html div#menu {
-   margin: 0;
-   padding-top: 0;
-}
-#menu ul {
-   margin: 0 0 0 30px;
-   padding: 0;
-   height: 50px;
-   display: block;
-}
-#menu li {
-   padding: 0 12px 55px 0;
-   font-size: 1.4em;
-   font-weight: 800;
-   display: inline;
-   vertical-align: middle;
-}
-#menu a {
-   padding: 7px 10px 30px 10px;
-   height: 30px;
-   color: #000;
-   text-decoration: none;
-}
-#menu a:hover {
-   padding: 7px 0 30px 0;
-   color: #f79d10;
-   background: url(../images/menuFdDroite.jpg) no-repeat top right;
-}
-#menu a:hover span {
-   padding: 7px 10px 30px 10px;
-   background: url(../images/menuFdGauche.jpg) no-repeat top left;
-}
-
-#menu .onMenu a {
-   padding: 7px 0 30px 0;
-   background: url(../images/menuFdDroite.jpg) no-repeat top right;
-}
-#menu .onMenu span {
-   padding: 7px 10px 30px 10px;
-   color: #f79d10;
-   background: url(../images/menuFdGauche.jpg) no-repeat top left;
-}
-#menu a, #menu a:hover, #menu a:hover span, #menu .onMenu a, #menu .onMenu span {
-   padding-top/*\**/: 0\9;
-}
-
-*html #menu a, *html #menu a:hover, *html #menu a:hover span, *html #menu .onMenu, *html #menu .onMenu span {
-   padding-top: 0;
-}
-
-#menu ul li ul {
-  display: none;
-}
-
-/**************************************
-menu secondaire
-**************************************/
-
-#contenu.maximized {
-   width: 94%;
-   padding-right: 1%;
-}
-#navigation.minimized {
-   width: 2%;
-   border-radius: 0 0 0 0;
-}
-}
-
-.portlet {
-  border-radius: 0 !important;
-}
-*html #navigation.minimized #slickbox {
-   width: 10px;
-}
-*html #contenu.maximized {
-   margin-left: 30px;
-   width: 85%;
-}
-#navigation.minimized ul, #navigation.minimized h2 {
-   display: none;
-}
-div#slickbox {
-   margin-bottom: 20px;
-   width: 186px;
-   height: 100%;
-   background-color: #2e2d2d;
-}
-#slickbox h2 {
-   padding-top: 7px;
-   padding-left: 12px;
-   height: 36px;
-   color: #fff;
-   font-size: 1.5em;
-   background: url(../images/fondTitMenu.jpg) no-repeat;
-}
-#slickbox h2 a {
-   color: #f79d10;
-   text-decoration: none;
-}
-#slickbox a {
-   color: #f79d10;
-   text-decoration: none;
-   display: block;
-}
-#slickbox a:hover {
-   text-decoration: underline;
-}
-#slickbox ul {
-   width: 186px;
-   background-color: #2e2d2d;
-   border-bottom: 1px solid #2d2d2d;
-}
-#slickbox .niv1 a {
-   padding: 10px 0 10px 24px;
-   height: 20px;
-   color: #f79d10;
-   font-size: 1.2em;
-   border-top: 1px solid #2d2d2d;
-   background: url(../images/puceMenuGrise.jpg) no-repeat left top;
-}
-#slickbox .niv1 a:hover {
-   height: 20px;
-   background: #585757 url(../images/puceFlecheHoverNiv1.jpg) no-repeat right center;
-}
-#slickbox span :not(.niv1) {
-   padding: 10px 0 10px 24px;
-   color: #fff;
-   font-size: 1.2em;
-   border-top: 1px solid #2d2d2d;
-   background: url(../images/puceMenuGrise.jpg) no-repeat left top;
-   display: block;
-}
-#slickbox .niv2 a {
-   padding: 10px 0 10px 36px;
-   height: 20px;
-   color: #f79d10;
-   font-size: 1.2em;
-   border-top: 1px solid #2d2d2d;
-   background: url(../images/puceNiv2.jpg) no-repeat left top;
-}
-#slickbox .niv2 a:hover {
-   height: 20px;
-   background: #585757 url(../images/puceFlecheHover.jpg) no-repeat right center;
-}
-.menuHide img {
-   float: left;
-   padding-right: 10px;
-   vertical-align: middle;
-   border: none;
-   text-decoration: none;
-}
-a.menuHide {
-   color: #f79d10;
-   padding: 12px 0;
-   display: block;
-   border-top-right-radius: 10px;
-}
-div.minimized a.menuHide {
-margin: 0;
-padding: 0;
-}
-a:focus.menuHide, a:active.menuHide {
-   border: none;
-}
-
-/**************************************
 contenu
 **************************************/
 
@@ -1614,7 +1411,6 @@ p img {
 .inner-portlet {
    margin: 7px 10px 10px 10px;
    background-color: #fff;
-   background:  url(../images/fondPortlet.jpg) repeat-x\9;
 }
 
 .portlet-header .ui-icon {
@@ -1741,14 +1537,6 @@ popin Account
    width: 210px;
    border: 1px solid #b4b3a8;
    background-color: #f8f8f8;
-}
-#account input#acSubmit {
-   margin: 10px 0;
-   padding: 10px;
-   color: #fff;
-   font-weight: bold;
-   border: none;
-   background: url(../images/fdBtnUpdate.jpg) no-repeat 50% 50%;
 }
 #account textarea {
    margin-top: 5px;
@@ -1954,31 +1742,6 @@ td.complianceTd, td.parametersTd {
     overflow: auto;
     display:none;
 }
-
-/**************************************
-footer - bas de page
-**************************************/
-
-div#footer {
-   padding: 0px 5px 0px 30px;
-   height: 40px;
-   color: #999;
-   font-size: 1.3em;
-   background: #2e2d2d url(../images/fondBody.jpg) repeat-x top left;
-   position:absolute;
-   bottom:0;
-   width:100%;
-}
-#footer a {
-   color: #999;
-}
-
-#footer p {
-    padding-top: 11px
-}
-/**************************************
-classes annexes
-**************************************/
 
 .right {
    float: right;
@@ -2890,4 +2653,12 @@ label span.text-fit{
 
 .jstree .fa.jstree-icon {
     color : #999
+}
+
+.jstree.tw-bs {
+	font-size : 12px;
+} 
+
+.text-warning-rudder {
+    color : #f08004
 }

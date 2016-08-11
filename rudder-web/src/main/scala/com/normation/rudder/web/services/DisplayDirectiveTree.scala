@@ -174,8 +174,7 @@ object DisplayDirectiveTree extends Loggable {
 
         val xml = activeTechnique.newestAvailableTechnique match {
           case Some(technique) =>
-            <span class="treeActiveTechniqueName tooltipable" tooltipid={tooltipId} title="">
-              {technique.name}
+            <span class="treeActiveTechniqueName tooltipable" tooltipid={tooltipId} title="">{technique.name}
             </span>
             <div class="tooltipContent" id={tooltipId}>
               <h3>{technique.name}</h3>
@@ -258,7 +257,7 @@ object DisplayDirectiveTree extends Loggable {
         val deprecated = technique.flatMap(_.deprecrationInfo) match {
           case Some(info) =>
             val tooltipId = Helpers.nextFuncName
-            <span class="glyphicon glyphicon-info-sign text-danger deprecatedTechniqueIcon" tooltipid={tooltipId} title=""></span>
+            <span class="fa fa-exclamation text-danger deprecatedTechniqueIcon tooltipable" style="padding-left:5px" tooltipid={tooltipId} title=""></span>
             <div class="tooltipContent" id={tooltipId}>
               <div>Deprecated: {info.message}</div>
             </div>
@@ -267,17 +266,17 @@ object DisplayDirectiveTree extends Loggable {
 
         val xml  = {
           val tooltipId = Helpers.nextFuncName
-           deprecated ++
-          <span class="treeDirective tooltipable" tooltipid={tooltipId} title="" >
-             [{directive.techniqueVersion.toString}] {directive.name}
+          <span class="treeDirective tooltipable" tooltipid={tooltipId} title="" >[{directive.techniqueVersion.toString}] {directive.name}
           {
               if(isAssignedTo <= 0) {
-                <span style="padding-left:5px" class="fa fa-warning text-warning"></span>
+                <span style="padding-left:5px" class="fa fa-warning text-warning-rudder"></span>
               } else {
                 NodeSeq.Empty
               }
           }
-              </span> ++ {editButton} ++
+          </span>  ++
+          deprecated ++
+          editButton ++
           <div class="tooltipContent" id={tooltipId}>
             <h3>{directive.name}</h3>
             <div>{directive.shortDescription}</div>

@@ -37,27 +37,6 @@
 
 /* Event handler function */
 
-/*
-var #table_var#;
-        function fnFormatDetails ( id ) {
-          var sOut = '<span id="'+id+'" "/>';
-          return sOut;
-        }
-
-#table_var# = $('').dataTable({
-            "asStripeClasses": [ 'color1', 'color2' ],
-            "bAutoWidth": ,
-            "bFilter" :,
-            "bPaginate" :,
-            "bLengthChange": ,
-            "sPaginationType": ,
-            "bJQueryUI": ,
-            // "oLanguage": ,
-            "aaSorting": [[ , "asc" ]],
-            "aoColumns": [             ]
-          })
-
-*/
 
 var bootstrapButton = $.fn.button.noConflict();
 var bootstrapAlert = $.fn.alert.noConflict();
@@ -270,12 +249,6 @@ function refuseEnter(event)
 /* portlet */
 
 $(function() {
-  /*
-    $(".column").sortable({
-      connectWith: '.column'
-    });
-    $(".column").disableSelection();
-  */
 
     $(".portlet").addClass("ui-widget ui-widget-content ui-helper-clearfix arrondis")
       .find(".portlet-header")
@@ -354,9 +327,6 @@ function correctButtons() {
   $("button, input:submit, a", ".whoUser").not(".tw-bs .btn").button();
 
   $("a", ".whoUser").not(".tw-bs .btn").click(function() { return false; });
-
-  //$("button, input:submit", ".detailsUser").button();
-  //$("button, input:submit", ".popupButton").button();
 
   $("#logout").click(function() { return false; });
 }
