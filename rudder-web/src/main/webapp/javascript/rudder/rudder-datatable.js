@@ -49,8 +49,7 @@ var nodeCompliances = {};
  */
 function resortTable (tableId) {
   var table = $("#"+tableId).DataTable({"retrieve" : true});
-  var sortingColumns = table.dataTableSettings[0].aaSorting;
-  table.fnSort(sortingColumns);
+  table.draw();
 }
 
 $.fn.dataTableExt.afnSortData['compliance'] = function ( oSettings, iColumn )

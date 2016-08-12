@@ -468,25 +468,23 @@ var buildChangesTree = function(id,appContext) {
       "max_depth" : -2,
       "max_children" : -2,
       "types" : {
-        "valid_children" : [ "changeType" ],
-          "types" : {
-            "changeType" : {
-              "valid_children" : [ "changeType", "change" ]
-            },
-            "change" : {
-              "valid_children" : "none",
-            },
-            "default" : {
-              "valid_children" : "none"
-            }
-          }
+        "#" : {
+          "valid_children" : [ "changeType" ]
+        },
+        "changeType" : {
+            "icon" : "fa fa-folder"
+          , "valid_children" : [ "changeType", "change" ]
+        },
+        "change" : {
+            "icon" : "fa fa-file-text"
+          , "valid_children" : "none"
+         },
+        "default" : {
+            "icon" : "fa fa-file-text"
+          , "valid_children" : "none"
+         }
       },
-      "themes" : { 
-    	  "theme" : "rudder",
-    	  "url" : appContext+"/javascript/jstree/themes/rudder/style.css",
-    	  "icons" : false
-      },
-      "plugins" : [ "themes", "html_data", "ui", "types" ]      
+      "plugins" : [ "types" ]      
   })
 
 }

@@ -102,7 +102,8 @@ class Groups extends StatefulSnippet with SpringExtendableSnippet[Groups] with L
       case Full(workflowEnabled) =>
         Map(
             "head" -> head _
-          , "initRightPanel" -> { _: NodeSeq => initRightPanel(workflowEnabled) }
+          , "detailsPopup" ->   { _ : NodeSeq =>  NodeGroupForm.staticBody }
+          , "initRightPanel" -> { _ : NodeSeq => initRightPanel(workflowEnabled) }
           , "groupHierarchy" -> groupHierarchy(boxGroupLib, workflowEnabled)
         )
       case eb: EmptyBox =>

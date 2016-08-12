@@ -79,6 +79,7 @@ object NodeGroupForm {
 
   val staticInit = chooseXml("staticinit")
   val body = chooseXml("body")
+  val staticBody = chooseXml("staticbody")
 
   private val saveButtonId = "groupSaveButtonId"
 
