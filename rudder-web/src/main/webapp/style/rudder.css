@@ -300,12 +300,6 @@ form .entete p {
 form p.search {
    float: right;
 }
-form input.btnSearch {
-   width: 22px;
-   height: 20px;
-   background: url(../images/icLoupe.jpg) no-repeat;
-   border: none;
-}
 
 
 #searchControl {
@@ -1549,16 +1543,6 @@ popin Account
 #account a:hover {
    text-decoration: none;
 }
-span.verifError {
-   padding: 0 0 5px 40px;
-   color: #c00;
-   background: url(../images/icError.jpg) no-repeat;
-}
-span.verifValid {
-   padding: 0 0 5px 40px;
-   color: #b4b3a8;
-   background: url(../images/icValid.jpg) no-repeat;
-}
 
 /**************************************
 popin Alert
@@ -1867,20 +1851,6 @@ template, a Directive, etc)
 Descriptions
 ************************************/
 
-ul.descriptif li {
-   padding: 0 12px 5px 5px;
-  list-style-type: none;
-}
-
-.inform div {
-  /*display:inline-block;*/ /* for some reason, it breaks the display in a popup?*/
-  vertical-align: middle;
-}
-.inform div.inform_logo {
-  width:64px;
-  height:64px;
-  background: url(../images/icOK.png) no-repeat;
-}
 
 .warn div {
   /*display:inline-block;*/
