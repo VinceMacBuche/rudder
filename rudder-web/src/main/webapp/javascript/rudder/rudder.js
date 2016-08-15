@@ -496,9 +496,6 @@ function makeDiff(beforeId,afterId,resultId) {
 function filterTableInclude(tableId, filter, include) {
   var finalFilter = "^"+filter+"$";
   var includeFilter;
-  
-  console.log(filter)
-  console.log(include)
   // No filter defined or table is not initialized
   if (filter === undefined || ! $.fn.dataTable.isDataTable( tableId )) {
     return;
@@ -512,7 +509,6 @@ function filterTableInclude(tableId, filter, include) {
   }
    
   var table = $(tableId).DataTable({"retrieve": true});
-  console.log(table)
   if (include === undefined || include) {
     table.column(column).search(includeFilter,true,false,true ).draw();
   } else {
@@ -521,7 +517,16 @@ function filterTableInclude(tableId, filter, include) {
 }
 
 var openAllNodes = function(treeId)  { $(treeId).jstree('open_all' ); return false; }
-var closeAllNodes = function(treeId) { $(treeId).jstree('close_all'); return false; }
+function toggleTree(treeId, toggleButton) {
+  var tree = $(treeId).jstree()
+  var isOpen = $(treeId).find(".jstree-open").length > 0
+  if (isOpen) {
+    tree.close_all()
+  } else {
+    tree.open_all()
+  }
+  $(toggleButton).children().toggleClass('fa-folder-open');
+}
 var searchTree = function(inputId, treeId) {
 
   if($(inputId).val() && $(inputId).val().length >= 3) {
