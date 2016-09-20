@@ -27,11 +27,11 @@
   <script type="text/javascript" src="/javascript/rudder/angular/textForm.js" id="angular-textForm"></script>
   <script type="text/javascript" src="/javascript/rudder/angular/tags.js"></script>
 
-  <div class="box" id="editForm"> 
+  <div class="box tw-bs" id="editForm"> 
     <div class="box-header with-border">
       <h3 class="box-title"><i class="fa fa-file-text" aria-hidden="true"></i><span id="directiveTitle">Directive</span></h3>
     </div>
-      <div id="edit-box" class="box-body">
+      <div id="edit-box" class="box-body tw-bs">
         <div class="bs-callout bs-callout-warning" id="deprecation-warning" role="alert">
           <h4>Technique version deprecated</h4>
           <div>This Directive uses a version of this Technique that is deprecated: <span id="deprecation-message"></span>.<br/>
@@ -50,10 +50,19 @@
             <ul id="changeRequestList"></ul>
           </div>
         </lift:authz>
-  	  	<div id="directiveInfoTab" class="unfoldedSection" onclick="$('#directiveInfo').toggle(400); $('#directiveInfoTab').toggleClass('foldedSection');$('#directiveInfoTab').toggleClass('unfoldedSection');">
-  	  	  <div class="section-title">Directive information</div>
-  	  	</div>
-  	  	<div id="directiveInfo" class="tw-bs">
+  	  
+      <div id="directiveInfoTab" class="unfoldedSection box box-default" >
+      
+
+        <div class="box-header with-border" onclick="$('#directiveInfo').toggle(400); $('#directiveInfoTab .box-header .glyphicon').toggleClass('glyphicon-chevron-right glyphicon-chevron-down')">
+          <h4 class="box-title">General information</h4>
+          <div class="box-tools pull-right">
+            <button data-widget="collapse" class="btn btn-box-tool"><i class="fa fa-chevron-down"></i></button>
+          </div>
+      
+        
+        </div>
+        <div id="directiveInfo" class="box-body">
           <div id="nameField">
             Here comes the name field
           </div>
@@ -77,44 +86,45 @@
           </div>
           <div class="directiveTechnicalInfo" id="showTechnical"></div>
           <div id="technicalDetails" style="display:none" class="well">
-            <div class="directiveTechnicalInfo row wbBaseField form-group">
-              <label>Technique name</label>
-                <div id="techniqueName">
+            <div class=" form-group">
+              <label for="techniqueName">Technique name</label>
+                <div class="form-control" readonly="readonly" id="techniqueName">
                   Technique name
                 </div>
             </div>
-            <div class="directiveTechnicalInfo row wbBaseField form-group">
-              <label>Technique description</label>
+            <div class="form-group">
+              <label for="techniqueDescription">Technique description</label>
               <div id="techniqueDescription" class="fake-form-control textarea readonly">
                 Technique description
               </div>
             </div>
-            <div class="directiveTechnicalInfo row wbBaseField form-group">
-              <label>Technique unicity</label>
+            <div class="form-group">
+              <label for="isSingle">Technique unicity</label>
               <div id="isSingle" class="fake-form-control readonly">
                 isSingle
               </div>
             </div>
-            <div class="directiveTechnicalInfo row wbBaseField form-group">
-              <label>Supported operating systems</label>
+            <div class="form-group">
+              <label for="compatibilityOs">Supported operating systems</label>
               <div id="compatibilityOs" class="fake-form-control readonly">
                 System Compatibility
               </div>
             </div>
-            <div class="directiveTechnicalInfo row wbBaseField form-group">
-              <label>Supported agents</label>
+            <div class="form-group">
+              <label for="compatibilityAgent">Supported agents</label>
               <div id="compatibilityAgent" class="fake-form-control readonly">
                 System Compatibility
               </div>
             </div>
-            <div class="directiveTechnicalInfo row wbBaseField form-group">
-              <label>Directive Rudder ID</label>
+            <div class="form-group">
+              <label for="rudderID">Directive Rudder ID</label>
               <div id="rudderID" class="fake-form-control readonly">
                 Here comes the rudder ID
               </div>
             </div>
           </div>
         </div>
+<!-- <<<<<<< HEAD
         <div  id="directiveParametersTab" class="unfoldedSection" onclick="$('#parameters').toggle(400); $('#directiveParametersTab').toggleClass('foldedSection');$('#directiveParametersTab').toggleClass('unfoldedSection');">
           <div class="section-title">Parameters</div>
           <div id="notifications"></div>
@@ -125,6 +135,36 @@
           <div class="section-title">Target Rules</div>
         </div>
   	  	<div id="directiveRulesTab" class="tw-bs"></div>
+======= -->
+        </div>
+  
+    <div id="directiveParameterTab" class="unfoldedSection box box-default">
+      <div class="box-header" onclick="$('#directiveParameter').toggle(400); $('#directiveParameterTab .box-header .glyphicon').toggleClass('glyphicon-chevron-right glyphicon-chevron-down')">
+        <h4 class="box-title">Parameters</h4>
+        <div class="box-tools pull-right">
+          <button data-widget="collapse" class="btn btn-box-tool"><i class="fa fa-chevron-down"></i></button>
+        </div>
+      </div>
+      <div id="directiveParameter" class="box-body"  >
+        <div id="notifications"></div>
+        <div id="parameters">Here goes the list of parameters</div>
+      </div>
+    </div>
+    <div  id="ruleTargetSection" class="unfoldedSection box box-default">
+      <div class="box-header" onclick="$('#directiveRulesTab').toggle(400); $('#directiveRulesTab .box-header .glyphicon').toggleClass('glyphicon-chevron-right glyphicon-chevron-down')">
+          <h4 class="box-title">Target Rules</h4>
+          <div class="box-tools pull-right">
+            <button data-widget="collapse" class="btn btn-box-tool"><i class="fa fa-chevron-down"></i></button>
+          </div>
+      </div>
+   		<div id="directiveRulesTab" class="box-body">
+		 </div>
+    </div>
+    
+      </div>
+    
+    <hr class="spacer"/>
+
       </div>
       <lift:authz role="directive_edit">
         <div id="directiveToolbar" class="box-footer">

@@ -180,8 +180,6 @@ class RuleCategoryPopup(
     override def subContainerClassName = "col-lg-9 col-sm-12 col-xs-12"
     override def inputField = super.inputField % ("tabindex","3")
     override def className = "col-lg-12 col-sm-12 col-xs-12 form-control"
-    override def validations =
-      valMinLen(1, "Please select a category") _ :: Nil
   }
 
   private[this] val formTracker = new FormTracker(categoryName, categoryDescription, categoryParent)

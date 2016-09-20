@@ -381,8 +381,8 @@ class DirectiveEditForm(
   private[this] val piName = new WBTextField("Name", directive.name) {
     override def setFilter = notNull _ :: trim _ :: Nil
     override def className = "form-control"
-    override def labelClassName = "col-xs-12"
-    override def subContainerClassName = "col-xs-12"
+    override def labelClassName = ""
+    override def subContainerClassName = ""
     override def validations =
       valMinLen(3, "The name must have at least 3 characters") _ :: Nil
   }
@@ -390,8 +390,8 @@ class DirectiveEditForm(
   private[this] val piShortDescription = {
     new WBTextField("Short description", directive.shortDescription) {
       override def className = "form-control"
-      override def labelClassName = "col-xs-12"
-      override def subContainerClassName = "col-xs-12"
+      override def labelClassName = ""
+      override def subContainerClassName = ""
       override def setFilter = notNull _ :: trim _ :: Nil
       override val maxLen = 255
       override def validations = Nil
@@ -402,8 +402,8 @@ class DirectiveEditForm(
     new WBTextAreaField("Description", directive.longDescription.toString) {
       override def setFilter = notNull _ :: trim _ :: Nil
       override def className = "form-control"
-      override def labelClassName = "col-xs-12"
-      override def subContainerClassName = "col-xs-12"
+      override def labelClassName = ""
+      override def subContainerClassName = ""
     }
   }
 
@@ -416,19 +416,17 @@ class DirectiveEditForm(
       override val displayHtml =
         <div>
           <b>Priority</b>
-          <span class="tw-bs">
-            <span tooltipid="priorityId" class="ruddericon tooltipable glyphicon glyphicon-question-sign" title=""></span>
-            <div class="tooltipContent" id="priorityId">
-              <h4> Priority </h4>
-              <p>Priority determines which <b> unique </b> Directive will be applied.</p>
-              <p>Unique Directives can be applied only once (ie. Time Settings), so only the highest priority will be appllied.</p>
-              <p>Highest Priority is 0.</p>
-            </div>
-          </span>
+          <span tooltipid="priorityId" class="ruddericon tooltipable glyphicon glyphicon-question-sign" title=""></span>
+          <div class="tooltipContent" id="priorityId">
+            <h4> Priority </h4>
+            <p>Priority determines which <b> unique </b> Directive will be applied.</p>
+            <p>Unique Directives can be applied only once (ie. Time Settings), so only the highest priority will be appllied.</p>
+            <p>Highest Priority is 0.</p>
+          </div>
         </div>
       override def className = "form-control"
-      override def labelClassName = "col-xs-12"
-      override def subContainerClassName = "col-xs-12"
+      override def labelClassName = ""
+      override def subContainerClassName = ""
     }
 
   private[this] var newTags = directive.tags
@@ -496,8 +494,8 @@ class DirectiveEditForm(
           </span>
         </div>
       override def className = "form-control"
-      override def labelClassName = "col-xs-12"
-      override def subContainerClassName = "col-xs-12"
+      override def labelClassName = ""
+      override def subContainerClassName = ""
     }
   }
 
@@ -510,10 +508,16 @@ class DirectiveEditForm(
       , directive.techniqueVersion
       , Seq(("id" -> "selectVersion"))
     ) {
+    override def className = "form-control"
+    override def subContainerClassName = ""
+    override def labelClassName = "text-bold"
 
+/*<<<<<<< HEAD
       override def className = "form-control"
       override def labelClassName = "col-xs-12 text-bold"
       override def subContainerClassName = "version-group"
+=======
+>>>>>>> ust_9089/make_directive_form_pretty*/
     }
 
   private[this] val formTracker = {
@@ -537,7 +541,6 @@ class DirectiveEditForm(
 
   private[this] def onSubmitSave(): JsCmd = {
     parameterEditor.removeDuplicateSections
-
     checkVariables()
 
     if (formTracker.hasErrors) {

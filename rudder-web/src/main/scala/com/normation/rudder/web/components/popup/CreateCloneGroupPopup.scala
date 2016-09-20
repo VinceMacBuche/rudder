@@ -72,7 +72,6 @@ class CreateCloneGroupPopup(
     )(popupTemplate) ) ++ Script( OnLoad( initJs ) )
   )
 
-
   def popupTemplate = ChooseTemplate(
       List("templates-hidden", "Popup", "createCloneGroupPopup")
     , "groups-createclonegrouppopup"
@@ -237,8 +236,7 @@ class CreateCloneGroupPopup(
       parentCategoryId) {
     override def inputField = super.inputField %("onkeydown" , "return processKey(event , 'createCOGSaveButton')") % ("tabindex","2")
     override def className = "col-lg-12 col-sm-12 col-xs-12  form-control"
-    override def validations =
-      valMinLen(1, "Please select a category") _ :: Nil
+    override def validations = Nil
   }
 
   private[this] def initJs : JsCmd = {

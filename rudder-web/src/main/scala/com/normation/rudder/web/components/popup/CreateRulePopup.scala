@@ -172,8 +172,6 @@ class CreateOrCloneRulePopup(
       , selectedCategory.value
     ) {
     override def className = "form-control col-lg-12 col-sm-12 col-xs-12"
-    override def validations =
-      valMinLen(1, "Please select a category") _ :: Nil
   }
 
   private[this] val formTracker = new FormTracker(ruleName :: ruleShortDescription :: reason.toList)

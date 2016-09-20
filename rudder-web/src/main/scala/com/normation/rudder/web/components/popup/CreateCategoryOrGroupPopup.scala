@@ -222,8 +222,8 @@ class CreateCategoryOrGroupPopup(
     override def inputField =
       super.inputField % ("onkeydown" , "return processKey(event , 'createCOGSaveButton')") %
       ("tabindex","3")
-    override def validations =
-      valMinLen(1, "Please select a category") _ :: Nil
+    override def validations = Nil
+      //valMinLen(1, "Please select a category") _ :: Nil
   }
 
   private[this] val formTracker = new FormTracker(piName, piDescription, piContainer, piStatic)

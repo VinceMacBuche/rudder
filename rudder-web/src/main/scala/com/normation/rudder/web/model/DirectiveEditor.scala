@@ -176,12 +176,14 @@ trait DirectiveField extends BaseField with SectionChildField {
   }
 
   def display(value: NodeSeq) = {
-    <tr>
-      <td class="tw-bs" colspan="2">
-      <span>{ if (optional) displayName else <b>{ displayName}</b> } {tooltipElem} {if (optional) <span class="tw-bs"> - <small class="greyscala">Optional</small></span>}</span>
-      </td>
-      <td class="directiveVarValue">{ value }</td>
-    </tr>
+    <div class="form-group">
+      <label class="topAlign" for={id} >
+        { if (optional) displayName else <b>{ displayName}</b> }
+        {tooltipElem}
+        {if (optional) <span class="tw-bs"> - <small style="color:#999;">Optional</small></span>}
+      </label>
+      {value}
+    </div>
   }
 
   override def toFormNodeSeq = {
@@ -265,8 +267,9 @@ trait SectionField extends SectionChildField {
        JsRaw("")
      , (v:String) => {
             displayed = Some(!displayed.getOrElse(displayedByDefault))
-            JsRaw("""
-               $('#%s').toggleClass("foldedSection").toggleClass("unfoldedSection"); """.format(sectionId))
+            JsRaw(s"""
+               $$('#${sectionId} .box-header .glyphicon').toggleClass('glyphicon-chevron-right glyphicon-chevron-down')
+               $$('#${sectionId}-content').toggle(400); """)
       }
    )
   }
@@ -306,33 +309,28 @@ case class SectionFieldImp(
     // set the method name for the ajax call back (the guid plus the mandatory () to define/call it
     val methodName = changeVisibility.guid + "()"
 
-    val classes = "sectionFieldset foldableSection " + visibilityClasses
+    val classes = "box box-default " + visibilityClasses
     if(childrenXml.isEmpty) NodeSeq.Empty
     else
-      <tr><td colspan="3">
         <div  id={sectionId} class={classes}>
-         <div class="section-title" onClick={methodName}>Section: { name }</div>
-          <table class="directiveSectionDef">
-              { childrenXml }
-          </table>
-        </div>
-      </td></tr> ++ Script(JsRaw(""" function %s { %s } """.format(methodName, changeVisibility.toJsCmd)))
+         <div class="box-header" onClick={methodName}>
+           <h4 class="box-title">{ name }</h4>
+           <div class="box-tools pull-right">
+           <button data-widget="collapse" class="btn btn-box-tool"><i class="fa fa-chevron-down"></i></button>
+           </div>
+         </div>
+         <div id={sectionId+"-content"} class="box-body" >    { childrenXml }</div>
+        </div> ++ Script(JsRaw(""" function %s { %s } """.format(methodName, changeVisibility.toJsCmd)))
   }
 
   override def toHtmlNodeSeq = {
     val childrenXml = childFields map (f => f.toHtmlNodeSeq)
     if(childrenXml.isEmpty) NodeSeq.Empty
     else
-      <tr><td colspan="3">
         <div>
-        <div class="section-title">Section: { name }</div>
-          <table class="directiveSectionDisplay">
-            <tbody>
+        <h4>{ name }</h4>
               { childrenXml }
-            </tbody>
-          </table>
         </div>
-      </td></tr>
   }
 }
 
@@ -442,11 +440,10 @@ case class MultivaluedSectionField(
    * @return
    */
   def toFormNodeSeq: NodeSeq = {
-    <tr id={ htmlId }>{ content }</tr>
+    <div id={ htmlId }>{ content }</div>
   }
 
   private def content: NodeSeq = {
-    <td colspan="2">
       <div class="directiveGroup">{
         (allSections.zipWithIndex.map {
           case (section, i) =>
@@ -455,23 +452,42 @@ case class MultivaluedSectionField(
             // set the method name for the ajax call back (the guid plus the mandatory () to define/call it
             val methodName = changeVisibility.guid + "()"
 
-            val classes = "groupFieldset foldableSection " + section.visibilityClasses
+            val classes = "box box-default " + section.visibilityClasses
             <div  id={sectionId} class={classes}>
-              <div class="section-title" onClick={methodName}>{ "%s #%s".format(name, i + 1) }</div>
-              { showFormEntry(section, i) }
-              <hr class="spacer"/>
+              <div class="box-header" onClick={methodName}>
+                <h4 class="box-title">{ "%s #%s".format(name, i + 1) } {
+                if (!readOnlySection) {
+                  val attr= (if (size > 1) ("" -> "") else ("disabled" -> "true"))
+                  SHtml.ajaxButton(
+                      "Delete"
+                    , { () =>
+                        logError(delete(i))
+                        //refresh UI - all item of that group
+                        SetHtml(htmlId, this.content) & postModificationJS()
+                      }
+                    , attr
+                    , ("class" -> "btn btn-default dangerButton")
+                  )
+                }
+              }
+                </h4>
+                <div class="box-tools pull-right">
+                  <button data-widget="collapse" class="btn btn-box-tool"><i class="fa fa-chevron-down"></i></button>
+                </div>
+
+              </div>
+              <div class="box-body" id={sectionId+"-content"}>{ showFormEntry(section, i) }</div>
+              </div> ++
               { // showAddAnother under the last element
                 if ((i + 1) == size) {
+              <hr class="spacer"/>
                   showAddAnother()
                 } else {
                   NodeSeq.Empty
                 }
-              }
-              <hr class="spacer"/>
-            </div> ++ Script(JsRaw(""" function %s { %s } """.format(methodName, changeVisibility.toJsCmd)))
+              } ++ Script(JsRaw(""" function %s { %s } """.format(methodName, changeVisibility.toJsCmd)))
         })
-      }</div>
-    </td> ++  Script(OnLoad(JsVar("""
+      }</div> ++  Script(OnLoad(JsVar("""
           $("input").not("#treeSearch").keydown( function(event) {
             processKey(event , 'policyConfigurationSave')
           } ); """)
@@ -480,39 +496,22 @@ case class MultivaluedSectionField(
 
   private def showAddAnother(): NodeSeq = {
     if (!readOnlySection) {
-      <div class="directiveAddGroup tw-bs">{
-        SHtml.ajaxSubmit(
-            s"Add another '${name}'"
+        SHtml.ajaxButton(
+            <span class="glyphicon glyphicon-plus-sign"></span>++Text("Add another")
           , { () =>
               add()
               //refresh UI - all item of that group
               SetHtml(htmlId, this.content) & postModificationJS()
             }
-          , ("class" -> "btn btn-default")
+          , ("class" -> "btn btn-default btn-block")
         )
-      }</div>
     } else {
       NodeSeq.Empty
     }
   }
 
   private def showFormEntry(section: SectionField, i: Int): NodeSeq = {
-    <table class="directiveGroupDef">
-      <tbody>
-        { section.childFields map (f => f.toFormNodeSeq) }
-      </tbody>
-    </table>
-    <div class="textright directiveDeleteGroup tw-bs">{
-      if (!readOnlySection) {
-        val attr = (if (size > 1) ("" -> "") else ("disabled" -> "true")) :: ("class" -> "btn btn-danger") :: Nil
-        SHtml.ajaxSubmit(s"Delete '${name} #${i+1}'", { () =>
-          logError(delete(i))
-          //refresh UI - all item of that group
-          SetHtml(htmlId, this.content) & postModificationJS()
-        },
-          attr:_*)
-      }
-    }</div>
+    section.childFields flatMap (f => f.toFormNodeSeq)
   }
 
   /**
@@ -523,20 +522,14 @@ case class MultivaluedSectionField(
   }
 
   override def toHtmlNodeSeq = {
-    <tr><td colspan="2">
-          <div class="directiveGroup">{
+          <div class="directiveGroup tw-bs">{
             (allSections.map { sect =>
               <div class="groupFieldset">
-                <div class="section-title">{ "%s".format(name) }</div>
-                <table class="directiveGroupDisplay">
-                  <tbody>
+                <h4>{ name }</h4>
                     { sect.toHtmlNodeSeq }
-                  </tbody>
-                </table>
               </div>
             })
           }</div>
-        </td></tr>
   }
 }
 
@@ -559,7 +552,7 @@ case class DirectiveEditor(
   , val sectionField           : SectionField
   , val variableSpecs          : Map[String, VariableSpec]
   , val providesExpectedReports: Boolean
-  )  extends HashcodeCaching {
+  )  extends HashcodeCaching with Loggable {
 
   // We do not remove duplicate in case of meta-technique
   def removeDuplicateSections : Unit = providesExpectedReports match {
@@ -588,10 +581,8 @@ case class DirectiveEditor(
   }
 
   def toFormNodeSeq: NodeSeq = {
-    <div class="variableDefinition">
-      <table class="directiveVarDef">
+    <div class="variableDefinition tw-bs">
         { if (!providesExpectedReports) sectionField.childFields.flatMap(_.toFormNodeSeq) }
-      </table>
     </div>
   }
 
@@ -600,9 +591,7 @@ case class DirectiveEditor(
       <div class="variableDefinition">
         <br/>
         <div>Variables to be defined for this Technique</div>
-        <table class="directiveVarDisplay">
           { sectionField.childFields.flatMap(_.toHtmlNodeSeq) }
-        </table>
       </div>
     </div>
   }

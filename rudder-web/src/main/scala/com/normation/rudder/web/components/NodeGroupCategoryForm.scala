@@ -241,8 +241,6 @@ class NodeGroupCategoryForm(
         Seq("disabled"->"true")
       ) {
         override def className = "rudderBaseFieldSelectClassName"
-        override def validations =
-      valMinLen(1, "Please select a category") _ :: Nil
       }
     case Full(category) =>
       new WBSelectField(
@@ -251,8 +249,6 @@ class NodeGroupCategoryForm(
             map { case (id, name) => (id.value -> name)}
       , parentCategoryId)  {
           override def className = "rudderBaseFieldSelectClassName"
-          override def validations =
-      valMinLen(1, "Please select a category") _ :: Nil
       }
   }
 

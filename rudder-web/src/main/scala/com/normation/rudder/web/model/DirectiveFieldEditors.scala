@@ -90,7 +90,6 @@ class TextField(
 
   def get = _x
   def set(x: String) = { if (null == x) _x = "" else _x = x; _x }
-
   def toForm() = display(TextField.textInput("text") )
 
   def display( xml: String => NodeSeq) = {
@@ -122,8 +121,8 @@ class TextField(
 
     val form = (".text-section *+" #> valueInput).apply(xml(formId)) ++ initScript
     Full(form)
-
   }
+
   def manifest = manifestOf[String]
 
   override val uniqueFieldId = Full(id)
@@ -177,7 +176,7 @@ class TextareaField(
 ) extends TextField(id,scriptSwitch) {
   self =>
 
-  override def toForm() = display(TextField.textInput("textarea") )
+  override def toForm() = display(TextField.textInput("textarea"))
 
 }
 
@@ -281,11 +280,11 @@ class SelectOneField(val id: String, valueslabels: Seq[ValueLabel]) extends Dire
       dropDownList
   }
 
-  def radios = {
+  def radios : Box[NodeSeq] = {
     //
     val labels = valueslabels.map(_.label)
     val choiceHolder: ChoiceHolder[String] = SHtml.radio(valueslabels.map(_.value), Full(toClient), { x => parseClient(x) })
-    Full(<div class="tw-bs">{
+    Full({
       choiceHolder.flatMap {
         c =>
           ( <div class="radio">
@@ -296,11 +295,11 @@ class SelectOneField(val id: String, valueslabels: Seq[ValueLabel]) extends Dire
             </div>
           )
       }
-    }</div>)
+    })
 
   }
 
-  def dropDownList = Full(SHtml.select(valueslabels.map(_.tuple), Full(toClient), { x => parseClient(x) }))
+  def dropDownList = Full(SHtml.select(valueslabels.map(_.tuple), Full(toClient), { x => parseClient(x) }, ("class" -> "form-control")))
 
   def manifest = manifestOf[String]
 
@@ -547,23 +546,24 @@ class FilePermsField(val id: String) extends DirectiveField {
   def toClient: String = if (null == _x) "" else _x.octal
 
   def toForm() = {
-    val xml = <table>
-                <tr><th></th><th>Read</th><th>Write</th><th>Exec</th></tr>
-                <tr><td>User</td><td><span id="check-ur"/></td><td><span id="check-uw"/></td><td><span id="check-ux"/></td></tr>
-                <tr><td>Group</td><td><span id="check-gr"/></td><td><span id="check-gw"/></td><td><span id="check-gx"/></td></tr>
-                <tr><td>Other</td><td><span id="check-or"/></td><td><span id="check-ow"/></td><td><span id="check-ox"/></td></tr>
-              </table> % ("id" -> id)
+    val xml =
+               <table class="table table-condensed table-striped table-bordered">
+                <tr><th>Type</th><th>Read</th><th>Write</th><th>Exec</th></tr>
+                <tr><th>User</th><td><check-ur/></td><td><check-uw/></td><td><check-ux/></td></tr>
+                <tr><th>Group</th><td><check-gr/></td><td><check-gw/></td><td><check-gx/></td></tr>
+                <tr><th>Other</th><td><check-or/></td><td><check-ow/></td><td><check-ox/></td></tr>
+               </table> % ("id" -> id)
 
     Full( (
-        "#check-ur" #> SHtml.checkbox(_x.u.read, { _x.u.read = _ })
-      & "#check-uw" #> SHtml.checkbox(_x.u.write, { _x.u.write = _ })
-      & "#check-ux" #> SHtml.checkbox(_x.u.exec, { _x.u.exec = _ })
-      & "#check-gr" #> SHtml.checkbox(_x.g.read, { _x.g.read = _ })
-      & "#check-gw" #> SHtml.checkbox(_x.g.write, { _x.g.write = _ })
-      & "#check-gx" #> SHtml.checkbox(_x.g.exec, { _x.g.exec = _ })
-      & "#check-or" #> SHtml.checkbox(_x.o.read, { _x.o.read = _ })
-      & "#check-ow" #> SHtml.checkbox(_x.o.write, { _x.o.write = _ })
-      & "#check-ox" #> SHtml.checkbox(_x.o.exec, { _x.o.exec = _ })
+        "check-ur" #> SHtml.checkbox(_x.u.read, { _x.u.read = _ })
+      & "check-uw" #> SHtml.checkbox(_x.u.write, { _x.u.write = _ })
+      & "check-ux" #> SHtml.checkbox(_x.u.exec, { _x.u.exec = _ })
+      & "check-gr" #> SHtml.checkbox(_x.g.read, { _x.g.read = _ })
+      & "check-gw" #> SHtml.checkbox(_x.g.write, { _x.g.write = _ })
+      & "check-gx" #> SHtml.checkbox(_x.g.exec, { _x.g.exec = _ })
+      & "check-or" #> SHtml.checkbox(_x.o.read, { _x.o.read = _ })
+      & "check-ow" #> SHtml.checkbox(_x.o.write, { _x.o.write = _ })
+      & "check-ox" #> SHtml.checkbox(_x.o.exec, { _x.o.exec = _ })
     )(xml) )
   }
 
@@ -596,11 +596,23 @@ class CheckboxField(val id: String) extends DirectiveField {
   def toClient: String = if (null == _x) "false" else _x
 
   override def displayHtml = { if ((null == _x) || ("false" == _x)) Text("No") else Text("Yes") }
-  def toForm() = Full(SHtml.checkbox(toClient.equalsIgnoreCase("true"), { x => parseClient(x.toString) }))
+  def toForm() = Full(SHtml.checkbox(toClient.equalsIgnoreCase("true"), { x => parseClient(x.toString) }, ("id" -> id)))
 
   def getPossibleValues(filters: (ValueType => Boolean)*): Option[Set[ValueType]] = None
 
   def getDefaultValue = "false"
+
+  override def display(value: NodeSeq) = {
+        <div class="checkbox">
+      <label for={id} >
+        {value }
+        { if (optional) displayName else <b>{ displayName}</b> }
+        {tooltipElem}
+        {if (optional)
+          <span class="tw-bs"> - <small style="color:#999;">Optional</small></span>}
+      </label>
+        </div>
+  }
 }
 
 /**

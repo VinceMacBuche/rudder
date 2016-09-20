@@ -881,6 +881,7 @@ div.foldedSection div.section-title:before {
   -o-transform:rotate(0deg);
   transform:rotate(0deg);
 }
+
 #querySearchSection:hover{
     cursor: pointer;
 }
@@ -891,9 +892,6 @@ div.foldedSection div.section-title:before {
 #querySearchSection.unfoldedSectionQuery:before {
   content: url("../../images/tableau/flecheBasGris.png");
   padding-right: 3px;
-}
-.foldedSection table, .foldedSection div {
-  display:none;
 }
 
 .foldedSection div.section-title {
@@ -1744,11 +1742,6 @@ td.complianceTd, td.parametersTd {
 .greyscala{
   color: #999;
 }
-.checkbox{
-  float:right;
-  margin:0 30px 0 10px;
-  height:20px;
-}
 .nodisplay{
   display:none;
 }
@@ -2547,6 +2540,7 @@ label span.text-fit{
   padding: 10px 15px;
   margin: 10px;
 }
+
 #generation-status .glyphicon {
   top 0;
   font-size : 11px;
@@ -2714,3 +2708,14 @@ label span.text-fit{
 	height: 40vh;
 }
 
+.topAlign {
+	vertical-align: top;
+}
+
+small.grey {
+	color : #999;
+}
+
+.directiveGroup .box-header .box-title {
+	font-size:16px
+}

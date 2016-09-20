@@ -49,7 +49,6 @@ import net.liftweb.util.Helpers._
 import net.liftweb.http.js._
 import JsCmds._
 
-
 /**
  * A simple class that allows to register error information
  * about a form and its fields
@@ -97,7 +96,6 @@ class FormTracker(private[this] var _fields : List[RudderBaseField] = Nil) exten
   }
 
 }
-
 
 /**
  * An abstract field that allows to generate form elements and
@@ -147,7 +145,7 @@ abstract class RudderBaseField extends BaseField {
   //def className : String = "rudderBaseFieldClassName"
     def className : String = "rudderBaseFieldClassName form-control vresize col-lg-12 col-sm-12"
   //def labelClassName : String = "threeCol"
-    def labelClassName : String = "col-lg-3 col-sm-12 col-xs-12 text-right"
+    def labelClassName : String = "col-lg-3 col-sm-12 col-xs-12"
   def errorClassName : String = "col-lg-9 col-lg-offset-3 col-sm-12 col-xs-12 col-xs-offset-0 col-sm-offset-0"
   ///////// method to optionnaly override //////////
 
@@ -156,7 +154,7 @@ abstract class RudderBaseField extends BaseField {
   // override the field name look
   override def displayNameHtml: Box[NodeSeq] = {
     validations match {
-      case Nil => Some(<span class="text-fit">{displayName}</span>)
+      case Nil => Some(<span>{displayName} - <small class="grey"> Optionnal</small></span>)
       case _ => Some(<b>{displayName}</b>)
     }
   }
@@ -198,7 +196,7 @@ abstract class RudderBaseField extends BaseField {
             }
         )
     )(
-    <div class="row wbBaseField form-group">
+    <div class="row col-xs-12 wbBaseField form-group">
       <label for={id} class={labelClassName + " wbBaseFieldLabel"}><field-label></field-label></label>
       <div class={subContainerClassName}>
         <field-input></field-input>
@@ -247,8 +245,7 @@ class WBCheckboxField(override val name:String, override val defaultValue:Boolea
   def inputField : Elem = <span>{SHtml.checkbox(value, set _, (attrs: Seq[ElemAttr]) :_*)}</span>
 }
 
-
-class WBSelectField(override val name:String, val opts : Seq[(String, String)], override val defaultValue:String = "", val attrs : Seq[(String, String)] = Seq()) extends RudderBaseField with StringValidators{
+class WBSelectField(override val name:String, val opts : Seq[(String, String)], override val defaultValue:String = "", val attrs : Seq[(String, String)] = Seq()) extends RudderBaseField{
   type ValueType = String
 
   def defaultVal : Box[String] = {

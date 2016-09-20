@@ -110,8 +110,7 @@ class CreateActiveTechniqueCategoryPopup(onSuccessCallback : () => JsCmd = { () 
       (categories.getOrElse(Seq()).map(x => (x.id.value -> x.name))),
       "") {
     override def className = "form-control col-lg-12 col-sm-12 col-xs-12"
-      override def validations =
-      valMinLen(1, "Please select a category") _ :: Nil
+      override def validations = Nil
   }
 
   private[this] val formTracker = new FormTracker(categoryName,categoryDescription,categoryContainer)
