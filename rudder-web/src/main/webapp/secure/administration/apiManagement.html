@@ -1,4 +1,4 @@
-<lift:surround with="common-layout" at="content">
+<lift:surround with="common-layout" at="content">cegen
 
 <div data-lift="administration.ApiAccounts.render">
   That gives us a JS variable with the servlet
@@ -40,8 +40,8 @@
   </style>
   <script data-lift="with-cached-resource" src="/javascript/rudder/angular/apiAccount.js" ></script>
 </head>
-<div class="portlet" ng-app="accountManagement" id="accountManagement">
-  <div class="portlet-content">
+<div class="portlet tw-bs" ng-app="accountManagement" id="accountManagement">
+  <div class="portlet-content" ng-cloak>
     <div class="inner-portlet">
       <div class="page-title">Configure allowed accounts</div>
       <div class="portlet-content">
@@ -57,7 +57,7 @@
             </p>
           </div>
         </div>
-        <div ng-controller="AccountCtrl">
+        <div ng-controller="AccountCtrl" class="tw-bs">
           <div ng-show="errorTable" style="width:100%; text-align:center; color:red" ng-cloak> {{errorTable.errorDetails}} </div>
           <lift:authz role="administration_write">
             <span class="tw-bs">
@@ -66,17 +66,37 @@
               </button>
             </span>
           </lift:authz>
-          <table datatables="overrideOptions" ao-column-defs="columnDefs" aa-data="accounts" id="accountGrid" refresh="getAccounts">
+          <table datatable="ng" dt-options="options" id="accountGrid" >
             <thead>
               <tr class="head tablewidth">
-                <th style="width:100px">Account Name</th>
-                <th style="width:250px">Token</th>
-                <th style="width:50px">Status</th>
-                <th style="border-right:none; width:20px;">Actions</th>
-                <th style="border-left:none; border-right:none; width:20px;"></th>
-                <th style="border-left:none; width:20px;"></th>
+                <th >Account Name</th>
+                <th >Token</th>
+                <th >Actions</th>
+                <th >ACLs</th>
               </tr>
             </thead>
+            <tbody>
+              <tr ng-repeat="account in accounts">
+                <td >
+                <span >
+                  {{account.name}}
+                </span> 
+                <span class="rudder-label label-sm" ng-class="account.enabled ? 'label-green' : 'label-default'">{{accountDisabled(account.enabled)}}</span>
+                </td>
+                <td>
+                  <button class="btn btn-default reload-token" ng-click="popupDeletion(account,regenerateAccount,'Regenerate token of')">
+                    <span class="fa fa-repeat"></span>
+                  </button>
+                  {{account.token}}
+                </td>
+                <td>
+                  <button class='btn btn-default' ng-click="account.oldName=account.name; popupCreation(account)"><span class="fa fa-pencil"></span></button>
+                  <button class='btn' ng-class="account.enabled ? 'btn-grey' : 'btn-success'" ng-click="account.enabled=!account.enabled; saveAccount(account,false)"><span class="fa" ng-class="account.enabled ? 'fa-stop-circle' : 'fa-play-circle' "></span></button>
+                  <button class='btn btn-danger' ng-click="popupDeletion(account,deleteAccount,'Delete');"><span class="fa fa-times-circle"></span></button>
+                </td>
+                <td ><ul><li ng-repeat="acl in account.acls">{{acl}}</li></ul></td>
+              </tr>
+            </tbody>
           </table>
           <div class="accountGrid_pagination, paginatescala" >
             <div id="accountGrid_paginate_area"></div>

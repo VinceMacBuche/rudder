@@ -95,7 +95,6 @@ case class RestDataSerializerImpl (
   , diffService   : DiffService
 ) extends RestDataSerializer with Loggable {
 
-
   private[this] def serializeMachineType(machine: Option[MachineType]): JValue = {
     machine match {
       case None                           => "No machine Inventory"
@@ -555,7 +554,6 @@ case class RestDataSerializerImpl (
 
 }
 
-
 object ApiAccountSerialisation {
 
   implicit class Json(account: ApiAccount) {
@@ -565,11 +563,12 @@ object ApiAccountSerialisation {
       ("name" -> account.name.value) ~
       ("token" -> account.token.value) ~
       ("tokenGenerationDate" -> DateFormaterService.getFormatedDate(account.tokenGenerationDate)) ~
+      ("expirationDate" -> account.expirationDate.map(DateFormaterService.getFormatedDate)) ~
       ("description" -> account.description) ~
       ("creationDate" -> DateFormaterService.getFormatedDate(account.creationDate)) ~
+      ("acls" -> account.authorizations.acl.map(_.display)) ~
       ("enabled" -> account.isEnabled)
     }
 
   }
 }
-
