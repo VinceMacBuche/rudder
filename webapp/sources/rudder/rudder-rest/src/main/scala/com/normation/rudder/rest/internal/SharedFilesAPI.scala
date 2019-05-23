@@ -94,7 +94,7 @@ class SharedFilesAPI(
       ~ ("size"  -> file.size)
       ~ ("type"  -> (if (file.isRegularFile) "file" else "dir"))
       ~ ("date"  -> date.toString("yyyy-MM-dd HH:mm:ss"))
-      ~ ("rights" ->  PosixFilePermissions.toString(file.permissions.asJava))
+      ~ ("rights" -> file.permissionsAsString)
       )
     }
   }
