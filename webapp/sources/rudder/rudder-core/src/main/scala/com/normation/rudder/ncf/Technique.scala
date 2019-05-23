@@ -37,6 +37,7 @@
 
 package com.normation.rudder.ncf
 
+import better.files.File
 import com.normation.inventory.domain.Version
 import com.normation.inventory.domain.AgentType
 
@@ -52,6 +53,21 @@ final case class ParameterId (value : String) extends NcfId  {
   val validDscName : String = value.split("_").map(_.capitalize).mkString("")
 }
 
+object  ResourceFile {
+  sealed trait ResourceFileState
+  case object New       extends ResourceFileState
+  case object Deleted   extends ResourceFileState
+  case object Modified  extends ResourceFileState
+  case object Unchanged extends ResourceFileState
+}
+
+case class ResourceFile(
+    path  : String
+  , state : ResourceFile.ResourceFileState
+) {
+  val file = File(path)
+}
+
 final case class Technique(
     bundleName  : BundleName
   , name        : String
@@ -59,6 +75,7 @@ final case class Technique(
   , version     : Version
   , description : String
   , parameters  : Seq[TechniqueParameter]
+  , ressources  : Seq[ResourceFile]
 )
 
 final case class MethodCall(

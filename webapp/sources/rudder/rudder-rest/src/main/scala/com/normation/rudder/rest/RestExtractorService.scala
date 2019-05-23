@@ -40,7 +40,7 @@ package com.normation.rudder.rest
 import com.normation.cfclerk.domain._
 import com.normation.cfclerk.services.TechniqueRepository
 import com.normation.inventory.domain.NodeId
-import com.normation.rudder.api.{AclPath, ApiAccountId, ApiAccountName, ApiAclElement, ApiAuthorizationKind, HttpAction, ApiAuthorization => ApiAuthz}
+import com.normation.rudder.api.{AclPath, ApiAccountId, ApiAccountName, ApiAclElement, HttpAction, ApiAuthorization => ApiAuthz}
 import com.normation.rudder.domain.nodes.NodeGroupCategoryId
 import com.normation.rudder.domain.nodes.NodeProperty
 import com.normation.rudder.domain.parameters.ParameterName
@@ -78,6 +78,11 @@ import com.normation.rudder.ncf.MethodParameter
 import com.normation.rudder.ncf.TechniqueParameter
 import com.normation.rudder.ncf.{Technique => NcfTechnique}
 import com.normation.rudder.api.ApiAuthorizationKind
+import com.normation.rudder.ncf.ResourceFile
+import com.normation.rudder.ncf.ResourceFile.Deleted
+import com.normation.rudder.ncf.ResourceFile.Modified
+import com.normation.rudder.ncf.ResourceFile.New
+import com.normation.rudder.ncf.ResourceFile.Unchanged
 import com.normation.rudder.services.workflows.WorkflowLevelService
 import com.normation.rudder.web.components.DateFormaterService
 import com.normation.utils.Control
@@ -1072,8 +1077,9 @@ case class RestExtractorService (
       name        <- CompleteJson.extractJsonString(json, "name")
       calls       <- CompleteJson.extractJsonArray(json \ "method_calls")(extractMethodCall(_, methods))
       parameters  <- CompleteJson.extractJsonArray(json \ "parameter")(extractTechniqueParameter)
+      files       <- CompleteJson.extractJsonArray(json \ "resources")(extractResourceFile)
     } yield {
-      NcfTechnique(bundleName, name, calls, new Version(version), description, parameters)
+      NcfTechnique(bundleName, name, calls, new Version(version), description, parameters, files)
     }
   }
 
@@ -1091,6 +1097,26 @@ case class RestExtractorService (
       parameters = methods.get(methodId).toList.flatMap(_.parameters.map(_.id)).zip(parameterValues).toMap
     } yield {
       MethodCall(methodId, parameters, condition, component)
+    }
+  }
+
+
+
+  def extractResourceFile(json : JValue) : Box[ResourceFile] = {
+    def extractResourceFileState(value : String) : Box[ResourceFile.ResourceFileState] = {
+      value match {
+        case "deleted" => Full(Deleted)
+        case "new" => Full(New)
+        case "unchanged" => Full(Unchanged)
+        case "modified" => Full(Modified)
+        case _ => Failure("Not a valid ncf resource file state")
+      }
+    }
+    for {
+      path          <- CompleteJson.extractJsonString(json, "name")
+      state <- CompleteJson.extractJsonString(json, "state", extractResourceFileState)
+    } yield {
+      ResourceFile(path, state)
     }
   }
 

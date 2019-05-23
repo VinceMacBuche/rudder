@@ -37,6 +37,7 @@
 
 package com.normation.rudder.rest.lift
 
+import better.files.File
 import com.normation.eventlog.EventActor
 import com.normation.eventlog.ModificationId
 import com.normation.rudder.ncf.TechniqueWriter
@@ -48,9 +49,11 @@ import com.normation.rudder.rest.{NcfApi => API}
 import com.normation.utils.StringUuidGenerator
 import net.liftweb.common.Box
 import net.liftweb.common.Full
+import net.liftweb.common.Loggable
 import net.liftweb.http.LiftResponse
 import net.liftweb.http.Req
 import net.liftweb.json.JsonAST.JValue
+import org.eclipse.jgit.api.Git
 
 import com.normation.box._
 
@@ -58,13 +61,13 @@ class NcfApi(
     techniqueWriter     : TechniqueWriter
   , restExtractorService: RestExtractorService
   , uuidGen             : StringUuidGenerator
-) extends LiftApiModuleProvider[API] {
+) extends LiftApiModuleProvider[API] with Loggable{
   val kind = "ncf"
 
   import com.normation.rudder.rest.RestUtils._
   val dataName = "techniques"
 
-  def resp ( function : Box[JValue], req : Req, errorMessage : String)(implicit action : String) : LiftResponse = {
+  def resp ( function : Box[JValue], req : Req, errorMessage : String)( action : String)(implicit dataName : String) : LiftResponse = {
     response(restExtractorService, dataName,None)(function, req, errorMessage)
   }
 
@@ -78,9 +81,57 @@ class NcfApi(
     API.endpoints.map(e => e match {
         case API.UpdateTechnique => UpdateTechnique
         case API.CreateTechnique => CreateTechnique
+        case API.GetResources    => GetResources
     }).toList
   }
 
+  object GetResources extends LiftApiModule {
+    val schema = API.GetResources
+    val restExtractor = restExtractorService
+    implicit val dataName = "resources"
+    def process(version: ApiVersion, path: ApiPath, techniqueInfo: (String,String), req: Req, params: DefaultParams, authzToken: AuthzToken): LiftResponse = {
+      val resourceDir = File(s"/var/rudder/configuration-repository/techniques/ncf_techniques/${techniqueInfo._1}/${techniqueInfo._2}/resources")
+
+      def getAllFiles (file : File) : List[File] = {
+        if (file.exists) {
+          if (file.isRegularFile) {
+            file :: Nil
+          } else {
+            file.children.toList.flatMap(getAllFiles)
+          }
+        } else {
+          Nil
+        }
+      }
+
+      import scala.collection.JavaConverters._
+        import net.liftweb.json.JsonDSL._
+      val git = Git.open(File(s"/var/rudder/configuration-repository").toJava)
+      val gitCommand = git.status().addPath(s"techniques/ncf_techniques/${techniqueInfo._1}/${techniqueInfo._2}/resources").call()
+
+      // New files not added
+      val New = gitCommand.getUntracked.asScala.toList
+      val newRes = New.map(f => ( ("name" ->f.stripPrefix(s"techniques/ncf_techniques/${techniqueInfo._1}/${techniqueInfo._2}/resources/")) ~ ("state" -> "new")))
+
+      // Files modified and not added
+      val modified = gitCommand.getModified.asScala.toList
+      val modRes = modified.map(f => ( ("name" ->f.stripPrefix(s"techniques/ncf_techniques/${techniqueInfo._1}/${techniqueInfo._2}/resources/")) ~ ("state" -> "modified")))
+
+      // Files deleted but not removed from git
+      val removed = gitCommand.getMissing.asScala.toList
+      val rmRes = removed.map(f => ( ("name" ->f.stripPrefix(s"techniques/ncf_techniques/${techniqueInfo._1}/${techniqueInfo._2}/resources/")) ~ ("state" -> "deleted")))
+
+      // We want to get all files from the resource directory and remove all added/modified/deleted files so we can have the list of all files not modified
+      val allFiles = getAllFiles(resourceDir).map(resourceDir.relativize).map(_.toString)
+      val filesNotCommitted = New.toSet ++ gitCommand.getUncommittedChanges.asScala
+      val untouched = allFiles.filterNot(filesNotCommitted.map(_.stripPrefix(s"techniques/ncf_techniques/${techniqueInfo._1}/${techniqueInfo._2}/resources/")).contains).map(f => ( ("name" ->f )~ ("state" -> "nothing")))
+
+      // Create a new list with all a
+      val res =  modRes ::: newRes ::: rmRes ::: untouched
+
+      resp(Full(res), req, "Could not update ncf technique")("techniqueResources")
+    }
+  }
   object UpdateTechnique extends LiftApiModule0 {
     val schema = API.UpdateTechnique
     val restExtractor = restExtractorService
