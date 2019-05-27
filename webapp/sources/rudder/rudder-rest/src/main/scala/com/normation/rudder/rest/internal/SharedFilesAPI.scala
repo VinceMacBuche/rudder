@@ -38,10 +38,8 @@
 package com.normation.rudder.rest.internal
 
 import java.nio.charset.StandardCharsets
-import java.nio.file.attribute.PosixFilePermissions
 
 import better.files._
-
 import com.normation.rudder.rest.RestExtractorService
 import net.liftweb.common.Box
 import net.liftweb.common.EmptyBox
@@ -55,6 +53,7 @@ import net.liftweb.http.StreamingResponse
 import net.liftweb.http.rest.RestHelper
 import net.liftweb.json.JsonAST.JArray
 import net.liftweb.json.JsonAST.JField
+import net.liftweb.json.JsonAST.JNull
 import net.liftweb.json.JsonAST.JObject
 import net.liftweb.json.JsonAST.JString
 import net.liftweb.json.JsonAST.JValue
@@ -88,7 +87,6 @@ class SharedFilesAPI(
     import net.liftweb.util.Helpers._
     import scala.collection.JavaConverters._
     tryo{
-      logger.info(file.lastModifiedTime)
       val date = new DateTime(file.lastModifiedTime.toEpochMilli)
       ( ("name"  -> file.name)
       ~ ("size"  -> file.size)
@@ -188,35 +186,60 @@ class SharedFilesAPI(
     }
     case Post(Nil, req) => {
 
-      (req.json match {
-        case Full(json) =>
-          json \ "action" match {
-            case JString("list") =>
-              json \ "path" match {
-                case JString(path) =>
-                  checkPathAndContinue(path, basePath)(directoryContent)
-                case _ => Failure("'path' is not correctly defined for 'list' action")
-              }
+      logger.info(req.params)
+      logger.info(req.uploadedFiles)
+      req.params.get("destination") match {
+        case Some(dest :: Nil) =>
+          logger.warn(dest)
+          import net.liftweb.json.JsonDSL._
+          for {
+            file <- req.uploadedFiles
+          } yield {
+            logger.info(file.fileName)
 
-            case JString("getContent") =>
-              json \ "item" match {
-                case JString(item) =>
-                  checkPathAndContinue(item, basePath)(fileContent)
-                case _ => Failure("'item' is not correctly defined for 'getContent' action")
-              }
-
-            case _ => Failure("Action not supported")
+            for {
+               in <- file.fileStream.autoClosed
+                out <- (basePath / dest.replaceFirst("/","") / file.fileName).createFileIfNotExists().newOutputStream.autoClosed
+            } yield {
+              in.pipeTo(out)
+            }
           }
-        case _ => Failure("'action' is not defined in json data")
-      }) match {
-        case Full(response) =>
-          response
-        case eb : EmptyBox =>
-          val fail = eb ?~! s"An error occured while looking into directory"
-          logger.error(fail.messageChain)
-          errorResponse(fail.messageChain)
+          val content =
+            ( ("success" -> true)
+              ~ ("error"   -> JNull)
+              )
+          JsonResponse(content,Nil,Nil, 200)
+        case _ =>
+      (req.json match {
+      case Full (json) =>
+      json \ "action" match {
+      case JString ("list") =>
+      json \ "path" match {
+      case JString (path) =>
+      checkPathAndContinue (path, basePath) (directoryContent)
+      case _ => Failure ("'path' is not correctly defined for 'list' action")
       }
 
+      case JString ("getContent") =>
+      json \ "item" match {
+      case JString (item) =>
+      checkPathAndContinue (item, basePath) (fileContent)
+      case _ => Failure ("'item' is not correctly defined for 'getContent' action")
+      }
+
+      case _ => Failure ("Action not supported")
+      }
+      case _ => Failure ("'action' is not defined in json data")
+      }) match {
+      case Full (response) =>
+      response
+      case eb: EmptyBox =>
+      val fail = eb ?~! s"An error occured while looking into directory"
+      logger.error (fail.messageChain)
+      errorResponse (fail.messageChain)
+      }
+
+      }
     }
   }
 
