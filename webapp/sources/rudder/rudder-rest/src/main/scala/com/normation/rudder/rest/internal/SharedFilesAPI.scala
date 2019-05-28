@@ -38,6 +38,7 @@
 package com.normation.rudder.rest.internal
 
 import java.nio.charset.StandardCharsets
+import java.nio.file.Files
 
 import better.files._
 import com.normation.rudder.rest.RestExtractorService
@@ -58,6 +59,7 @@ import net.liftweb.json.JsonAST.JObject
 import net.liftweb.json.JsonAST.JString
 import net.liftweb.json.JsonAST.JValue
 import org.joda.time.DateTime
+import org.joda.time.Instant
 
 class SharedFilesAPI(
     restExtractor    : RestExtractorService
@@ -87,7 +89,11 @@ class SharedFilesAPI(
     import net.liftweb.util.Helpers._
     import scala.collection.JavaConverters._
     tryo{
-      val date = new DateTime(file.lastModifiedTime.toEpochMilli)
+      logger.info(file.lastModifiedTime.toString)
+      logger.info(file.lastModifiedTime.toEpochMilli.toString)
+      logger.info(Files.getLastModifiedTime(file.path, File.LinkOptions.default:_*).toString)
+      logger.info(Files.getLastModifiedTime(file.path, File.LinkOptions.default:_*).toMillis.toString)
+      val date = new DateTime(Instant.ofEpochMilli(Files.getLastModifiedTime(file.path, File.LinkOptions.default:_*).toMillis))
       ( ("name"  -> file.name)
       ~ ("size"  -> file.size)
       ~ ("type"  -> (if (file.isRegularFile) "file" else "dir"))
@@ -106,6 +112,15 @@ class SharedFilesAPI(
       JsonResponse(content,Nil,Nil, 500)
   }
 
+  val basicSuccessResponse : LiftResponse = {
+    import net.liftweb.json.JsonDSL._
+    val content =
+      ( ("success" -> true)
+      ~ ("error"   -> JNull)
+      )
+
+    JsonResponse(content,Nil,Nil, 200)
+  }
   def downloadFile(file : File) : Box[LiftResponse] = {
     if (file.exists) {
       if (file.isRegularFile) {
@@ -146,17 +161,29 @@ class SharedFilesAPI(
       if (file.isRegularFile) {
         import net.liftweb.json.JsonDSL._
         import scala.collection.JavaConverters._
-        val fileContent : Seq[String] = file.lines(StandardCharsets.UTF_8).toSeq
-        val result = JObject(List(JField("result",fileContent.mkString("\n"))))
-        Full(JsonResponse(result,List(),List(), 200))
+        val fileContent: Seq[String] = file.lines(StandardCharsets.UTF_8).toSeq
+        val result = JObject(List(JField("result", fileContent.mkString("\n"))))
+        Full(JsonResponse(result, List(), List(), 200))
       } else {
         Failure(s"File '${file.name}' is not a regular file")
       }
     } else {
       Failure(s"File '${file.name}' does not exist")
     }
-
   }
+  def renameFile(newName: String)( file : File) : Box[LiftResponse] = {
+    if (file.exists) {
+      file.renameTo(newName)
+      Full(basicSuccessResponse)
+    } else {
+      Failure(s"File '${file.name}' does not exist")
+    }
+  }
+  def createFolder(newdirectory : File) : Box[LiftResponse] = {
+    newdirectory.createDirectoryIfNotExists(false)
+    Full(basicSuccessResponse)
+  }
+
   def requestDispatch(basePath : File) : PartialFunction[Req, () => Box[LiftResponse]] = {
 
     case Get(Nil, req) => {
@@ -185,17 +212,11 @@ class SharedFilesAPI(
       }
     }
     case Post(Nil, req) => {
-
-      logger.info(req.params)
-      logger.info(req.uploadedFiles)
       req.params.get("destination") match {
         case Some(dest :: Nil) =>
-          logger.warn(dest)
-          import net.liftweb.json.JsonDSL._
           for {
             file <- req.uploadedFiles
           } yield {
-            logger.info(file.fileName)
 
             for {
                in <- file.fileStream.autoClosed
@@ -204,32 +225,45 @@ class SharedFilesAPI(
               in.pipeTo(out)
             }
           }
-          val content =
-            ( ("success" -> true)
-              ~ ("error"   -> JNull)
-              )
-          JsonResponse(content,Nil,Nil, 200)
+          basicSuccessResponse
         case _ =>
-      (req.json match {
-      case Full (json) =>
-      json \ "action" match {
-      case JString ("list") =>
-      json \ "path" match {
-      case JString (path) =>
-      checkPathAndContinue (path, basePath) (directoryContent)
-      case _ => Failure ("'path' is not correctly defined for 'list' action")
-      }
+          (req.json match {
+            case Full (json) =>
+              json \ "action" match {
+                case JString ("list") =>
+                  json \ "path" match {
+                    case JString (path) =>
+                      checkPathAndContinue (path, basePath) (directoryContent)
+                    case _ => Failure ("'path' is not correctly defined for 'list' action")
+                  }
 
-      case JString ("getContent") =>
-      json \ "item" match {
-      case JString (item) =>
-      checkPathAndContinue (item, basePath) (fileContent)
-      case _ => Failure ("'item' is not correctly defined for 'getContent' action")
-      }
+                case JString ("getContent") =>
+                  json \ "item" match {
+                    case JString (item) =>
+                      checkPathAndContinue (item, basePath) (fileContent)
+                    case _ => Failure ("'item' is not correctly defined for 'getContent' action")
+                  }
+                case JString ("createFolder") =>
+                  json \ "newPath" match {
+                    case JString (item) =>
+                      checkPathAndContinue (item, basePath) (createFolder)
+                    case _ => Failure ("'item' is not correctly defined for 'getContent' action")
+                  }
 
-      case _ => Failure ("Action not supported")
-      }
-      case _ => Failure ("'action' is not defined in json data")
+                case JString ("rename") =>
+                  json \ "item" match {
+                    case JString (item) =>
+                      json \ "newItemPath" match {
+                        case JString(newItem) =>
+                          checkPathAndContinue(item, basePath)(renameFile(newItem))
+                        case _ => Failure("'newItemPath' is not correctly defined for 'getContent' action")
+                      }
+                      checkPathAndContinue (item, basePath) (fileContent)
+                    case _ => Failure ("'item' is not correctly defined for 'getContent' action")
+                  }
+              case _ => Failure ("Action not supported")
+            }
+          case _ => Failure ("'action' is not defined in json data")
       }) match {
       case Full (response) =>
       response
@@ -252,7 +286,7 @@ class SharedFilesAPI(
         logger.info(req.path)
         req.path.partPath match {
           case techniqueId :: techniqueVersion :: "resources" :: _ =>
-            val path = File("/var/rudder/configuration-repository/techniques/ncf_techniques/${techniqueId}/${techniqueVersion}/resources")
+            val path = File(s"/var/rudder/configuration-repository/techniques/ncf_techniques/${techniqueId}/${techniqueVersion}/resources")
 
             val pf = requestDispatch(path)
                          pf.isDefinedAt(req.withNewPath(req.path.drop(3)))
@@ -263,7 +297,7 @@ class SharedFilesAPI(
         def apply(req: Req): () => Box[LiftResponse] =
           req.path.partPath match {
             case techniqueId :: techniqueVersion :: "resources" :: _ =>
-              val path = File("/var/rudder/configuration-repository/techniques/ncf_techniques/${techniqueId}/${techniqueVersion}/resources")
+              val path = File(s"/var/rudder/configuration-repository/techniques/ncf_techniques/${techniqueId}/${techniqueVersion}/resources")
               path.createIfNotExists(true,true)
 
               val pf = requestDispatch(path)
