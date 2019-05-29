@@ -70,13 +70,8 @@ class SharedFilesAPI(
   def checkPathAndContinue(path : String, baseFolder : File)(fun : File => Box[LiftResponse]) : Box[LiftResponse] = {
     import net.liftweb.util.Helpers._
     (tryo {
-      logger.info("kikoo")
-      logger.info(baseFolder.name)
       val filePath = baseFolder /  path.replaceFirst("/","")
-      logger.info(filePath.name)
-      logger.info(filePath.contains(baseFolder).toString)
       if (baseFolder.contains(filePath, false)) {
-        logger.info(filePath)
         fun(filePath)
       } else {
         Failure("Unauthorized access")
@@ -171,12 +166,24 @@ class SharedFilesAPI(
       Failure(s"File '${file.name}' does not exist")
     }
   }
-  def renameFile(newName: String)( file : File) : Box[LiftResponse] = {
-    if (file.exists) {
-      file.renameTo(newName)
+
+
+  def moveToDirectory(oldFile: File)( dir : File) : Box[LiftResponse] = {
+    logger.warn(oldFile.name)
+    if (oldFile.exists) {
+      oldFile.moveToDirectory(dir)
       Full(basicSuccessResponse)
     } else {
-      Failure(s"File '${file.name}' does not exist")
+      Failure(s"File '${oldFile.name}' does not exist")
+    }
+  }
+  def renameFile(oldFile: File)( newFile : File) : Box[LiftResponse] = {
+    logger.warn(oldFile.name)
+    if (oldFile.exists) {
+      oldFile.moveTo(newFile)
+      Full(basicSuccessResponse)
+    } else {
+      Failure(s"File '${oldFile.name}' does not exist")
     }
   }
   def createFolder(newdirectory : File) : Box[LiftResponse] = {
@@ -229,6 +236,7 @@ class SharedFilesAPI(
         case _ =>
           (req.json match {
             case Full (json) =>
+              logger.warn(json \ "action")
               json \ "action" match {
                 case JString ("list") =>
                   json \ "path" match {
@@ -249,16 +257,29 @@ class SharedFilesAPI(
                       checkPathAndContinue (item, basePath) (createFolder)
                     case _ => Failure ("'item' is not correctly defined for 'getContent' action")
                   }
+                case JString ("move") =>
+                  json \ "items" match {
+                    case JArray(items) =>
+                      (com.normation.utils.Control.sequence(items) {
+                        case JString(item) =>
+                          json \ "newPath" match {
+                            case JString(newItem) =>
+                              checkPathAndContinue(item, basePath)(oldFile => checkPathAndContinue(newItem, basePath)(moveToDirectory(oldFile)))
+                            case _ => Failure("'newItemPath' is not correctly defined for 'getContent' action")
+                          }
+                        case _ => Failure("not a string")
+                      }).map(_ => basicSuccessResponse)
 
+                    case _ => Failure("'item' is not correctly defined for 'getContent' action")
+                  }
                 case JString ("rename") =>
                   json \ "item" match {
                     case JString (item) =>
                       json \ "newItemPath" match {
                         case JString(newItem) =>
-                          checkPathAndContinue(item, basePath)(renameFile(newItem))
+                          checkPathAndContinue(item, basePath)(oldFile => checkPathAndContinue(newItem, basePath)(renameFile(oldFile)))
                         case _ => Failure("'newItemPath' is not correctly defined for 'getContent' action")
                       }
-                      checkPathAndContinue (item, basePath) (fileContent)
                     case _ => Failure ("'item' is not correctly defined for 'getContent' action")
                   }
               case _ => Failure ("Action not supported")
@@ -283,7 +304,6 @@ class SharedFilesAPI(
 
     new PartialFunction[Req, () => Box[LiftResponse]] {
       def isDefinedAt(req: Req): Boolean = {
-        logger.info(req.path)
         req.path.partPath match {
           case techniqueId :: techniqueVersion :: "resources" :: _ =>
             val path = File(s"/var/rudder/configuration-repository/techniques/ncf_techniques/${techniqueId}/${techniqueVersion}/resources")
