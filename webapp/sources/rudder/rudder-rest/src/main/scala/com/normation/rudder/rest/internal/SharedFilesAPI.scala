@@ -70,11 +70,12 @@ class SharedFilesAPI(
   def checkPathAndContinue(path : String, baseFolder : File)(fun : File => Box[LiftResponse]) : Box[LiftResponse] = {
     import net.liftweb.util.Helpers._
     (tryo {
-      val filePath = baseFolder /  path.replaceFirst("/","")
+      logger.info( path.dropWhile(_ ==('/')))
+      val filePath = baseFolder /  path.dropWhile(_.equals('/'))
       if (baseFolder.contains(filePath, false)) {
         fun(filePath)
       } else {
-        Failure("Unauthorized access")
+        Failure(s"Unauthorized access to file ${filePath.name}")
       }
     }).flatMap { identity }
   }
@@ -167,11 +168,39 @@ class SharedFilesAPI(
     }
   }
 
+  def editFile(content:String)(file : File) : Box[LiftResponse] = {
+    if (file.exists) {
+      if (file.isRegularFile) {
+        import net.liftweb.json.JsonDSL._
+        import scala.collection.JavaConverters._
+        file.write(content)
+        Full(basicSuccessResponse)
+      } else {
+        Failure(s"File '${file.name}' is not a regular file")
+      }
+    } else {
+      Failure(s"File '${file.name}' does not exist")
+    }
+  }
 
+
+  def removeFile(file : File) : Box[LiftResponse] = {
+    file.delete(true)
+    Full(basicSuccessResponse)
+  }
   def moveToDirectory(oldFile: File)( dir : File) : Box[LiftResponse] = {
     logger.warn(oldFile.name)
     if (oldFile.exists) {
       oldFile.moveToDirectory(dir)
+      Full(basicSuccessResponse)
+    } else {
+      Failure(s"File '${oldFile.name}' does not exist")
+    }
+  }
+  def copyToDirectory(oldFile: File)( dir : File) : Box[LiftResponse] = {
+    logger.warn(oldFile.name)
+    if (oldFile.exists) {
+      oldFile.copyToDirectory(dir)
       Full(basicSuccessResponse)
     } else {
       Failure(s"File '${oldFile.name}' does not exist")
@@ -251,11 +280,32 @@ class SharedFilesAPI(
                       checkPathAndContinue (item, basePath) (fileContent)
                     case _ => Failure ("'item' is not correctly defined for 'getContent' action")
                   }
+                case JString ("edit") =>
+                  json \ "content" match {
+                    case JString (content) =>
+                      json \ "item" match {
+                        case JString (item) =>
+                          checkPathAndContinue (item, basePath) (editFile(content))
+                        case _ => Failure ("'item' is not correctly defined for 'edit' action")
+                      }
+                    case _ => Failure ("'content' is not correctly defined for 'edit' action")
+                  }
                 case JString ("createFolder") =>
                   json \ "newPath" match {
                     case JString (item) =>
                       checkPathAndContinue (item, basePath) (createFolder)
                     case _ => Failure ("'item' is not correctly defined for 'getContent' action")
+                  }
+                case JString ("remove") =>
+                  json \ "items" match {
+                    case JArray(items) =>
+                      (com.normation.utils.Control.sequence(items) {
+                        case JString(item) =>
+                              checkPathAndContinue(item, basePath)(removeFile)
+                        case _ => Failure("not a string")
+                      }).map(_ => basicSuccessResponse)
+
+                    case _ => Failure("'item' is not correctly defined for 'getContent' action")
                   }
                 case JString ("move") =>
                   json \ "items" match {
@@ -264,7 +314,24 @@ class SharedFilesAPI(
                         case JString(item) =>
                           json \ "newPath" match {
                             case JString(newItem) =>
+                              logger.warn(newItem)
                               checkPathAndContinue(item, basePath)(oldFile => checkPathAndContinue(newItem, basePath)(moveToDirectory(oldFile)))
+                            case _ => Failure("'newItemPath' is not correctly defined for 'getContent' action")
+                          }
+                        case _ => Failure("not a string")
+                      }).map(_ => basicSuccessResponse)
+
+                    case _ => Failure("'item' is not correctly defined for 'getContent' action")
+                  }
+                case JString ("copy") =>
+                  json \ "items" match {
+                    case JArray(items) =>
+                      (com.normation.utils.Control.sequence(items) {
+                        case JString(item) =>
+                          json \ "newPath" match {
+                            case JString(newItem) =>
+                              logger.warn(newItem)
+                              checkPathAndContinue(item, basePath)(oldFile => checkPathAndContinue(newItem, basePath)(copyToDirectory(oldFile)))
                             case _ => Failure("'newItemPath' is not correctly defined for 'getContent' action")
                           }
                         case _ => Failure("not a string")
