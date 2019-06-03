@@ -39,10 +39,13 @@ package com.normation.rudder.rest.internal
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
+import java.nio.file.attribute.PosixFilePermission
+import java.nio.file.attribute.PosixFilePermissions
 
 import better.files._
 import com.normation.rudder.rest.RestExtractorService
 import net.liftweb.common.Box
+import net.liftweb.common.Empty
 import net.liftweb.common.EmptyBox
 import net.liftweb.common.Failure
 import net.liftweb.common.Full
@@ -61,11 +64,16 @@ import net.liftweb.json.JsonAST.JValue
 import org.joda.time.DateTime
 import org.joda.time.Instant
 
+import scala.util.Success
+import scala.util.Try
+import scala.util.{Failure => Catch}
+
+import scala.collection.JavaConverters._
+
 class SharedFilesAPI(
     restExtractor    : RestExtractorService
   , sharedFolderPath : String
 ) extends RestHelper with Loggable {
-
 
   def checkPathAndContinue(path : String, baseFolder : File)(fun : File => Box[LiftResponse]) : Box[LiftResponse] = {
     import net.liftweb.util.Helpers._
@@ -73,7 +81,10 @@ class SharedFilesAPI(
       logger.info( path.dropWhile(_ ==('/')))
       val filePath = baseFolder /  path.dropWhile(_.equals('/'))
       if (baseFolder.contains(filePath, false)) {
-        fun(filePath)
+        Try( fun(filePath)) match {
+          case Success(value) => value
+          case Catch(e) => Failure(s"Error while managing file '${filePath.name}'", Full(e), Empty)
+        }
       } else {
         Failure(s"Unauthorized access to file ${filePath.name}")
       }
@@ -184,6 +195,10 @@ class SharedFilesAPI(
   }
 
 
+  def setPerms(perms: Set[PosixFilePermission])(file : File) : Box[LiftResponse] = {
+    file.setPermissions(perms)
+    Full(basicSuccessResponse)
+  }
   def removeFile(file : File) : Box[LiftResponse] = {
     file.delete(true)
     Full(basicSuccessResponse)
@@ -307,6 +322,28 @@ class SharedFilesAPI(
 
                     case _ => Failure("'item' is not correctly defined for 'getContent' action")
                   }
+
+                case JString ("changePermissions") =>
+                  json \ "items" match {
+                    case JArray(items) =>
+                      (com.normation.utils.Control.sequence(items) {
+                        case JString(item) =>
+                          json \ "perms" match {
+                            case JString(rawPerms) =>
+                              logger.warn(rawPerms)
+                              Try(PosixFilePermissions.fromString(rawPerms)) match {
+                                case Success(perms) =>
+                                  checkPathAndContinue(item, basePath)(setPerms(perms.asScala.toSet))
+                                case Catch(e) => Failure(s"Permissions ${rawPerms} are note valid permissions", Full(e), Empty)
+                              }
+                            case _ => Failure("'newItemPath' is not correctly defined for 'getContent' action")
+                          }
+                        case _ => Failure("not a string")
+                      }).map(_ => basicSuccessResponse)
+
+                    case _ => Failure("'item' is not correctly defined for 'getContent' action")
+                  }
+
                 case JString ("move") =>
                   json \ "items" match {
                     case JArray(items) =>
@@ -323,6 +360,7 @@ class SharedFilesAPI(
 
                     case _ => Failure("'item' is not correctly defined for 'getContent' action")
                   }
+
                 case JString ("copy") =>
                   json \ "items" match {
                     case JArray(items) =>
