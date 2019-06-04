@@ -237,11 +237,12 @@ class TechniqueWriter (
                      IOError(s"An error occured while creating metadata file for Technique '${technique.name}'",Some(e))
                  }
      commit   <- archiver.commitFile(technique, metadataPath, modId, commiter , s"Commiting Technique '${technique.bundleName.value}' metadata")
-
     } yield {
       metadataPath
     }
   }
+
+
 }
 
 trait AgentSpecificTechniqueWriter {
@@ -278,6 +279,15 @@ class ClassicTechniqueWriter extends AgentSpecificTechniqueWriter {
           <FILE name={s"RUDDER_CONFIGURATION_REPOSITORY/techniques/ncf_techniques/${technique.bundleName.value}/${technique.version.value}/rudder_reporting.cf"}>
             <INCLUDED>true</INCLUDED>
           </FILE>
+        }
+        { for {
+            resource <- technique.ressources
+            if resource.state != ResourceFile.Deleted
+          } yield {
+            <FILE name={s"RUDDER_CONFIGURATION_REPOSITORY/techniques/ncf_techniques/${technique.bundleName.value}/${technique.version.value}/resources/${resource.path}"}>
+              <INCLUDED>true</INCLUDED>
+            </FILE>
+          }
         }
       </FILES>
     </AGENT>

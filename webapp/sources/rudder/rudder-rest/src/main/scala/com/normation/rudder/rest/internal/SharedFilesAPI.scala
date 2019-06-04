@@ -94,7 +94,6 @@ class SharedFilesAPI(
   def serialize(file:File) : Box[JValue] = {
     import net.liftweb.json.JsonDSL._
     import net.liftweb.util.Helpers._
-    import scala.collection.JavaConverters._
     tryo{
       logger.info(file.lastModifiedTime.toString)
       logger.info(file.lastModifiedTime.toEpochMilli.toString)
@@ -167,7 +166,6 @@ class SharedFilesAPI(
     if (file.exists) {
       if (file.isRegularFile) {
         import net.liftweb.json.JsonDSL._
-        import scala.collection.JavaConverters._
         val fileContent: Seq[String] = file.lines(StandardCharsets.UTF_8).toSeq
         val result = JObject(List(JField("result", fileContent.mkString("\n"))))
         Full(JsonResponse(result, List(), List(), 200))
@@ -182,8 +180,6 @@ class SharedFilesAPI(
   def editFile(content:String)(file : File) : Box[LiftResponse] = {
     if (file.exists) {
       if (file.isRegularFile) {
-        import net.liftweb.json.JsonDSL._
-        import scala.collection.JavaConverters._
         file.write(content)
         Full(basicSuccessResponse)
       } else {
@@ -411,7 +407,7 @@ class SharedFilesAPI(
       def isDefinedAt(req: Req): Boolean = {
         req.path.partPath match {
           case techniqueId :: techniqueVersion :: "resources" :: _ =>
-            val path = File(s"/var/rudder/configuration-repository/techniques/ncf_techniques/${techniqueId}/${techniqueVersion}/resources")
+            val path = File(s"/var/rudder/configuration-repository/ncf/${techniqueId}/${techniqueVersion}/resources")
 
             val pf = requestDispatch(path)
                          pf.isDefinedAt(req.withNewPath(req.path.drop(3)))
@@ -422,12 +418,11 @@ class SharedFilesAPI(
         def apply(req: Req): () => Box[LiftResponse] =
           req.path.partPath match {
             case techniqueId :: techniqueVersion :: "resources" :: _ =>
-              val path = File(s"/var/rudder/configuration-repository/techniques/ncf_techniques/${techniqueId}/${techniqueVersion}/resources")
+              val path = File(s"/var/rudder/configuration-repository/ncf/${techniqueId}/${techniqueVersion}/resources")
               path.createIfNotExists(true,true)
 
               val pf = requestDispatch(path)
-              val list = "secure" :: "api" :: "ncf" :: techniqueId :: techniqueVersion :: Nil
-            pf.apply(req.withNewPath(req.path.drop(3)))
+              pf.apply(req.withNewPath(req.path.drop(3)))
         }
     }
 

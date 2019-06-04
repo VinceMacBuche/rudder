@@ -37,8 +37,11 @@
 
 package com.normation.rudder.ncf
 
+import better.files.File
 import com.normation.inventory.domain.Version
 import com.normation.inventory.domain.AgentType
+import com.normation.rudder.ncf.Technique.baseNcfTechniquePath
+import com.normation.rudder.ncf.Technique.savedNcfTechniquePath
 
 sealed trait NcfId {
   def value : String
@@ -52,6 +55,24 @@ final case class ParameterId (value : String) extends NcfId  {
   val validDscName : String = value.split("_").map(_.capitalize).mkString("")
 }
 
+object  ResourceFile {
+  sealed trait ResourceFileState
+  case object New       extends ResourceFileState
+  case object Deleted   extends ResourceFileState
+  case object Modified  extends ResourceFileState
+  case object Unchanged extends ResourceFileState
+
+  def savedResourceFolder(tech : Technique) = savedNcfTechniquePath / tech.bundleName.value / tech.version.value / "resources"
+  def baseResourceFolder(tech : Technique) = baseNcfTechniquePath / tech.bundleName.value / tech.version.value / "resources"
+}
+
+case class ResourceFile(
+    path  : String
+  , state : ResourceFile.ResourceFileState
+) {
+  val file = File(path)
+}
+
 final case class Technique(
     bundleName  : BundleName
   , name        : String
@@ -59,7 +80,13 @@ final case class Technique(
   , version     : Version
   , description : String
   , parameters  : Seq[TechniqueParameter]
+  , ressources  : Seq[ResourceFile]
 )
+
+object Technique {
+  val baseNcfTechniquePath = File("/var/rudder/configuration-repository/ncf")
+  val savedNcfTechniquePath = File("/var/rudder/configuration-repository/techniques/ncf_techniques")
+}
 
 final case class MethodCall(
     methodId   : BundleName
