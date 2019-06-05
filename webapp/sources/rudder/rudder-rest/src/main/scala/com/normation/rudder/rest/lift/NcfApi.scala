@@ -37,12 +37,14 @@
 
 package com.normation.rudder.rest.lift
 
+import better.files.File
 import com.normation.eventlog.EventActor
 import com.normation.eventlog.ModificationId
 import com.normation.rudder.ncf.TechniqueWriter
 import com.normation.rudder.rest.ApiPath
 import com.normation.rudder.rest.ApiVersion
 import com.normation.rudder.rest.AuthzToken
+import com.normation.rudder.rest.NcfApi.GetResources
 import com.normation.rudder.rest.RestExtractorService
 import com.normation.rudder.rest.{NcfApi => API}
 import com.normation.utils.StringUuidGenerator
@@ -50,6 +52,8 @@ import net.liftweb.common.Box
 import net.liftweb.common.Full
 import net.liftweb.http.LiftResponse
 import net.liftweb.http.Req
+import net.liftweb.json.JsonAST.JArray
+import net.liftweb.json.JsonAST.JString
 import net.liftweb.json.JsonAST.JValue
 
 class NcfApi(
@@ -77,9 +81,30 @@ class NcfApi(
     API.endpoints.map(e => e match {
         case API.UpdateTechnique => UpdateTechnique
         case API.CreateTechnique => CreateTechnique
+        case API.GetResources    => GetResources
     }).toList
   }
 
+  object GetResources extends LiftApiModule {
+    val schema = API.GetResources
+    val restExtractor = restExtractorService
+    def process(version: ApiVersion, path: ApiPath, techniqueInfo: (String,String), req: Req, params: DefaultParams, authzToken: AuthzToken): LiftResponse = {
+      def getAllFiles (file : File) : List[File] = {
+        if (file.exists) {
+          if (file.isRegularFile) {
+            file :: Nil
+          } else {
+            file.children.toList.flatMap(getAllFiles)
+          }
+        } else {
+          Nil
+        }
+      }
+      val resourceDir = File(s"/var/rudder/configuration-repository/techniques/ncf_techniques/${techniqueInfo._1}/${techniqueInfo._2}/resources")
+      val res = JArray(getAllFiles(resourceDir).map(_.path).map(resourceDir.path.relativize).map(_.toString).map(JString))
+      resp(Full(res), req, "Could not update ncf technique")("UpdateTechnique")
+    }
+  }
   object UpdateTechnique extends LiftApiModule0 {
     val schema = API.UpdateTechnique
     val restExtractor = restExtractorService
