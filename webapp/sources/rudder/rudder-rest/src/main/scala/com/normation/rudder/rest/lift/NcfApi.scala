@@ -44,7 +44,6 @@ import com.normation.rudder.ncf.TechniqueWriter
 import com.normation.rudder.rest.ApiPath
 import com.normation.rudder.rest.ApiVersion
 import com.normation.rudder.rest.AuthzToken
-import com.normation.rudder.rest.NcfApi.GetResources
 import com.normation.rudder.rest.RestExtractorService
 import com.normation.rudder.rest.{NcfApi => API}
 import com.normation.utils.StringUuidGenerator
@@ -53,8 +52,9 @@ import net.liftweb.common.Full
 import net.liftweb.http.LiftResponse
 import net.liftweb.http.Req
 import net.liftweb.json.JsonAST.JArray
-import net.liftweb.json.JsonAST.JString
 import net.liftweb.json.JsonAST.JValue
+import org.eclipse.jgit.api.Git
+import org.eclipse.jgit.storage.file.FileRepositoryBuilder
 
 class NcfApi(
     techniqueWriter     : TechniqueWriter
@@ -67,7 +67,7 @@ class NcfApi(
   import com.normation.rudder.rest.RestUtils._
   val dataName = "techniques"
 
-  def resp ( function : Box[JValue], req : Req, errorMessage : String)(implicit action : String) : LiftResponse = {
+  def resp ( function : Box[JValue], req : Req, errorMessage : String)( action : String)(implicit dataName : String) : LiftResponse = {
     response(restExtractorService, dataName,None)(function, req, errorMessage)
   }
 
@@ -88,7 +88,9 @@ class NcfApi(
   object GetResources extends LiftApiModule {
     val schema = API.GetResources
     val restExtractor = restExtractorService
+    implicit val dataName = "resources"
     def process(version: ApiVersion, path: ApiPath, techniqueInfo: (String,String), req: Req, params: DefaultParams, authzToken: AuthzToken): LiftResponse = {
+      val resourceDir = File(s"/var/rudder/configuration-repository/techniques/ncf_techniques/${techniqueInfo._1}/${techniqueInfo._2}/resources")
       def getAllFiles (file : File) : List[File] = {
         if (file.exists) {
           if (file.isRegularFile) {
@@ -100,9 +102,27 @@ class NcfApi(
           Nil
         }
       }
-      val resourceDir = File(s"/var/rudder/configuration-repository/techniques/ncf_techniques/${techniqueInfo._1}/${techniqueInfo._2}/resources")
-      val res = JArray(getAllFiles(resourceDir).map(_.path).map(resourceDir.path.relativize).map(_.toString).map(JString))
-      resp(Full(res), req, "Could not update ncf technique")("UpdateTechnique")
+
+      import scala.collection.JavaConverters._
+        import net.liftweb.json.JsonDSL._
+
+        val allFiles = getAllFiles(resourceDir)
+        val git = Git.open(File(s"/var/rudder/configuration-repository").toJava)
+
+        val gitCommand = git.status().addPath(s"techniques/ncf_techniques/${techniqueInfo._1}/${techniqueInfo._2}/resources").call()
+        val New = gitCommand.getUntracked.asScala.toList
+        val newRes = New.map(f => ( ("name" ->f) ~ ("state" -> "new")))
+
+        val modified = gitCommand.getModified.asScala.toList
+        val modRes = modified.map(f => ( ("name" ->f) ~ ("state" -> "modified")))
+        val removed = gitCommand.getRemoved.asScala.toList
+        val rmRes = modified.map(f => ( ("name" ->f) ~ ("state" -> "modified")))
+
+        modRes ::: newRes ::: rmRes
+
+      }
+      val res = JArray(getAllFiles(resourceDir))
+      resp(Full(res), req, "Could not update ncf technique")("techniqueResources")
     }
   }
   object UpdateTechnique extends LiftApiModule0 {

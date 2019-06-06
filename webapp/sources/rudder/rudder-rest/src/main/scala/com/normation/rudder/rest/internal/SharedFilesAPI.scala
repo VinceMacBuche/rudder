@@ -291,6 +291,7 @@ class SharedFilesAPI(
                       checkPathAndContinue (item, basePath) (fileContent)
                     case _ => Failure ("'item' is not correctly defined for 'getContent' action")
                   }
+
                 case JString ("edit") =>
                   json \ "content" match {
                     case JString (content) =>
@@ -406,21 +407,18 @@ class SharedFilesAPI(
     new PartialFunction[Req, () => Box[LiftResponse]] {
       def isDefinedAt(req: Req): Boolean = {
         req.path.partPath match {
-          case techniqueId :: techniqueVersion :: "resources" :: _ =>
-            val path = File(s"/var/rudder/configuration-repository/ncf/${techniqueId}/${techniqueVersion}/resources")
-
+          case techniqueId :: techniqueVersion :: _ =>
+            val path = File(s"/var/rudder/configuration-repository/techniques/ncf_techniques/${techniqueId}/${techniqueVersion}/resources")
             val pf = requestDispatch(path)
                          pf.isDefinedAt(req.withNewPath(req.path.drop(3)))
-
         }
       }
 
         def apply(req: Req): () => Box[LiftResponse] =
           req.path.partPath match {
-            case techniqueId :: techniqueVersion :: "resources" :: _ =>
-              val path = File(s"/var/rudder/configuration-repository/ncf/${techniqueId}/${techniqueVersion}/resources")
+            case techniqueId :: techniqueVersion  :: _ =>
+              val path = File(s"/var/rudder/configuration-repository/techniques/ncf_techniques/${techniqueId}/${techniqueVersion}/resources")
               path.createIfNotExists(true,true)
-
               val pf = requestDispatch(path)
               pf.apply(req.withNewPath(req.path.drop(3)))
         }
@@ -429,5 +427,5 @@ class SharedFilesAPI(
   }
   serve("secure" :: "api" :: "sharedfile" :: Nil prefix requestDispatch(File(sharedFolderPath)))
 
-  serve("secure" :: "api" :: "ncf" :: Nil prefix ncfRequestDispatch)
+  serve("secure" :: "api" :: "resourceExplorer" :: Nil prefix ncfRequestDispatch)
 }
