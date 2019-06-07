@@ -49,6 +49,7 @@ import com.normation.rudder.rest.{NcfApi => API}
 import com.normation.utils.StringUuidGenerator
 import net.liftweb.common.Box
 import net.liftweb.common.Full
+import net.liftweb.common.Loggable
 import net.liftweb.http.LiftResponse
 import net.liftweb.http.Req
 import net.liftweb.json.JsonAST.JArray
@@ -60,7 +61,7 @@ class NcfApi(
     techniqueWriter     : TechniqueWriter
   , restExtractorService: RestExtractorService
   , uuidGen             : StringUuidGenerator
-) extends LiftApiModuleProvider[API] {
+) extends LiftApiModuleProvider[API] with Loggable{
   val kind = "ncf"
 
   import com.normation.rudder.ncf.ResultHelper.resultToBox
@@ -106,22 +107,25 @@ class NcfApi(
       import scala.collection.JavaConverters._
         import net.liftweb.json.JsonDSL._
 
-        val allFiles = getAllFiles(resourceDir)
+        val allFiles = getAllFiles(resourceDir).map(resourceDir.relativize).map(_.toString)
+        logger.info(allFiles)
         val git = Git.open(File(s"/var/rudder/configuration-repository").toJava)
 
         val gitCommand = git.status().addPath(s"techniques/ncf_techniques/${techniqueInfo._1}/${techniqueInfo._2}/resources").call()
         val New = gitCommand.getUntracked.asScala.toList
-        val newRes = New.map(f => ( ("name" ->f) ~ ("state" -> "new")))
+        val newRes = New.map(f => ( ("name" ->f.stripPrefix(s"techniques/ncf_techniques/${techniqueInfo._1}/${techniqueInfo._2}/resources/")) ~ ("state" -> "new")))
 
         val modified = gitCommand.getModified.asScala.toList
-        val modRes = modified.map(f => ( ("name" ->f) ~ ("state" -> "modified")))
-        val removed = gitCommand.getRemoved.asScala.toList
-        val rmRes = modified.map(f => ( ("name" ->f) ~ ("state" -> "modified")))
+        val modRes = modified.map(f => ( ("name" ->f.stripPrefix(s"techniques/ncf_techniques/${techniqueInfo._1}/${techniqueInfo._2}/resources/")) ~ ("state" -> "modified")))
+        val removed = gitCommand.getMissing.asScala.toList
+        val rmRes = removed.map(f => ( ("name" ->f.stripPrefix(s"techniques/ncf_techniques/${techniqueInfo._1}/${techniqueInfo._2}/resources/")) ~ ("state" -> "deleted")))
 
-        modRes ::: newRes ::: rmRes
+      val filewaitingToBeCommitted = New.toSet ++ gitCommand.getUncommittedChanges.asScala
+      val untouched = allFiles.filterNot(filewaitingToBeCommitted.map(_.stripPrefix(s"techniques/ncf_techniques/${techniqueInfo._1}/${techniqueInfo._2}/resources/")).contains).map(f => ( ("name" ->f )~ ("state" -> "nothing")))
+      logger.info(gitCommand.getUncommittedChanges.asScala.map(_.stripPrefix(s"techniques/ncf_techniques/${techniqueInfo._1}/${techniqueInfo._2}/resources/")))
 
-      }
-      val res = JArray(getAllFiles(resourceDir))
+      val res =  modRes ::: newRes ::: rmRes ::: untouched
+
       resp(Full(res), req, "Could not update ncf technique")("techniqueResources")
     }
   }
