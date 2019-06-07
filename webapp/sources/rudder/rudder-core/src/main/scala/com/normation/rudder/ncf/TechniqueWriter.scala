@@ -40,25 +40,34 @@ package com.normation.rudder.ncf
 import net.liftweb.common.Loggable
 import java.nio.file.Paths
 import java.nio.file.Files
+
 import scala.xml.NodeSeq
 import java.nio.charset.StandardCharsets
+
 import com.normation.inventory.domain.AgentType
 import net.liftweb.common.Box
 import com.normation.rudder.repository.xml.GitArchiverUtils
 import com.normation.cfclerk.services.GitRepositoryProvider
-import java.io.File
+import java.io.{File => JFile }
+
+import better.files.File
+
+import net.liftweb.util.Helpers.tryo
 import com.normation.rudder.repository.xml.RudderPrettyPrinter
 import com.normation.rudder.repository.GitModificationRepository
 import com.normation.eventlog.ModificationId
 import net.liftweb.common.Full
 import com.normation.eventlog.EventActor
 import com.normation.rudder.services.user.PersonIdentService
-import scala.xml.{ Node => XmlNode }
+
+import scala.xml.{Node => XmlNode}
 import net.liftweb.common.EmptyBox
 import com.normation.cfclerk.services.UpdateTechniqueLibrary
 import net.liftweb.common.Failure
 import net.liftweb.common.Empty
 import com.normation.rudder.services.policies.InterpolatedValueCompiler
+import org.eclipse.jgit.api.Git
+
 import scala.language.implicitConversions
 
 trait NcfError {
@@ -193,10 +202,11 @@ class TechniqueWriter (
   }
 
   // Write and commit all techniques files
-  def writeAll(technique : Technique, methods: Map[BundleName, GenericMethod], modId : ModificationId, committer : EventActor) : Result[Seq[String]] = {
+  def writeAll(technique : Technique, methods: Map[BundleName, GenericMethod], modId : ModificationId, committer : EventActor) : Result[List[String]] = {
     for {
       agentFiles <- writeAgentFiles(technique, methods, modId, committer)
       metadata   <- writeMetadata(technique, methods, modId, committer)
+      commit     <- archiver.commitTechnique(technique,metadata :: agentFiles, modId, committer, s"Committing technique ${technique.name}")
       libUpdate  <- techLibUpdate.update(modId, committer, Some(s"Update Technique library after creating files for ncf Technique ${technique.name}")) match {
                       case Full(techniques) => Right(techniques)
                       case eb:EmptyBox =>
@@ -208,13 +218,12 @@ class TechniqueWriter (
     }
   }
 
-  def writeAgentFiles(technique : Technique, methods: Map[BundleName, GenericMethod], modId : ModificationId, commiter : EventActor) : Result[Seq[String]] = {
+  def writeAgentFiles(technique : Technique, methods: Map[BundleName, GenericMethod], modId : ModificationId, commiter : EventActor) : Result[List[String]] = {
     for {
       // Create/update agent files, filter None by flattenning to list
       files  <- sequence(agentSpecific)(_.writeAgentFile(technique, methods)).map(_.flatten)
-      commit <- sequence(files)(archiver.commitFile(technique, _, modId, commiter , s"Commiting Technique '${technique.bundleName.value}' file for agent " ))
     } yield {
-      files
+      files.toList
     }
   }
 
@@ -225,18 +234,14 @@ class TechniqueWriter (
     val path = s"${basePath}/${metadataPath}"
     for {
       content <- techniqueMetadataContent(technique, methods).map(n => xmlPrettyPrinter.format(n))
-      file    <- execute {
-                   val filePath = Paths.get(path)
-                   if (!Files.exists(filePath)) {
-                     Files.createDirectories(filePath.getParent)
-                     Files.createFile(filePath)
-                   }
-                   Files.write(filePath, content.getBytes(StandardCharsets.UTF_8))
+      _    <- execute {
+                   implicit  val charSet = StandardCharsets.UTF_8
+                   val file = File(path).createFileIfNotExists(true)
+                   file.write(content)
                  } {
                    case e =>
                      IOError(s"An error occured while creating metadata file for Technique '${technique.name}'",Some(e))
                  }
-     commit   <- archiver.commitFile(technique, metadataPath, modId, commiter , s"Commiting Technique '${technique.bundleName.value}' metadata")
     } yield {
       metadataPath
     }
@@ -452,12 +457,12 @@ class DSCTechniqueWriter(
 
 trait TechniqueArchiver {
   import ResultHelper._
-  def commitFile(technique : Technique, gitPath : String, modId: ModificationId, commiter:  EventActor, msg : String) : Result[Unit]
+  def commitTechnique(technique : Technique, filesToAdd : List[String], modId: ModificationId, commiter:  EventActor, msg : String) : Result[Unit]
 }
 
 class TechniqueArchiverImpl (
     override val gitRepo                   : GitRepositoryProvider
-  , override val gitRootDirectory          : File
+  , override val gitRootDirectory          : JFile
   , override val xmlPrettyPrinter          : RudderPrettyPrinter
   , override val relativePath              : String
   , override val gitModificationRepository : GitModificationRepository
@@ -469,10 +474,28 @@ class TechniqueArchiverImpl (
   import ResultHelper._
   override val encoding : String = "UTF-8"
 
-  def commitFile(technique : Technique, gitPath : String, modId: ModificationId, commiter:  EventActor, msg : String) : Result[Unit] = {
+  def commitTechnique(technique : Technique, gitPath : List[String], modId: ModificationId, commiter:  EventActor, msg : String) : Result[Unit] = {
+    val git = Git.open(File(s"/var/rudder/configuration-repository").toJava)
+
+    val gitAddCommand = git.add
+    val filesToAdd = gitPath ++ (technique.ressources.filter(f => f.state == ResourceFile.New || f.state == ResourceFile.Modified)).map(f => s"techniques/ncf_techniques/${technique.bundleName.value}/${technique.version.value}/resources/${f.path}")
+    val filesToDelete = technique.ressources.filter(f => f.state == ResourceFile.Deleted ).map(f => s"techniques/ncf_techniques/${technique.bundleName.value}/${technique.version.value}/resources/${f.path}")
     (for {
       ident  <- personIdentservice.getPersonIdentOrDefault(commiter.name)
-      commit <- commitAddFile(modId,ident, gitPath, msg)
+      _  =  sequence(filesToAdd) { f =>
+                  execute (git.add.addFilepattern(f).call)( e =>
+                    IOError(s"Could not add file ${f}",Some(e))
+                  )
+                }
+
+      _  =  sequence(filesToDelete) { f =>
+        execute (git.rm.addFilepattern(f).call)( e =>
+          IOError(s"Could not rm file ${f}",Some(e))
+        )
+      }
+      _ <- execute(git.commit.setCommitter(ident).setMessage(msg).call)( e =>
+        IOError(s"Could not commit",Some(e))
+      )
     } yield {
       gitPath
     }) match {
