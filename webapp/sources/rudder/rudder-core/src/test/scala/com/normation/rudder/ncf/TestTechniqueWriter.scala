@@ -190,7 +190,7 @@ class TestTechniqueWriter extends Specification with ContentMatchers with Loggab
     }
 
     "Should write dsc technique file without problem" in {
-      dscWriter.writeAgentFile(technique, methods).either.runNow must beRight( beSome (dscTechniquePath ))
+      dscWriter.writeAgentFiles(technique, methods).either.runNow must beRight( Seq(dscTechniquePath) :===  )
     }
 
     "Should generate expected dsc technique content for our technique" in {
@@ -233,7 +233,7 @@ class TestTechniqueWriter extends Specification with ContentMatchers with Loggab
     }
 
     "Should write dsc technique file without problem" in {
-      dscWriter.writeAgentFile(technique_any, methods).either.runNow must beRight( beSome (dscTechniquePath_any ))
+      dscWriter.writeAgentFiles(technique_any, methods).either.runNow must beRight( === Seq(dscTechniquePath_any))
     }
 
     "Should generate expected dsc technique content for our technique" in {

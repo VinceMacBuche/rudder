@@ -44,6 +44,7 @@ import com.normation.inventory.domain.AgentType
 sealed trait NcfId {
   def value : String
   def validDscName : String
+  def canonify : String = value.replaceAll("[^a-zA-Z0-9_]","_")
 }
 final case class BundleName (value : String) extends NcfId {
   val validDscName : String = value.split("_").map(_.capitalize).mkString("-")
