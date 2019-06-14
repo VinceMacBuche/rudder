@@ -227,21 +227,13 @@ trait AgentSpecificTechniqueWriter {
 class ClassicTechniqueWriter(basePath : String) extends AgentSpecificTechniqueWriter {
 
   // We need to add a reporting bundle for this method to generate a na report for any method with a condition != any/cfengine (which ~= true
-  def needReportingBundle(technique : Technique) = technique.methodCalls.exists(m => m.condition != "any" && m.condition != "cfengine-community" )
+  def methodNeedReporting(method : MethodCall) =  method.condition != "any" && method.condition != "cfengine-community"
+  def needReportingBundle(technique : Technique) = technique.methodCalls.exists(methodNeedReporting)
 
-  def canonifyWithVariables(value : String) = {
-    val re = "((?:\\w+|\\$\\{(?:[\\w\\.\\[\\]]|\\$\\{[\\w\\.\\[\\]]+?\\})+?\\})?)([^\\$\\w]|$)".r
-    re.replaceAllIn(value,
-      { matchRe =>
-        val g = matchRe.group(2)
-        matchRe.group(1) + (if (g == "" || g == "\n") "" else "_")
-      } )
-    }
-
-
-  def canonifyClassContext(methodCall: MethodCall) = {
+  def canonifyCondition(methodCall: MethodCall) = {
     methodCall.condition.replaceAll("(\\$\\{[^\\}]*})","""",canonify("$1"),"""")
   }
+
   def reportingContext(methodCall: MethodCall, classParameterValue: String ) = {
     // regex to match quote characters not preceded by a backslash
     val component  = methodCall.component.replaceAll("(?<!\\)\"","\\\"")
@@ -254,51 +246,46 @@ class ClassicTechniqueWriter(basePath : String) extends AgentSpecificTechniqueWr
       ZIO.succeed(Nil)
     } else {
 
-      val reportingFile = File(basePath) / "techniques"/ "ncf_techniques" / technique.bundleName.value / technique.version.value / "rudder_reporting.cf"
       val bundleParams = if (technique.parameters.nonEmpty) technique.parameters.map(_.name.canonify).mkString("(",",",")") else ""
       val args = technique.parameters.map(p => s"$${${p.name.canonify}}").mkString(", ")
 
       val methodsReporting =
         ( for {
           (method,index) <- technique.methodCalls.zipWithIndex
+          // Skip that method if name starts with _
           if ! method.methodId.value.startsWith("_")
           method_info <- methods.get(method.methodId)
-
-          noCfengineSupport = ! method_info.agentSupport.contains(AgentType.CfeCommunity)
-          isConditionDefined = method.condition != "any"
-          if noCfengineSupport || isConditionDefined
           classParameterValue <- method.parameters.get(method_info.classParameter)
+
           classPrefix = s"$${class_prefix}_${method_info.classPrefix}_${classParameterValue}"
-          methodReporting = s""" "dummy_report_${index}" usebundle => ${reportingContext(method, classParameterValue)}"""
           escapedClassParameterValue = classParameterValue.replaceAll("(?<!\\)\"","\\\"")
 
         } yield {
-          def loggerCall(message : String) = s""""dummy_report_${index}" usebundle => log_rudder("${message}", "${escapedClassParameterValue}", canonify("${classPrefix}"), canonify("${classPrefix}"), @{args})"""
-          if (noCfengineSupport) {
-            val message = s"""'${method_info.name}' method is not avai/lable on cfengine based agent, skip"""
-            Some(
-              s"""    any::
-                 |      "dummy_report_${index}" usebundle => _classes_noop(canonify("${classPrefix}"));
-                 |      ${methodReporting};
-                 |      ${loggerCall(message)};"""
-            )
+          def naReport(condition : String, message : String) = {
+            s"""      "dummy_report_${index}" usebundle => _classes_noop(canonify("${classPrefix}"))
+               |                                 unless => ${condition};
+               |      "dummy_report_${index}" usebundle => ${reportingContext(method, classParameterValue)}
+               |                                 unless => ${condition};
+               |      "dummy_report_${index}" usebundle => log_rudder("${message}", "${escapedClassParameterValue}", canonify("${classPrefix}"), canonify("${classPrefix}"), @{args})
+               |                                 unless => ${condition};"""
+          }
+          // Write report if the method does not support CFEngine ...
+          ( if (! method_info.agentSupport.contains(AgentType.CfeCommunity)) {
+            val message = s"""'${method_info.name}' method is not available on classic Rudder agent, skip"""
+            val condition = "false"
+            Some((condition,message))
 
          } else {
-           if (isConditionDefined) {
-             val message =  s"""Cannot run method ${method_info.name} with key parameter ${escapedClassParameterValue} since condition ${method.condition} is not reached"""
-             val ifVarClass = s"""                             ifvarclass => concat("!(${canonifyClassContext(method)})");"""
-             Some(
-               s"""      "dummy_report_${index}" usebundle => _classes_noop(canonify("${classPrefix}"))
-                  |${ifVarClass}
-                  |      ${methodReporting}
-                  |${ifVarClass}
-                  |      ${loggerCall(message)}
-                  |${ifVarClass}"""
-             )
+
+           // ... or if the condition needs rudder_reporting
+           if (methodNeedReporting(method)) {
+             val message =  s"""Skipping method ${method_info.name} with key parameter ${escapedClassParameterValue} since condition ${method.condition} is not reached"""
+             val condition = s"""concat("${canonifyCondition(method)}")""""
+             Some((condition,message))
            } else {
              None
            }
-         }
+         }).map((naReport _).tupled)
        }).flatten
 
        val content =
@@ -315,6 +302,7 @@ class ClassicTechniqueWriter(basePath : String) extends AgentSpecificTechniqueWr
            |}"""
 
       implicit val charset = StandardCharsets.UTF_8
+      val reportingFile = File(basePath) / "techniques"/ "ncf_techniques" / technique.bundleName.value / technique.version.value / "rudder_reporting.cf.new"
       IOResult.effect(s"Could not write na reporting Technique file '${technique.name}' in path ${reportingFile.path.toString}") {
         reportingFile.createFileIfNotExists(true).write(content.stripMargin('|'))
         Seq(reportingFile.path.toString)
