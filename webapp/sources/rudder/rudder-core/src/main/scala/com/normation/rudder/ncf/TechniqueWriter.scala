@@ -258,7 +258,7 @@ class ClassicTechniqueWriter(basePath : String) extends AgentSpecificTechniqueWr
           classParameterValue <- method.parameters.get(method_info.classParameter)
 
           classPrefix = s"$${class_prefix}_${method_info.classPrefix}_${classParameterValue}"
-          escapedClassParameterValue = classParameterValue.replaceAll("(?<!\\)\"","\\\"")
+          escapedClassParameterValue = classParameterValue.replaceAll("(?<!\\\\)\"","\\\"")
 
         } yield {
           def naReport(condition : String, message : String) = {
@@ -267,7 +267,7 @@ class ClassicTechniqueWriter(basePath : String) extends AgentSpecificTechniqueWr
                |      "dummy_report_${index}" usebundle => ${reportingContext(method, classParameterValue)}
                |                                 unless => ${condition};
                |      "dummy_report_${index}" usebundle => log_rudder("${message}", "${escapedClassParameterValue}", canonify("${classPrefix}"), canonify("${classPrefix}"), @{args})
-               |                                 unless => ${condition};"""
+               |                                 unless => ${condition};""".stripMargin('|')
           }
           // Write report if the method does not support CFEngine ...
           ( if (! method_info.agentSupport.contains(AgentType.CfeCommunity)) {
@@ -279,7 +279,7 @@ class ClassicTechniqueWriter(basePath : String) extends AgentSpecificTechniqueWr
 
            // ... or if the condition needs rudder_reporting
            if (methodNeedReporting(method)) {
-             val message =  s"""Skipping method ${method_info.name} with key parameter ${escapedClassParameterValue} since condition ${method.condition} is not reached"""
+             val message =  s"""Skipping method '${method_info.name}' with key parameter '${escapedClassParameterValue}' since condition '${method.condition}' is not reached"""
              val condition = s"""concat("${canonifyCondition(method)}")""""
              Some((condition,message))
            } else {
@@ -294,18 +294,18 @@ class ClassicTechniqueWriter(basePath : String) extends AgentSpecificTechniqueWr
            |  vars:
            |    "args"               slist => { ${args} };
            |    "report_param"      string => join("_", args);
-           |    "full_class_prefix" string => canonify("${technique.bundleName.value}_$${report_param}");
+           |    "full_class_prefix" string => canonify("${technique.bundleName.value}_rudder_reporting_$${report_param}");
            |    "class_prefix"      string => string_head("$${full_class_prefix}", "1000");
            |
            |  methods:
-           |${methodsReporting}
+           |${methodsReporting.mkString("\n")}
            |}"""
 
       implicit val charset = StandardCharsets.UTF_8
-      val reportingFile = File(basePath) / "techniques"/ "ncf_techniques" / technique.bundleName.value / technique.version.value / "rudder_reporting.cf.new"
+      val reportingFile = File(basePath) / "techniques"/ "ncf_techniques" / technique.bundleName.value / technique.version.value / "rudder_reporting.cf"
       IOResult.effect(s"Could not write na reporting Technique file '${technique.name}' in path ${reportingFile.path.toString}") {
         reportingFile.createFileIfNotExists(true).write(content.stripMargin('|'))
-        Seq(reportingFile.path.toString)
+        Seq(File(basePath).relativize(reportingFile.path).toString)
       }
     }
   }
@@ -509,27 +509,28 @@ class TechniqueArchiverImpl (
   , override val relativePath              : String
   , override val gitModificationRepository : GitModificationRepository
   , personIdentservice : PersonIdentService
-) extends GitArchiverUtils with TechniqueArchiver{
+) extends GitArchiverUtils with TechniqueArchiver with Loggable {
 
   override def loggerName: String = this.getClass.getName
 
   override val encoding : String = "UTF-8"
 
-  def commitTechnique(technique : Technique, gitPath : Seq[String], modId: ModificationId, commiter:  EventActor, msg : String) : IOResult[Unit] = {
-    val git = Git.open(File(s"/var/rudder/configuration-repository").toJava)
+  import collection.JavaConverters._
+  def commitTechnique(technique : Technique, gitPath : Seq[String], modId: ModificationId, commiter:  EventActor, msg : String) = {
 
     val filesToAdd = gitPath ++ (technique.ressources.filter(f => f.state == ResourceFile.New || f.state == ResourceFile.Modified)).map(f => s"techniques/ncf_techniques/${technique.bundleName.value}/${technique.version.value}/resources/${f.path}")
     val filesToDelete = technique.ressources.filter(f => f.state == ResourceFile.Deleted ).map(f => s"techniques/ncf_techniques/${technique.bundleName.value}/${technique.version.value}/resources/${f.path}")
     (for {
-      ident  <- personIdentservice.getPersonIdentOrDefault(commiter.name)
-      _  =  ZIO.foreach(filesToAdd) { f =>
-                  IOResult.effect (git.add.addFilepattern(f).call)
-                }
 
-      _  =  ZIO.foreach(filesToDelete) { f =>
-        IOResult.effect(git.rm.addFilepattern(f).call)
-        }
-      _ <- IOResult.effect(git.commit.setCommitter(ident).setMessage(msg).call)
+      git <- gitRepo.git
+      ident  <- personIdentservice.getPersonIdentOrDefault(commiter.name)
+      _  <-  ZIO.foreach(filesToAdd) { f =>
+               IOResult.effect (git.add.addFilepattern(f).call())
+             }
+      _  <-  ZIO.foreach(filesToDelete) { f =>
+               IOResult.effect(git.rm.addFilepattern(f).call())
+             }
+      _ <- IOResult.effect(git.commit.setCommitter(ident).setMessage(msg).call())
     } yield {
       gitPath
     }).chainError(s"error when commiting file ${gitPath} for Technique '${technique.name}").unit
