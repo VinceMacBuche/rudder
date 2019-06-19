@@ -81,10 +81,11 @@ class TestTechniqueWriter extends Specification with ContentMatchers with Loggab
   val writer = new TechniqueWriter(TestTechniqueArchiver,TestLibUpdater,valueCompiler, new RudderPrettyPrinter(Int.MaxValue, 2), basePath)
   val dscWriter = new DSCTechniqueWriter(basePath, valueCompiler)
 
+  val defaultConstraint = Constraint(false,false,16384,None,None,None,None)
   val methods = ( GenericMethod(
       BundleName("package_install_version")
     , "Package install version"
-    , MethodParameter(ParameterId("package_name"),"") :: MethodParameter(ParameterId("package_version"),"") :: Nil
+    , MethodParameter(ParameterId("package_name"),"", defaultConstraint) :: MethodParameter(ParameterId("package_version"),"", defaultConstraint) :: Nil
     , ParameterId("package_name")
     , "package_install_version"
     , AgentType.CfeCommunity :: AgentType.CfeEnterprise :: AgentType.Dsc :: Nil
@@ -93,7 +94,7 @@ class TestTechniqueWriter extends Specification with ContentMatchers with Loggab
   GenericMethod(
       BundleName("service_start")
     , "Service start"
-    , MethodParameter(ParameterId("service_name"),"") :: Nil
+    , MethodParameter(ParameterId("service_name"),"", defaultConstraint) :: Nil
     , ParameterId("service_name")
     , "service_start"
     , AgentType.CfeCommunity :: AgentType.CfeEnterprise :: AgentType.Dsc :: Nil
@@ -102,7 +103,7 @@ class TestTechniqueWriter extends Specification with ContentMatchers with Loggab
   GenericMethod(
       BundleName("package_install")
     , "Package install"
-    , MethodParameter(ParameterId("package_name"),"") :: Nil
+    , MethodParameter(ParameterId("package_name"),"", defaultConstraint) :: Nil
     , ParameterId("package_name")
     , "package_install"
     , AgentType.CfeCommunity :: AgentType.CfeEnterprise :: Nil
@@ -111,7 +112,7 @@ class TestTechniqueWriter extends Specification with ContentMatchers with Loggab
   GenericMethod(
       BundleName("command_execution")
     , "Command execution"
-    , MethodParameter(ParameterId("command"),"") :: Nil
+    , MethodParameter(ParameterId("command"),"", defaultConstraint) :: Nil
     , ParameterId("command")
     , "command_execution"
     , AgentType.CfeCommunity :: AgentType.CfeEnterprise :: AgentType.Dsc :: Nil
@@ -120,7 +121,7 @@ class TestTechniqueWriter extends Specification with ContentMatchers with Loggab
   GenericMethod(
       BundleName("_logger")
     , "_logger"
-    , MethodParameter(ParameterId("message"),"") :: MethodParameter(ParameterId("old_class_prefix"),"") :: Nil
+    , MethodParameter(ParameterId("message"),"", defaultConstraint) :: MethodParameter(ParameterId("old_class_prefix"),"", defaultConstraint) :: Nil
     , ParameterId("message")
     , "_logger"
     , AgentType.CfeCommunity :: AgentType.CfeEnterprise :: Nil

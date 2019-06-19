@@ -37,7 +37,6 @@
 
 package com.normation.rudder.rest
 
-import com.normation.cfclerk.domain._
 import com.normation.cfclerk.services.TechniqueRepository
 import com.normation.inventory.domain.NodeId
 import com.normation.rudder.api.{AclPath, ApiAccountId, ApiAccountName, ApiAclElement, HttpAction, ApiAuthorization => ApiAuthz}
@@ -86,8 +85,13 @@ import com.normation.rudder.ncf.ResourceFile.Unchanged
 import com.normation.rudder.services.workflows.WorkflowLevelService
 import com.normation.rudder.web.components.DateFormaterService
 import com.normation.utils.Control
-
 import com.normation.box._
+import com.normation.cfclerk.domain.Technique
+import com.normation.cfclerk.domain.TechniqueId
+import com.normation.cfclerk.domain.TechniqueName
+import com.normation.cfclerk.domain.TechniqueVersion
+import com.normation.rudder.ncf.Constraint
+import com.normation.rudder.repository.json.DataExtractor.OptionnalJson
 
 case class RestExtractorService (
     readRule             : RoRuleRepository
@@ -1107,7 +1111,7 @@ case class RestExtractorService (
       value match {
         case "deleted" => Full(Deleted)
         case "new" => Full(New)
-        case "unchanged" => Full(Unchanged)
+        case "nothing" => Full(Unchanged)
         case "modified" => Full(Modified)
         case _ => Failure("Not a valid ncf resource file state")
       }
@@ -1120,12 +1124,28 @@ case class RestExtractorService (
     }
   }
 
+  def extractMethodConstraint(json : JValue) : Box[Constraint] = {
+    for {
+      allowEmpty <- CompleteJson.extractJsonBoolean(json, "allow_empty")
+      allowWS    <- CompleteJson.extractJsonBoolean(json, "allow_whitespace_string")
+      maxLength  <- CompleteJson.extractJsonInt(json, "max_length")
+      minLength  <- OptionnalJson.extractJsonInt(json, "min_length")
+      regex      <- OptionnalJson.extractJsonString(json, "regex")
+      notRegex   <- OptionnalJson.extractJsonString(json, "not_regex")
+      select     <- OptionnalJson.extractJsonListString(json, "select")
+
+    } yield {
+      Constraint(allowEmpty, allowWS, maxLength, minLength, regex, notRegex, select)
+    }
+  }
+
   def extractMethodParameter(json : JValue) : Box[MethodParameter] = {
     for {
       id          <- CompleteJson.extractJsonString(json, "name", a => Full(ParameterId(a)))
       description <- CompleteJson.extractJsonString(json, "description")
+      constraint  <- extractMethodConstraint(json \ "constraint")
     } yield {
-      MethodParameter(id, description)
+      MethodParameter(id, description, constraint)
     }
   }
 

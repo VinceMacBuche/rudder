@@ -37,9 +37,13 @@
 
 package com.normation.rudder.ncf
 
+import java.util.regex.Pattern
+
 import better.files.File
 import com.normation.inventory.domain.Version
 import com.normation.inventory.domain.AgentType
+
+import scala.util.matching.Regex
 
 sealed trait NcfId {
   def value : String
@@ -99,9 +103,32 @@ final case class GenericMethod(
 final case class MethodParameter(
     id          : ParameterId
   , description : String
+  , constraint  : Constraint
+)
+
+final case class Constraint(
+  allowEmpty      : Boolean
+, allowWhiteSpace : Boolean
+, maxLength       : Int
+, minLength       : Option[Int]
+, regex           : Option[String]
+, notRegex        : Option[String]
+, select          : Option[List[String]]
 )
 
 final case class TechniqueParameter (
     id   : ParameterId
   , name : ParameterId
 )
+
+object CheckConstraint  {
+  def check(constraint: Constraint, value : String) : Boolean = {
+      (constraint.allowEmpty || value.nonEmpty) &&
+      value.size <= constraint.maxLength &&
+      value.size >= constraint.minLength.getOrElse(0) &&
+      constraint.regex.map(v => v.r.pattern.matcher(value).matches).getOrElse(true) &&
+      constraint.notRegex.map(v => ! v.r.pattern.matcher(value).matches).getOrElse(true) &&
+      constraint.select.map(_.contains(value)).getOrElse(true)
+
+  }
+}
