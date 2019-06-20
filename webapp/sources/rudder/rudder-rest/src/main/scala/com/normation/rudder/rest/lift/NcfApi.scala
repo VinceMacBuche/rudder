@@ -154,6 +154,31 @@ class NcfApi(
     }
   }
 
+
+
+  object ParameterCheck extends LiftApiModule0 {
+    val schema = API.ParameterCheck
+    val restExtractor = restExtractorService
+    def process0(version: ApiVersion, path: ApiPath, req: Req, params: DefaultParams, authzToken: AuthzToken): LiftResponse = {
+      val modId = ModificationId(uuidGen.newUuid)
+      val response =
+        for {
+          json      <- req.json ?~! "No JSON data sent"
+          (value,constraints)   <- restExtractor.extractParameterCheck(json \ "parameter")
+          methodMap =  methods.map(m => (m.id,m)).toMap
+          technique <- restExtractor.extractNcfTechnique(json \ "technique", methodMap)
+          allDone   <- techniqueWriter.writeAll(technique, methodMap, modId, authzToken.actor ).toBox
+        } yield {
+          json
+        }
+      val wrapper : ActionType = {
+        case _ => response
+      }
+      actionResp(Full(wrapper), req, "Could not update ncf technique", authzToken.actor)("checkParameter")
+    }
+  }
+
+
   object CreateTechnique extends LiftApiModule0 {
     val schema = API.CreateTechnique
     val restExtractor = restExtractorService

@@ -1149,6 +1149,14 @@ case class RestExtractorService (
     }
   }
 
+  def extractParameterCheck(json : JValue) : Box[(String,Constraint)] = {
+    for {
+      value      <- CompleteJson.extractJsonString(json, "value")
+      constraint <- extractMethodConstraint(json \ "constraint")
+    } yield {
+      (value, constraint)
+    }
+  }
   def extractTechniqueParameter(json : JValue) : Box[TechniqueParameter] = {
     for {
       id   <- CompleteJson.extractJsonString(json, "id", a => Full(ParameterId(a)))
