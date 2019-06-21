@@ -54,8 +54,8 @@ import net.liftweb.http.LiftResponse
 import net.liftweb.http.Req
 import net.liftweb.json.JsonAST.JValue
 import org.eclipse.jgit.api.Git
-
 import com.normation.box._
+import com.normation.rudder.ncf.CheckConstraint
 
 class NcfApi(
     techniqueWriter     : TechniqueWriter
@@ -159,22 +159,23 @@ class NcfApi(
   object ParameterCheck extends LiftApiModule0 {
     val schema = API.ParameterCheck
     val restExtractor = restExtractorService
+    implicit val dataName = "parameterCheck"
     def process0(version: ApiVersion, path: ApiPath, req: Req, params: DefaultParams, authzToken: AuthzToken): LiftResponse = {
-      val modId = ModificationId(uuidGen.newUuid)
+
+      import com.normation.rudder.ncf.Constraint._
+      import net.liftweb.json.JsonDSL._
       val response =
         for {
           json      <- req.json ?~! "No JSON data sent"
           (value,constraints)   <- restExtractor.extractParameterCheck(json \ "parameter")
-          methodMap =  methods.map(m => (m.id,m)).toMap
-          technique <- restExtractor.extractNcfTechnique(json \ "technique", methodMap)
-          allDone   <- techniqueWriter.writeAll(technique, methodMap, modId, authzToken.actor ).toBox
+          check = CheckConstraint.check(constraints,value)
         } yield {
-          json
+          check match {
+            case NOK(cause) => ("result" -> false) ~ ("errors" -> cause.toList)
+            case OK  => ("result" -> true) ~ ("errors" -> Nil)
+          }
         }
-      val wrapper : ActionType = {
-        case _ => response
-      }
-      actionResp(Full(wrapper), req, "Could not update ncf technique", authzToken.actor)("checkParameter")
+      resp(response, req, "Could not check parameter constraint")("checkParameter")
     }
   }
 

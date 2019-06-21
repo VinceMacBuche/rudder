@@ -43,7 +43,7 @@ import better.files.File
 import cats.data.NonEmptyList
 import com.normation.inventory.domain.Version
 import com.normation.inventory.domain.AgentType
-import com.normation.rudder.ncf.Constraint.CheckResult
+import com.normation.rudder.ncf.Constraint.Constraint
 import com.normation.rudder.ncf.Constraint.CheckResult
 import com.normation.rudder.ncf.Constraint.NOK
 import com.normation.rudder.ncf.Constraint.OK
@@ -108,7 +108,7 @@ final case class GenericMethod(
 final case class MethodParameter(
     id          : ParameterId
   , description : String
-  , constraint  : Constraint
+  , constraint  : List[Constraint]
 )
 /*
 final case class Constraint(
@@ -206,23 +206,13 @@ object Constraint {
 object CheckConstraint  {
   def check(constraint: List[Constraint.Constraint], value : String) : CheckResult = {
     import Constraint._
-    constraint.map(_.check(value)) :\ OK {
+
+    (constraint.map(_.check(value)) :\ (OK : CheckResult)) {
       case (OK, OK) => OK
       case (NOK(m1), NOK(m2)) => NOK(m1 ::: m2)
       case (res:NOK,_) => res
       case (_,res:NOK) => res
 
     }
-    /*if (value.matches("""\$\{[^\}]*}""")) {
-      (constraint.allowWhiteSpace || value.matches("""^\S.*\S$"""))
-    } else {
-      (constraint.allowEmpty || value.nonEmpty) &&
-      (constraint.allowWhiteSpace || value.matches("""^\S.*\S$"""))
-      value.size <= constraint.maxLength &&
-      value.size >= constraint.minLength.getOrElse(0) &&
-      constraint.regex.map(value.matches).getOrElse(true) &&
-      constraint.notRegex.map(value.matches).getOrElse(true) &&
-      constraint.select.map(_.contains(value)).getOrElse(true)
-    }*/
   }
 }

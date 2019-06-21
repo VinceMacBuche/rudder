@@ -81,7 +81,7 @@ class TestTechniqueWriter extends Specification with ContentMatchers with Loggab
   val writer = new TechniqueWriter(TestTechniqueArchiver,TestLibUpdater,valueCompiler, new RudderPrettyPrinter(Int.MaxValue, 2), basePath)
   val dscWriter = new DSCTechniqueWriter(basePath, valueCompiler)
 
-  val defaultConstraint = Constraint(false,false,16384,None,None,None,None)
+  val defaultConstraint = Constraint.NonEmpty :: Constraint.NoWhiteSpace :: Constraint.MaxLength(16384) :: Nil
   val methods = ( GenericMethod(
       BundleName("package_install_version")
     , "Package install version"

@@ -90,7 +90,7 @@ import com.normation.cfclerk.domain.Technique
 import com.normation.cfclerk.domain.TechniqueId
 import com.normation.cfclerk.domain.TechniqueName
 import com.normation.cfclerk.domain.TechniqueVersion
-import com.normation.rudder.ncf.Constraint
+import com.normation.rudder.ncf.Constraint._
 import com.normation.rudder.repository.json.DataExtractor.OptionnalJson
 
 case class RestExtractorService (
@@ -1124,7 +1124,7 @@ case class RestExtractorService (
     }
   }
 
-  def extractMethodConstraint(json : JValue) : Box[Constraint] = {
+  def extractMethodConstraint(json : JValue) : Box[List[Constraint]] = {
     for {
       allowEmpty <- CompleteJson.extractJsonBoolean(json, "allow_empty")
       allowWS    <- CompleteJson.extractJsonBoolean(json, "allow_whitespace_string")
@@ -1135,7 +1135,15 @@ case class RestExtractorService (
       select     <- OptionnalJson.extractJsonListString(json, "select")
 
     } yield {
-      Constraint(allowEmpty, allowWS, maxLength, minLength, regex, notRegex, select)
+      ( if (allowEmpty) Nil else NonEmpty :: Nil) :::
+      ( if (allowWS) Nil else NoWhiteSpace :: Nil) :::
+      ( MaxLength(maxLength) ::
+        minLength.map(MinLength).toList :::
+        regex.map(MatchRegex).toList :::
+        notRegex.map(NotMatchRegex).toList :::
+        select.map(FromList).toList
+      )
+
     }
   }
 
@@ -1149,7 +1157,7 @@ case class RestExtractorService (
     }
   }
 
-  def extractParameterCheck(json : JValue) : Box[(String,Constraint)] = {
+  def extractParameterCheck(json : JValue) : Box[(String,List[Constraint])] = {
     for {
       value      <- CompleteJson.extractJsonString(json, "value")
       constraint <- extractMethodConstraint(json \ "constraint")
