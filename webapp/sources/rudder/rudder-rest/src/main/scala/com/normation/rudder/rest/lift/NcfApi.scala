@@ -154,8 +154,6 @@ class NcfApi(
     }
   }
 
-
-
   object ParameterCheck extends LiftApiModule0 {
     val schema = API.ParameterCheck
     val restExtractor = restExtractorService

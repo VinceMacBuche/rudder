@@ -92,6 +92,7 @@ import com.normation.cfclerk.domain.TechniqueName
 import com.normation.cfclerk.domain.TechniqueVersion
 import com.normation.rudder.ncf.Constraint._
 import com.normation.rudder.repository.json.DataExtractor.OptionnalJson
+import com.normation.utils.StringUuidGenerator
 
 case class RestExtractorService (
     readRule             : RoRuleRepository
@@ -101,6 +102,7 @@ case class RestExtractorService (
   , queryParser          : CmdbQueryParser with JsonQueryLexer
   , userPropertyService  : UserPropertyService
   , workflowLevelService : WorkflowLevelService
+  , uuidGenerator        : StringUuidGenerator
 ) extends Loggable {
 
   import com.normation.rudder.repository.json.DataExtractor.OptionnalJson._
@@ -1073,14 +1075,14 @@ case class RestExtractorService (
 
   def extractId[T] (req : Req)(fun : String => Full[T])  = extractString("id")(req)(fun)
 
-  def extractNcfTechnique (json : JValue, methods: Map[BundleName, GenericMethod]) : Box[NcfTechnique] = {
+  def extractNcfTechnique (json : JValue, methods: Map[BundleName, GenericMethod], creation : Boolean) : Box[NcfTechnique] = {
     for {
       bundleName  <- CompleteJson.extractJsonString(json, "bundle_name", s => Full(BundleName(s)))
       version     <- CompleteJson.extractJsonString(json, "version")
       description <- CompleteJson.extractJsonString(json, "description")
       name        <- CompleteJson.extractJsonString(json, "name")
       calls       <- CompleteJson.extractJsonArray(json \ "method_calls")(extractMethodCall(_, methods))
-      parameters  <- CompleteJson.extractJsonArray(json \ "parameter")(extractTechniqueParameter)
+      parameters  <- CompleteJson.extractJsonArray(json \ "parameter")(extractTechniqueParameter(creation))
       files       <- CompleteJson.extractJsonArray(json \ "resources")(extractResourceFile)
     } yield {
       NcfTechnique(bundleName, name, calls, new Version(version), description, parameters, files)
@@ -1165,9 +1167,13 @@ case class RestExtractorService (
       (value, constraint)
     }
   }
-  def extractTechniqueParameter(json : JValue) : Box[TechniqueParameter] = {
+  def extractTechniqueParameter(techniqueCreation : Boolean) (json : JValue) : Box[TechniqueParameter] = {
     for {
-      id   <- CompleteJson.extractJsonString(json, "id", a => Full(ParameterId(a)))
+      id   <- if (techniqueCreation) {
+                OptionnalJson.extractJsonString(json, "id", a => Full(ParameterId(a))).map(_.getOrElse(ParameterId(uuidGenerator.newUuid)))
+              } else {
+                CompleteJson.extractJsonString(json, "id", a => Full(ParameterId(a)))
+              }
       name <- CompleteJson.extractJsonString(json, "name", a => Full(ParameterId(a)))
     } yield {
       TechniqueParameter(id, name)
