@@ -39,7 +39,7 @@ package bootstrap.liftweb
 package checks
 
 import net.liftweb.common._
-import java.io.File
+import better.files.File
 
 import com.normation.eventlog.ModificationId
 import com.normation.utils.StringUuidGenerator
@@ -96,17 +96,14 @@ class CheckNcfTechniqueUpdate(
   override def checks() : Unit = {
 
     def request(path : String) = {
-      Http(s"http://localhost/ncf/api/${path}").
-        param("path", "/var/rudder/configuration-repository/ncf/").
-        header("X-API-TOKEN", systemApiToken.token.value)
+      Http(s"http://localhost/ncf/api/${path}").header("X-API-TOKEN", systemApiToken.token.value)
     }
 
     val authRequest = request("auth")
     val methodsRequest = request("generic_methods")
-    val techniquesRequest = request("techniques")
+    def techniquesRequest(migration : Boolean) = request("techniques").param("migration",migration.toString)
 
-    val ncfTechniqueUpdateFlag = "/opt/rudder/etc/force_ncf_technique_update"
-    val file =  new File(ncfTechniqueUpdateFlag)
+    val ncfTechniqueUpdateFlag = File("/opt/rudder/etc/force_ncf_technique_update")
 
     def updateNcfTechniques : Unit = {
       import net.liftweb.json.parse
@@ -137,8 +134,27 @@ class CheckNcfTechniqueUpdate(
                                 case a => Left(JsonExtractionError(s"Could not extract methods from ncf api, expecting an object got: ${a}", None))
                               })
 
+
+        oldTechniquesResponse <- tryo ( techniquesRequest(false).asString, "An error occurred while fetching techniques from ncf API", NcfApiRequestFailed)
+        oldTechniquesResult   <- if( oldTechniquesResponse.isSuccess) {
+          Right(oldTechniquesResponse.body)
+        } else {
+          Left(NcfApiRequestFailed(s"Failure getting techniques from ncf api: code ${oldTechniquesResponse.code}: ${oldTechniquesResponse.body}", None))
+        }
+
+        oldTechniques         <- (parse(oldTechniquesResult) \ "data" \ "techniques" match {
+          case JObject(fields) =>
+            sequence(fields.map(_.value))(restExtractor.extractNcfTechnique(_, methods, false)) match {
+              case Full(m) => Right(m)
+              case eb : EmptyBox =>
+                val fail = eb ?~!  s"An Error occured while extracting data from techniques ncf API"
+                Left(JsonExtractionError(fail.messageChain, None))
+
+            }
+          case a => Left(JsonExtractionError(s"Could not extract techniques from ncf api, expecting an object got: ${a}", None))
+        })
         // Then take care of techniques
-        techniquesResponse <- tryo ( techniquesRequest.asString, "An error occurred while fetching techniques from ncf API", NcfApiRequestFailed)
+        techniquesResponse <- tryo ( techniquesRequest(false).asString, "An error occurred while fetching techniques from ncf API", NcfApiRequestFailed)
         techniquesResult   <- if( techniquesResponse.isSuccess) {
                                 Right(techniquesResponse.body)
                               } else {
@@ -147,7 +163,7 @@ class CheckNcfTechniqueUpdate(
 
         techniques         <- (parse(techniquesResult) \ "data" \ "techniques" match {
                                 case JObject(fields) =>
-                                  sequence(fields.map(_.value))(restExtractor.extractNcfTechnique(_, methods)) match {
+                                  sequence(fields.map(_.value))(restExtractor.extractNcfTechnique(_, methods, false)) match {
                                     case Full(m) => Right(m)
                                     case eb : EmptyBox =>
                                       val fail = eb ?~!  s"An Error occured while extracting data from techniques ncf API"
@@ -158,7 +174,7 @@ class CheckNcfTechniqueUpdate(
                               })
 
         // Actually write techniques
-        techniqueUpdated   <- (sequence(techniques)(
+        techniqueUpdated   <- (sequence(techniques ++ oldTechniques)(
                                 techniqueWrite.writeAll(_, methods, ModificationId(uuidGen.newUuid), EventActor(systemApiToken.name.value)).toBox
                               )) match {
                                 case Full(m) => Right(m)
@@ -167,7 +183,7 @@ class CheckNcfTechniqueUpdate(
                                   Left(WriteTechniqueError(fail.messageChain, None))
                               }
         flagDeleted        <- tryo (
-                                  file.delete()
+                                  ncfTechniqueUpdateFlag.delete()
                                 , s"An error occured while deleting file ${ncfTechniqueUpdateFlag} after techniques were written, you may need to delete it manually"
                                 , FlagFileError
                               )
@@ -187,7 +203,7 @@ class CheckNcfTechniqueUpdate(
     }
 
     try {
-      if (file.exists) {
+      if (ncfTechniqueUpdateFlag.exists) {
         ZioRuntime.unsafeRun(Task.effect(updateNcfTechniques).delay(10.seconds))
       } else {
         BootraspLogger.logEffect.info(s"Flag file '${ncfTechniqueUpdateFlag}' does not exist, do not regenerate ncf Techniques")

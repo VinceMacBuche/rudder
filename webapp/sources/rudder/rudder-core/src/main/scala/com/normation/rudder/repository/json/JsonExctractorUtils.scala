@@ -92,7 +92,7 @@ trait JsonExctractorUtils[A[_]] {
         } yield {
           converted
         }).map(monad.pure(_))
-      case JNothing   => convertTo(Nil).map(monad.pure(_))
+      case JNothing   =>   emptyValue ?~! s"Array of string is empty"
       case _              => Failure(s"Not a good value for parameter ${key}")
     }
   }

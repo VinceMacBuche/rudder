@@ -1127,8 +1127,9 @@ case class RestExtractorService (
   }
 
   def extractMethodConstraint(json : JValue) : Box[List[Constraint]] = {
+    logger.info(json)
     for {
-      allowEmpty <- CompleteJson.extractJsonBoolean(json, "allow_empty")
+      allowEmpty <- CompleteJson.extractJsonBoolean(json, "allow_empty_string")
       allowWS    <- CompleteJson.extractJsonBoolean(json, "allow_whitespace_string")
       maxLength  <- CompleteJson.extractJsonInt(json, "max_length")
       minLength  <- OptionnalJson.extractJsonInt(json, "min_length")
@@ -1137,6 +1138,7 @@ case class RestExtractorService (
       select     <- OptionnalJson.extractJsonListString(json, "select")
 
     } yield {
+      logger.info(select)
       ( if (allowEmpty) Nil else NonEmpty :: Nil) :::
       ( if (allowWS) Nil else NoWhiteSpace :: Nil) :::
       ( MaxLength(maxLength) ::
@@ -1153,16 +1155,17 @@ case class RestExtractorService (
     for {
       id          <- CompleteJson.extractJsonString(json, "name", a => Full(ParameterId(a)))
       description <- CompleteJson.extractJsonString(json, "description")
-      constraint  <- extractMethodConstraint(json \ "constraint")
+      constraint  <- extractMethodConstraint(json \ "constraints")
     } yield {
       MethodParameter(id, description, constraint)
     }
   }
 
   def extractParameterCheck(json : JValue) : Box[(String,List[Constraint])] = {
+    logger.info(json)
     for {
       value      <- CompleteJson.extractJsonString(json, "value")
-      constraint <- extractMethodConstraint(json \ "constraint")
+      constraint <- extractMethodConstraint(json \ "constraints")
     } yield {
       (value, constraint)
     }

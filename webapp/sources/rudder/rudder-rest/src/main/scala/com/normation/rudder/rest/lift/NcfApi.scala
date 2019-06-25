@@ -82,6 +82,7 @@ class NcfApi(
         case API.UpdateTechnique => UpdateTechnique
         case API.CreateTechnique => CreateTechnique
         case API.GetResources    => GetResources
+        case API.ParameterCheck  => ParameterCheck
     }).toList
   }
 
@@ -164,13 +165,13 @@ class NcfApi(
       import net.liftweb.json.JsonDSL._
       val response =
         for {
-          json      <- req.json ?~! "No JSON data sent"
-          (value,constraints)   <- restExtractor.extractParameterCheck(json \ "parameter")
-          check = CheckConstraint.check(constraints,value)
+          json                  <- req.json ?~! "No JSON data sent"
+          (value,constraints)   <- restExtractor.extractParameterCheck(json)
+          check                 =  CheckConstraint.check(constraints,value)
         } yield {
           check match {
             case NOK(cause) => ("result" -> false) ~ ("errors" -> cause.toList)
-            case OK  => ("result" -> true) ~ ("errors" -> Nil)
+            case OK         => ("result" -> true) ~ ("errors" -> Nil)
           }
         }
       resp(response, req, "Could not check parameter constraint")("checkParameter")

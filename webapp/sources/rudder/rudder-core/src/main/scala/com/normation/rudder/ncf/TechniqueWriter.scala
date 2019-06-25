@@ -572,7 +572,9 @@ class TechniqueArchiverImpl (
   def commitTechnique(technique : Technique, gitPath : Seq[String], modId: ModificationId, commiter:  EventActor, msg : String) = {
 
     val filesToAdd = gitPath ++ (technique.ressources.filter(f => f.state == ResourceFile.New || f.state == ResourceFile.Modified)).map(f => s"techniques/ncf_techniques/${technique.bundleName.value}/${technique.version.value}/resources/${f.path}")
-    val filesToDelete = technique.ressources.filter(f => f.state == ResourceFile.Deleted ).map(f => s"techniques/ncf_techniques/${technique.bundleName.value}/${technique.version.value}/resources/${f.path}")
+    val filesToDelete =
+      s"ncf/50_techniques/${technique.bundleName.value}" +:
+      technique.ressources.filter(f => f.state == ResourceFile.Deleted ).map(f => s"techniques/ncf_techniques/${technique.bundleName.value}/${technique.version.value}/resources/${f.path}")
     (for {
 
       git <- gitRepo.git
