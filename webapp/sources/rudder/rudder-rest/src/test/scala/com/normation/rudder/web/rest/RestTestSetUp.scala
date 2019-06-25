@@ -126,6 +126,7 @@ object RestTestSetUp {
     , null //queryParser
     , null //userPropertyService
     , null //workflowService
+    , null // stringuuidGenerator
   )
 
   val restDataSerializer = RestDataSerializerImpl(

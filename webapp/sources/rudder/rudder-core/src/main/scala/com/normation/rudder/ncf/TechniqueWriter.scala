@@ -182,7 +182,7 @@ class TechniqueWriter (
       metadata   <- writeMetadata(technique, methods, modId, committer)
       commit     <- archiver.commitTechnique(technique,metadata +: agentFiles, modId, committer, s"Committing technique ${technique.name}")
       libUpdate  <- techLibUpdate.update(modId, committer, Some(s"Update Technique library after creating files for ncf Technique ${technique.name}")).
-        toIO.chainError(s"An error occured during technique update after files were created for ncf Technique ${technique.name}")
+        toIO.chainError(s"An error occurred during technique update after files were created for ncf Technique ${technique.name}")
     } yield {
       metadata +: agentFiles
     }
@@ -190,7 +190,7 @@ class TechniqueWriter (
 
   def writeAgentFiles(technique : Technique, methods: Map[BundleName, GenericMethod], modId : ModificationId, commiter : EventActor) : IOResult[Seq[String]] = {
     for {
-      // Create/update agent files, filter None by flattenning to list
+      // Create/update agent files, filter None by flattening to list
       files  <- ZIO.foreach(agentSpecific)(_.writeAgentFiles(technique, methods)).map(_.flatten)
     } yield {
       files
@@ -204,7 +204,7 @@ class TechniqueWriter (
     val path = s"${basePath}/${metadataPath}"
     for {
       content <- techniqueMetadataContent(technique, methods).map(n => xmlPrettyPrinter.format(n)).toIO
-      _       <- IOResult.effect(s"An error occured while creating metadata file for Technique '${technique.name}'") {
+      _       <- IOResult.effect(s"An error occurred while creating metadata file for Technique '${technique.name}'") {
                    implicit val charSet = StandardCharsets.UTF_8
                    val file = File (path).createFileIfNotExists (true)
                    file.write (content)
@@ -376,7 +376,7 @@ class ClassicTechniqueWriter(basePath : String) extends AgentSpecificTechniqueWr
         {if (noAgentSupportReporting || needReporting) <NAME>{technique.bundleName.value}_rudder_reporting</NAME>}
       </BUNDLES>
       <FILES>
-        <FILE name={s"RUDDER_CONFIGURATION_REPOSITORY/ncf/50_techniques/${technique.bundleName.value}/${technique.bundleName.value}.cf"}>
+        <FILE name={s"RUDDER_CONFIGURATION_REPOSITORY/techniques/ncf_techniques/${technique.bundleName.value}/${technique.version.value}/technique.cf"}>
           <INCLUDED>true</INCLUDED>
         </FILE>
         { if (noAgentSupportReporting || needReporting)

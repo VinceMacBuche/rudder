@@ -142,7 +142,7 @@ class NcfApi(
           json      <- req.json ?~! "No JSON data sent"
           methods   <- restExtractor.extractGenericMethod(json \ "methods")
           methodMap =  methods.map(m => (m.id,m)).toMap
-          technique <- restExtractor.extractNcfTechnique(json \ "technique", methodMap)
+          technique <- restExtractor.extractNcfTechnique(json \ "technique", methodMap, false)
           allDone   <- techniqueWriter.writeAll(technique, methodMap, modId, authzToken.actor ).toBox
         } yield {
           json
@@ -188,7 +188,7 @@ class NcfApi(
           json      <- req.json ?~! "No JSON data sent"
           methods   <- restExtractor.extractGenericMethod(json \ "methods")
           methodMap = methods.map(m => (m.id,m)).toMap
-          technique <- restExtractor.extractNcfTechnique(json \ "technique", methodMap)
+          technique <- restExtractor.extractNcfTechnique(json \ "technique", methodMap, true)
           allDone   <- techniqueWriter.writeAll(technique, methodMap, modId, authzToken.actor).toBox
         } yield {
           json
