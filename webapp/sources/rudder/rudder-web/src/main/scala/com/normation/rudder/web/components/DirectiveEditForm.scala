@@ -319,21 +319,23 @@ class DirectiveEditForm(
       displayDeprecationWarning
     )(crForm) ++
     Script(OnLoad(
-      JsRaw("""activateButtonOnFormChange("%s", "%s");  """
-        .format(htmlId_policyConf, htmlId_save)) &
-      JsRaw(s"""$$('#technicalDetails').hide();""") &
-      JsRaw(s"""
-          $$("input").not("#treeSearch").keydown( function(event) {
-            processKey(event , '${htmlId_save}');
-          } );
-          checkMigrationButton("${currentVersion}","${versionSelectId}");
-          $$('#${versionSelect.uniqueFieldId.getOrElse("id_not_found")}').change(
-            function () {
-              checkMigrationButton("${currentVersion}","${versionSelectId}")
-            }
-          );
-          adjustHeight("#edit-box","#directiveToolbar")
-          """)
+      JsRaw(
+        s"""activateButtonOnFormChange("${htmlId_policyConf}", "${htmlId_save}");
+           |generateMarkdown("${directive.longDescription}","#longDescriptionFieldMarkdown")
+           |$$('#longDescriptionField textarea').change(function() {
+           |   console.log($$(this));
+           |   console.log($$( this ).val());
+           |   generateMarkdown($$( this ).val() ,"#longDescriptionFieldMarkdown")
+           |} )
+           |$$('#technicalDetails').hide();
+           |$$("input").not("#treeSearch").keydown( function(event) {
+           |  processKey(event , '${htmlId_save}');
+           |} );
+           |checkMigrationButton("${currentVersion}","${versionSelectId}");
+           |$$('#${versionSelect.uniqueFieldId.getOrElse("id_not_found")}').change( function () {
+           |  checkMigrationButton("${currentVersion}","${versionSelectId}")
+           |} );
+           |adjustHeight("#edit-box","#directiveToolbar")""".stripMargin)
 
     )
     )

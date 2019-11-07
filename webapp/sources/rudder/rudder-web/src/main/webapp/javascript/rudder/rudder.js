@@ -810,3 +810,11 @@ function initDatePickers(id, action) {
     action(param)
   });
 }
+
+var converter = new showdown.Converter();
+
+function generateMarkdown(text,container)  {
+var html = converter.makeHtml(text)
+console.log(html)
+$(container).html(html)
+}
