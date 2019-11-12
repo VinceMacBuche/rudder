@@ -322,11 +322,14 @@ class DirectiveEditForm(
       JsRaw(
         s"""activateButtonOnFormChange("${htmlId_policyConf}", "${htmlId_save}");
            |generateMarkdown("${directive.longDescription}","#longDescriptionFieldMarkdown")
-           |$$('#longDescriptionField textarea').change(function() {
+           |$$('#longDescriptionField textarea').keyup(function() {
            |   console.log($$(this));
            |   console.log($$( this ).val());
            |   generateMarkdown($$( this ).val() ,"#longDescriptionFieldMarkdown")
+           |   generateMarkdown($$( this ).val() ,"#longDescriptionFieldPreviewMarkdown")
            |} )
+           |generateMarkdown("${directive.longDescription}" ,"#longDescriptionFieldPreviewMarkdown")
+           |
            |$$('#technicalDetails').hide();
            |$$("input").not("#treeSearch").keydown( function(event) {
            |  processKey(event , '${htmlId_save}');
@@ -419,6 +422,7 @@ class DirectiveEditForm(
       override def className = "form-control"
       override def labelClassName = "col-xs-12"
       override def subContainerClassName = "col-xs-12"
+      override def containerClassName = "col-xs-6"
     }
   }
 
