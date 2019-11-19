@@ -321,14 +321,21 @@ class DirectiveEditForm(
     Script(OnLoad(
       JsRaw(
         s"""activateButtonOnFormChange("${htmlId_policyConf}", "${htmlId_save}");
-           |generateMarkdown("${directive.longDescription}","#longDescriptionFieldMarkdown")
+           |generateMarkdown(${Str(directive.longDescription).toJsCmd},"#longDescriptionFieldMarkdown")
+           |${
+             if (directive.longDescription.isEmpty) {
+               """$("#longDescriptionFieldMarkdownEmpty").show();
+               """.stripMargin
+             } else {
+               ""
+             }
+
+            }
            |$$('#longDescriptionField textarea').keyup(function() {
-           |   console.log($$(this));
-           |   console.log($$( this ).val());
            |   generateMarkdown($$( this ).val() ,"#longDescriptionFieldMarkdown")
            |   generateMarkdown($$( this ).val() ,"#longDescriptionFieldPreviewMarkdown")
            |} )
-           |generateMarkdown("${directive.longDescription}" ,"#longDescriptionFieldPreviewMarkdown")
+           |generateMarkdown(${Str(directive.longDescription).toJsCmd} ,"#longDescriptionFieldPreviewMarkdown")
            |
            |$$('#technicalDetails').hide();
            |$$("input").not("#treeSearch").keydown( function(event) {
@@ -420,9 +427,14 @@ class DirectiveEditForm(
     new WBTextAreaField("Description", directive.longDescription.toString) {
       override def setFilter = notNull _ :: trim _ :: Nil
       override def className = "form-control"
-      override def labelClassName = "col-xs-12"
-      override def subContainerClassName = "col-xs-12"
-      override def containerClassName = "col-xs-6"
+      override def labelClassName = "row col-xs-12"
+      override def subContainerClassName = "row col-xs-12"
+      override def containerClassName = "col-xs-6 row"
+      override def inputAttributes: Seq[(String, String)] = Seq(("rows","15"))
+      override def labelExtensions: NodeSeq =
+        <i class="fa fa-check text-success cursorPointer half-opacity" onmouseenter="$(this).toggleClass('half-opacity')" title="Valid description" onmouseout="$(this).toggleClass('half-opacity')" onclick="$('#longDescriptionFieldContainer').hide(); $('#longDescriptionFieldMarkdownContainer').show(); "></i> ++ Text(" ") ++
+        <i class="fa fa-eye-slash text-primary cursorPointer half-opacity" onmouseenter="$(this).toggleClass('half-opacity')" title="Show/hide preview" onmouseout="$(this).toggleClass('half-opacity')" onclick="$('#longDescriptionFieldMarkdownPreviewContainer').toggle(); $(this).toggleClass('fa-eye-slash fa-eye'); $('#longDescriptionField').toggleClass('col-xs-6 col-xs-12')"></i>
+
     }
   }
 

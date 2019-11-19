@@ -68,18 +68,21 @@
             Here comes the shortDescription field
           </div>
           <div id="longDescriptionFieldMarkdownContainer">
-            <label class="wbBaseFieldLabel"><span class="text-fit">Description</span> <button class="btn" onclick="$('#longDescriptionFieldContainer').show(); $('#longDescriptionFieldMarkdownContainer').hide(); ">Edit</button></label>
-            <div id="longDescriptionFieldMarkdown" class="markdown">
-
+            <label class="wbBaseFieldLabel"><span class="text-fit">Description</span>
+              <i class="fa fa-pencil text-primary cursorPointer half-opacity" onmouseenter="$(this).toggleClass('half-opacity')" title="Edit description" onmouseout="$(this).toggleClass('half-opacity')" onclick="$('#longDescriptionFieldContainer').show(); $('#longDescriptionFieldMarkdownContainer').hide(); "></i>
+            </label>
+            <div class="markdown">
+              <div id="longDescriptionFieldMarkdown"></div>
+              <p id="longDescriptionFieldMarkdownEmpty" class="nodisplay half-opacity">No description defined, click on <i class="fa fa-pencil text-primary cursorPointer half-opacity" onmouseenter="$(this).toggleClass('half-opacity')" onmouseout="$(this).toggleClass('half-opacity')" onclick="$('#longDescriptionFieldContainer').show(); $('#longDescriptionFieldMarkdownContainer').hide(); "></i> to edit </p>
             </div>
           </div>
           <div id="longDescriptionFieldContainer" class="nodisplay">
             <div id="longDescriptionField">
               Here comes the longDescription field
             </div>
-            <div id="longDescriptionFieldMarkdownPreviewContainer" class="col-xs-6">
-              <label class="wbBaseFieldLabel"><span class="text-fit">Preview</span> </label>
-              <div id="longDescriptionFieldPreviewMarkdown" class="markdown">
+            <div id="longDescriptionFieldMarkdownPreviewContainer" class="wbBaseField col-xs-6 row">
+              <label class="col-xs-12 row wbBaseFieldLabel"><span class="text-fit">Preview</span> </label>
+              <div id="longDescriptionFieldPreviewMarkdown" class=" col-xs-12 row markdown">
 
               </div>
             </div>

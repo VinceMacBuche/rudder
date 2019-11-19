@@ -1503,6 +1503,11 @@ label span.text-fit{
   border-bottom-right-radius: 4px;
   background-color: #f3f8ff;
 }
+
 .markdown > p:last-child{
   margin-bottom: 0;
+}
+
+.cursorPointer {
+  cursor:pointer;
 }
