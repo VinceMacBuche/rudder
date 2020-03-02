@@ -92,21 +92,15 @@ app.factory('configNodeFactory', function ($http){
                    };
                    return $http.post(this.url, data)
 	               }
+
     };
     return this;
     }
+
 });
 app.controller('auditmodeCtrl', function ($scope, $http, $location, $timeout, configGlobalFactory, configNodeFactory) {
-  function getNodeId(){
-    var nodeId;
-    try {
-      var hash = JSON.parse($location.hash());
-      nodeId = hash.nodeId;
-    } catch(err){}
-    return nodeId;
-  }
 
-  var nodeId = getNodeId();
+
   // variable used for saving animations
   $scope.saving = 0;
   // global configuration
@@ -122,22 +116,24 @@ app.controller('auditmodeCtrl', function ($scope, $http, $location, $timeout, co
   // -- Get global configuration
   configGlobalFactory.policyMode.getValue().then(function(currentPolicyMode){
     $scope.globalConfiguration.policyMode = currentPolicyMode;
-    if(!nodeId){
+    if(!$scope.nodeId){
       $scope.conf.policyMode = currentPolicyMode;
     }
   });
   configGlobalFactory.overrideMode.getValue().then(function(currentOverrideMode){
     $scope.globalConfiguration.overrideMode = currentOverrideMode;
-    if(!nodeId){
+    if(!$scope.nodeId){
       $scope.conf.overrideMode = $scope.currentConf.overrideMode;
     }
   });
 
+
+  $scope.$watch('nodeId', function(){
   // -- Get appropriated factory and initialize scope
-  if(nodeId !== undefined){
+  if($scope.nodeId !== undefined){
     // case : node
     $scope.isGlobalForm = false;
-    $scope.factory = configNodeFactory(nodeId)
+    $scope.factory = configNodeFactory($scope.nodeId)
     $scope.factory.policyMode.getValue().then(function(currentPolicyMode){
       $scope.currentConf.policyMode = currentPolicyMode;
       $scope.conf.policyMode = currentPolicyMode;
@@ -148,6 +144,7 @@ app.controller('auditmodeCtrl', function ($scope, $http, $location, $timeout, co
     $scope.factory = configGlobalFactory;
     $scope.currentConf = $scope.globalConfiguration;
   }
+  })
 
   // -- Detect current modifications
   $scope.$watch('conf', function(){

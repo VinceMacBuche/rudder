@@ -5,11 +5,12 @@ import net.liftweb.common._
 import net.liftweb.http.js._
 import JsCmds._
 import JE._
+import com.normation.inventory.domain.NodeId
 import com.normation.rudder.web.ChooseTemplate
 
 import scala.xml.NodeSeq
 
-class AgentPolicyModeEditForm extends DispatchSnippet with Loggable  {
+class AgentPolicyModeEditForm (nodeId : Option[NodeId]) extends DispatchSnippet with Loggable  {
 
   // Html template
   def agentPolicyModeTemplate: NodeSeq = ChooseTemplate(
@@ -21,7 +22,15 @@ class AgentPolicyModeEditForm extends DispatchSnippet with Loggable  {
     case "cfagentPolicyModeConfiguration" => (xml) => cfagentPolicyModeConfiguration
   }
 
-  def cfagentPolicyModeConfiguration: NodeSeq = {
-    agentPolicyModeTemplate ++ Script(OnLoad(JsRaw("angular.bootstrap('#auditMode', ['auditmode']);")))
+  def cfagentPolicyModeConfiguration : NodeSeq = {
+
+    import net.liftweb.util.Helpers._
+    val res = nodeId match {
+      case Some(nodeId) =>s"""nodeId = "${nodeId.value}"; """
+      case None => ""
+    }
+    ("ng-controller=auditmodeCtrl [ng-init]" #> res ). apply(agentPolicyModeTemplate++
+
+    Script(OnLoad(JsRaw("angular.bootstrap('#auditMode', ['auditmode']);"))))
   }
 }

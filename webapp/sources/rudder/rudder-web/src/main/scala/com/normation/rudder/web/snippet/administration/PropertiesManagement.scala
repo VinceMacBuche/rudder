@@ -747,7 +747,7 @@ class PropertiesManagement extends DispatchSnippet with Loggable {
     )
   }
   val agentPolicyModeEditForm = {
-    new AgentPolicyModeEditForm()
+    new AgentPolicyModeEditForm(None)
   }
   def getSchedule() : Box[AgentRunInterval] = {
     for {

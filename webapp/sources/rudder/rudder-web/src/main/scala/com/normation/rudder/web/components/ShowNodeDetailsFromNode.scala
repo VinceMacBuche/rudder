@@ -132,7 +132,7 @@ class ShowNodeDetailsFromNode(
     }
   }
 
-  def agentPolicyModeEditForm = new AgentPolicyModeEditForm()
+  def agentPolicyModeEditForm = new AgentPolicyModeEditForm(Some(nodeId))
 
   def agentScheduleEditForm(nodeInfo : NodeInfo) = new AgentScheduleEditForm(
      () => getSchedule(nodeInfo)
