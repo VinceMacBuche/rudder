@@ -100,7 +100,7 @@ object RuleEditForm {
 
 // these two case classes are needed to generate the JS for selected directive & target. They need to be top level else lift goes mad.
 final case class JsGroup(target: String, link:String, name: String, desc: String)
-final case class JsDirective(id: String, link:String, name: String, desc: String, techniqueName: String, techniqueVersion: String, mode: String, tags: String)
+final case class JsDirective(id: String, link:String, name: String, desc: String, techniqueName: String, techniqueVersion: String, mode: String, tags: JValue)
 
 /**
  * The form that handles Rule edition
@@ -294,7 +294,7 @@ class RuleEditForm(
               , "Technique unknown"
               , "Technique version unknown"
               , "error"
-              , "[]"
+              , JArray(Nil)
             )
         }
         (id.value, details)

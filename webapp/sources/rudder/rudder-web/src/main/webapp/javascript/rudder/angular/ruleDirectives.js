@@ -80,19 +80,7 @@ ruleDirectives.controller('DirectiveCtrl', ['$scope', '$timeout', function($scop
     // Init function so values can be set from outside the scope
     // directiveIds is expected to be a json of {directiveId : directiveName }
     $scope.init = function ( selectedDirectives ) {
-      var tmp, t;
-      $scope.directives = [];
-      //TODO : we shouldn't have to parse tags array like that
-      for(var d in selectedDirectives){
-        $scope.directives[d] = selectedDirectives[d]
-        tmp = selectedDirectives[d];
-        try{
-          t = JSON.parse(selectedDirectives[d].tags)
-        }catch(e){
-          t = []
-        }
-        $scope.directives[d].tags = t;
-      }
+      $scope.directives = selectedDirectives;
       //init tooltips
       $timeout(function(){
         //Init the Directive fitlers app

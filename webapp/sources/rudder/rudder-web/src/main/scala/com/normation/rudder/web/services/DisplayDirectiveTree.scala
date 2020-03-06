@@ -49,7 +49,7 @@ import net.liftweb.http.js.JsCmd
 import net.liftweb.util.Helpers
 import com.normation.rudder.repository.FullActiveTechniqueCategory
 import com.normation.rudder.repository.FullActiveTechnique
-import com.normation.rudder.domain.policies.{Directive, DirectiveId, GlobalPolicyMode, JsonTagSerialisation}
+import com.normation.rudder.domain.policies.{Directive, DirectiveId, GlobalPolicyMode}
 
 import scala.xml.Text
 import com.normation.rudder.repository.FullActiveTechnique
