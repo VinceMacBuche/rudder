@@ -132,6 +132,7 @@ object ParameterType {
 
   trait ParameterTypeService {
     def create(value : String) : PureResult[ParameterType]
+    def value(parameterType: ParameterType) : PureResult[String]
     def translate(value : String, paramType : ParameterType, agentType: AgentType) : PureResult[String]
   }
 
@@ -145,6 +146,14 @@ object ParameterType {
       }
     }
 
+    def value(parameterType: ParameterType) = {
+      parameterType match {
+        case StringParameter => Right("string")
+        case Raw             => Right("raw")
+        case HereString      => Right("HereString")
+        case _               => Left(Unexpected(s"parameter type '${parameterType}' has no value defined"))
+      }
+    }
     def translate(value : String, paramType : ParameterType, agentType: AgentType) : PureResult[String] = {
       (paramType,agentType) match {
         case (Raw,_) => Right(value)
@@ -168,6 +177,12 @@ object ParameterType {
       (innerServices foldRight (Left(Unexpected(s"'${value}' is not a valid method parameter type")) : PureResult[ParameterType])) {
         case(_, res @ Right(_)) => res
         case(service, _) => service.create(value)
+      }
+    }
+    def value(parameterType: ParameterType) = {
+      (innerServices foldRight (Left(Unexpected(s"parameter type '${parameterType}' has no value defined"))   : PureResult[String])) {
+        case(_, res @ Right(_)) => res
+        case(service, _) => service.value(parameterType)
       }
     }
 

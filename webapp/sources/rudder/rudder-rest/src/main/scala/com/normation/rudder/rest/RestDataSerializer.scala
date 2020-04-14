@@ -54,7 +54,6 @@ import com.normation.rudder.rule.category.RuleCategory
 import com.normation.rudder.rule.category.RuleCategoryId
 import com.normation.rudder.repository.FullNodeGroupCategory
 import com.normation.rudder.repository.FullActiveTechnique
-
 import com.normation.rudder.api.ApiAccount
 import net.liftweb.json.JsonDSL._
 import com.normation.rudder.web.components.DateFormaterService
@@ -66,6 +65,13 @@ import com.normation.rudder.api.ApiAuthorization.{None => NoAccess}
 import com.normation.rudder.api.ApiAuthorization.RO
 import com.normation.rudder.api.ApiAuthorization.RW
 import com.normation.rudder.api.ApiAuthorization.ACL
+import com.normation.rudder.ncf
+import com.normation.rudder.ncf.GenericMethod
+import com.normation.rudder.ncf.MethodCall
+import com.normation.rudder.ncf.MethodParameter
+import com.normation.rudder.ncf.ParameterType.ParameterTypeService
+import com.normation.rudder.ncf.ResourceFile
+import com.normation.rudder.ncf.TechniqueParameter
 import org.joda.time.DateTime
 
 /**
@@ -96,11 +102,15 @@ trait RestDataSerializer {
 
   def serializeTechnique(technique:FullActiveTechnique): JValue
 
+  def serializeTechniqueMetadata(technique : ncf.Technique) : JValue
+  def serializeMethodMetadata(method : GenericMethod) : JValue
+
 }
 
 final case class RestDataSerializerImpl (
-    readTechnique : TechniqueRepository
-  , diffService   : DiffService
+    readTechnique       : TechniqueRepository
+  , diffService         : DiffService
+  , parameterTypeService: ParameterTypeService
 ) extends RestDataSerializer with Loggable {
 
   private[this] def serializeMachineType(machine: Option[MachineType]): JValue = {
@@ -554,6 +564,87 @@ final case class RestDataSerializerImpl (
     (   ( "name"     -> technique.techniqueName.value )
       ~ ( "versions" ->  technique.techniques.map(_._1.toString ) )
     )
+  }
+
+  def serializeTechniqueMetadata(technique : ncf.Technique) : JValue = {
+
+    def serializeTechniqueParameter(parameter : TechniqueParameter) : JValue = {
+      ( ( "id", parameter.id.value )
+      ~ ( "name", parameter.name.value)
+      )
+    }
+    def serializeMethodCall(call : MethodCall) : JValue = {
+      ( ( "method_name", call.methodId.value)
+      ~ ( "class_context", call.condition)
+      ~ ( "component", call.component )
+      ~ ( "args" , call.parameters.values )
+      ~ ( "parameters" , call.parameters.map {
+                           case (methodId, value) =>
+                             ( ( "methodId", methodId.value)
+                             ~ ( "value"   , value)
+                             )
+                           } )
+      )
+    }
+
+    def serializeResource(resourceFile: ResourceFile) = {
+      ( ( "name", resourceFile.path)
+      ~ ( "state", resourceFile.state.value)
+      )
+    }
+
+    ( ( "bundle_name", technique.bundleName.value)
+    ~ ( "version", technique.version.value)
+    ~ ( "category", technique.category)
+    ~ ( "description", technique.description)
+    ~ ( "name", technique.name)
+    ~ ( "method_calls", technique.methodCalls.map(serializeMethodCall))
+    ~ ( "parameter", technique.parameters.map(serializeTechniqueParameter).toList )
+    ~ ( "resources", technique.ressources.map(serializeResource))
+    )
+  }
+
+
+  def serializeMethodMetadata(method : GenericMethod) : JValue = {
+    def serializeMethodConstraint(constraint: ncf.Constraint.Constraint) : JField = {
+      constraint match {
+        case ncf.Constraint.NonEmpty => JField("allow_empty_string", false)
+        case ncf.Constraint.NoWhiteSpace => JField("allow_whitespace_string", false)
+        case ncf.Constraint.MaxLength(max) => JField("max_length", max)
+        case ncf.Constraint.MinLength(min) => JField("min_length", min)
+        case ncf.Constraint.MatchRegex(re) => JField("regex", re)
+        case ncf.Constraint.NotMatchRegex(re) => JField("not_regex", re)
+        case ncf.Constraint.FromList(list) => JField("select", list)
+      }
+    }
+    def serializeMethodParameter(methodParameter: MethodParameter) : JValue = {
+      def serializeConstraints : JValue = {
+        JObject(methodParameter.constraint.map(serializeMethodConstraint))
+      }
+
+      def serializeParameter(parematerService : ncf.ParameterType.ParameterType) : JValue = {
+        parameterTypeService.value(methodParameter.paramete).getOrElse("Unknown")
+      }
+      ( ( "name", methodParameter.id.value )
+      ~ ( "description", methodParameter.description )
+      ~ ( "constraints", serializeConstraints  )
+      )
+    }
+    def serializeAgentSupport(agent : AgentType) = {
+      agent match  {
+        case AgentType.Dsc => JString("dsc")
+        case AgentType.CfeCommunity | AgentType.CfeEnterprise => JString("cfengine-community")
+      }
+    }
+    ( ( "bundle_name", method.id.value)
+    ~ ( "description", method.description)
+    ~ ( "name", method.name)
+    ~ ( "class_prefix", method.classPrefix)
+    ~ ( "class_parameter", method.classParameter.value)
+    ~ ( "agent_support", method.agentSupport.map(serializeAgentSupport))
+    ~ ( "parameter", method.parameters.map(serializeMethodParameter))
+    )
+
   }
 
 }

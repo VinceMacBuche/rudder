@@ -61,12 +61,19 @@ import com.normation.rudder.ncf.ResourceFileState
 import net.liftweb.json.JsonAST.JArray
 import com.normation.rudder.ncf.CheckConstraint
 import com.normation.rudder.ncf.Technique
+import com.normation.rudder.ncf.TechniqueReader
 import com.normation.rudder.repository.json.DataExtractor.OptionnalJson
+import com.normation.rudder.rest.NcfApi.GetMethods
+import com.normation.rudder.rest.RestDataSerializer
 import com.normation.rudder.rest.TwoParam
+import net.liftweb.json.JsonAST.JField
+import net.liftweb.json.JsonAST.JObject
 
 class NcfApi(
     techniqueWriter     : TechniqueWriter
+  , techniqueReader     : TechniqueReader
   , restExtractorService: RestExtractorService
+  , restDataSerializer  : RestDataSerializer
   , uuidGen             : StringUuidGenerator
 ) extends LiftApiModuleProvider[API] with Loggable{
 
@@ -91,6 +98,8 @@ class NcfApi(
         case API.GetNewResources  => new GetResources[API.GetNewResources.type ](true, API.GetNewResources)
         case API.ParameterCheck   => ParameterCheck
         case API.DeleteTechnique  => DeleteTechnique
+        case API.GetTechniques    => GetTechniques
+        case API.GetMethods       => GetMethods
     })
   }
 
@@ -237,6 +246,42 @@ class NcfApi(
     }
   }
 
+  object GetTechniques extends  LiftApiModule0 {
+
+    val schema = API.GetTechniques
+    val restExtractor = restExtractorService
+    implicit val dataName = "techniques"
+
+    def process0(version: ApiVersion, path: ApiPath, req: Req, params: DefaultParams, authzToken: AuthzToken): LiftResponse = {
+      val response = for {
+        techniques <- techniqueReader.readTechniquesMetadataFile.toBox
+      } yield {
+         JArray(techniques.map(restDataSerializer.serializeTechniqueMetadata))
+      }
+      resp(response, req, "Could not get techniques metadata")("getTechniques")
+
+    }
+
+  }
+
+
+  object GetMethods extends  LiftApiModule0 {
+
+    val schema = API.GetMethods
+    val restExtractor = restExtractorService
+    implicit val dataName = "methods"
+
+    def process0(version: ApiVersion, path: ApiPath, req: Req, params: DefaultParams, authzToken: AuthzToken): LiftResponse = {
+      val response = for {
+        methods <- techniqueReader.readMethodsMetadataFile.toBox
+      } yield {
+         JArray(methods.values.toList.map(restDataSerializer.serializeMethodMetadata))
+      }
+      resp(response, req, "Could not get generic methods metadata")("getMethods")
+
+    }
+
+  }
 
   object CreateTechnique extends LiftApiModule0 {
 
