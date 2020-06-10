@@ -328,7 +328,7 @@ def update_licenses():
                 match = downloadPattern.search(link)
                 if match is not None:
                     logger.info("downloading %s"%(link))
-                    utils.download(link, utils.LICENCES_PATH + "/" + os.path.basename(link), quiet)
+                    utils.download(link, utils.LICENCES_PATH + "/" + os.path.basename(link))
 
 # TODO validate index sign if any?
 """ Download the index file on the repos """
