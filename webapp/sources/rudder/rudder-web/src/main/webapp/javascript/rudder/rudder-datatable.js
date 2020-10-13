@@ -1086,12 +1086,120 @@ function createNodeTable(gridId, data, contextPath, refresh) {
     }
     return elem;
   }
+
+  var dynColumns = {
+
+    "name" : {
+                   "mDataProp": "name"
+                 , "sTitle": "Id"
+                 , "fnCreatedCell" : function (nTd, sData, oData, iRow, iCol) {
+                     $(nTd).empty();
+                     $.get( contextPath + "/secure/api/nodes/"+oData.id
+                     , function(data) {
+                           $(nTd).append(data.data.nodes[0].id);
+                       }
+                     )
+
+                   }
+               }
+    , "ram" : {
+                   "mDataProp": "name"
+                 , "sTitle": "Ram"
+                 , "fnCreatedCell" : function (nTd, sData, oData, iRow, iCol) {
+                     $(nTd).empty();
+                     $.get( contextPath + "/secure/api/nodes/"+oData.id
+                     , function(data) {
+                           $(nTd).append(data.data.nodes[0].ram);
+                       }
+                     )
+
+                   }
+               }
+    , "agent" : {
+                   "mDataProp": "name"
+                 , "sTitle": "Agent version"
+                 , "fnCreatedCell" : function (nTd, sData, oData, iRow, iCol) {
+                     $(nTd).empty();
+                     $.get( contextPath + "/secure/api/nodes/"+oData.id
+                     , function(data) {
+                           $(nTd).append(data.data.nodes[0].managementTechnology[0].version);
+                       }
+                     )
+                   }
+               }
+    , "agent" : {
+                   "mDataProp": "name"
+                 , "sTitle": "Agent version"
+                 , "fnCreatedCell" : function (nTd, sData, oData, iRow, iCol) {
+                     $(nTd).empty();
+                     $.get( contextPath + "/secure/api/nodes/"+oData.id
+                     , function(data) {
+                           $(nTd).append(data.data.nodes[0].managementTechnology[0].version);
+                       }
+                     )
+                   }
+               }
+    , "software" : function(value) { return {
+                   "mDataProp": "name"
+                 , "sTitle": value + " version"
+                 , "fnCreatedCell" : function (nTd, sData, oData, iRow, iCol) {
+                     $(nTd).empty();
+                     $.get( contextPath + "/secure/api/nodes/"+oData.id+"?include=software"
+                     ,  function(data) {
+                           $(nTd).append(data.data.nodes[0].software.find(function(x) {return x.name === value}).version);
+                       }
+
+                     )
+                   }
+               } }
+    , "properties" : function(value) { return {
+                   "mDataProp": "name"
+                 , "sTitle": "Property '"+value+"'"
+                 , "fnCreatedCell" : function (nTd, sData, oData, iRow, iCol) {
+                     $(nTd).empty();
+                     $.get( contextPath + "/secure/api/nodes/"+oData.id
+                      , function(data) {
+                           $(nTd).append(data.data.nodes[0].properties.find(function(x) {return x.name === value}).value);
+
+                       }
+                     )
+                   }
+               } }
+    , "policyMode" :  {
+                           "mDataProp": "agentPolicyMode"
+                         , "sTitle": "Policy Mode"
+                         , "sClass" : "tw-bs"
+                         , "fnCreatedCell" : function (nTd, sData, oData, iRow, iCol) {
+                             $(nTd).empty();
+                             $(nTd).prepend(createTextAgentPolicyMode(true,oData.agentPolicyMode,oData.explanation));
+                           }
+                       }
+    , "ips" : {
+                   "mDataProp": "name"
+                 , "sTitle": "Ip addresses"
+                 , "fnCreatedCell" : function (nTd, sData, oData, iRow, iCol) {
+                     $(nTd).empty();
+                     $.get( contextPath + "/secure/api/nodes/"+oData.id
+                     , function(data) {
+                           $(nTd).append("<ul><li>" + data.data.nodes[0].ipAddresses.sort().join("</li><li>") + "</li>");
+                       }
+                     )
+
+                   }
+               }
+    , "machineType" : {
+          "mDataProp": "machineType"
+        , "sTitle": "Machine type"
+      }
+
+  }
+
+
   var columns = [ {
       //only for search, not visible - see "columnDefs" def in parameter
       "mDataProp": "state"
   } , {
-      "sWidth": "25%"
-    , "mDataProp": "name"
+     "mDataProp": "name"
     , "sTitle": "Node name"
     , "fnCreatedCell" : function (nTd, sData, oData, iRow, iCol) {
         var link = callbackElement(oData, false)
@@ -1107,26 +1215,11 @@ function createNodeTable(gridId, data, contextPath, refresh) {
         $(nTd).empty();
         $(nTd).append(link);
       }
-  } , {
-      "sWidth": "10%"
-    , "mDataProp": "machineType"
-    , "sTitle": "Machine type"
-  } , {
-      "sWidth": "22%"
-    , "mDataProp": "os"
+  }  , {
+      "mDataProp": "os"
     , "sTitle": "Operating System"
-  } , {
-      "mDataProp": "agentPolicyMode"
-    , "sWidth": "8%"
-    , "sTitle": "Policy Mode"
-    , "sClass" : "tw-bs"
-    , "fnCreatedCell" : function (nTd, sData, oData, iRow, iCol) {
-        $(nTd).empty();
-        $(nTd).prepend(createTextAgentPolicyMode(true,oData.agentPolicyMode,oData.explanation));
-      }
-  } , {
+  }  , {
       "mDataProp": "name"
-    , "sWidth": "25%"
     , "sTitle": "Compliance"
     , "sSortDataType": "node-compliance"
     , "sType" : "numeric"
@@ -1139,15 +1232,15 @@ function createNodeTable(gridId, data, contextPath, refresh) {
         $(nTd).prepend(link);
       }
   } , {
-      "sWidth": "10%"
-    , "mDataProp": "lastReport"
-    , "sTitle": "Last seen"
+     "mDataProp": "lastReport"
+    , "sTitle": "Last run date"
   } ];
 
   var params = {
       "bFilter" : true
     , "bPaginate" : true
     , "bLengthChange": true
+    , "bDestroy" : true
     , "sPaginationType": "full_numbers"
     , "oLanguage": {
         "sSearch": ""
@@ -1185,6 +1278,57 @@ function createNodeTable(gridId, data, contextPath, refresh) {
   };
 
   createTable(gridId,data, columns, params, contextPath, refresh, "nodes");
+
+ function addColumn(columnName, value) {
+   console.log(columnName)
+  var table = $('#'+gridId).DataTable();;
+   var data2 = table.rows().data();
+   var init = table.init();
+   table.destroy();
+   $('#'+gridId).empty();
+   if (columnName =="properties" || columnName =="software" ) {
+   init.aoColumns.push(dynColumns[columnName](value))
+   } else {
+
+   init.aoColumns.push(dynColumns[columnName])
+   }
+   console.log(data)
+
+   createTable(gridId,data2, init.aoColumns, params, contextPath, refresh, "nodes");
+
+ }
+
+ var select = "<div class='col-xs-12 form-group'> <div class='col-xs-2'> <select placeholder='Select column to add' class='  form-control'>"
+ for (var value in dynColumns) {
+ select += "<option value="+value+">"+value+"</option>"
+ }
+ select += "</select></div><div class='col-xs-2'><input class='form-control' type='text'></div> <button class='btn btn-blue'  ><i class='fa fa-plus-circle'> Add column</button></div>"
+
+ $("#select-columns").html(select)
+ $("#select-columns select").change(function(e) {
+
+ if (this.value =="properties" || this.value =="software" ) {
+   $("#select-columns input").parent().show()
+
+   $("#select-columns input").attr('placeholder', this.value + " name" )
+ } else {
+   $("#select-columns input").parent().hide()
+ }})
+ $("#select-columns button").click(function(e) {
+
+ addColumn($("#select-columns select").val(), $("#select-columns input").val())
+ })
+ /* var table = $('#'+gridId).DataTable();
+  table.clear();
+  table.destroy();
+  $('#'+gridId).empty();
+  console.log(table.init())
+  var init = table.init()
+  init.aoColumns.push(dynColumns['name'])
+  init.aoColumns.push(dynColumns['ips'])
+
+  createTable(gridId,data, init.aoColumns, params, contextPath, refresh, "nodes");
+ */
 }
 
 
