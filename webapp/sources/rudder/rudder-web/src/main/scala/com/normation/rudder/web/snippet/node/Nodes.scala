@@ -49,24 +49,12 @@ class Nodes extends StatefulSnippet with Loggable {
 
   val dispatch : DispatchIt = {
     case "table" => table _
-    case "loadData" => loadData _
+    case "loadData" => { _ => NodeSeq.Empty }
   }
 
-  private[this] def getNodes() = {
-    nodeInfoService.getAll match {
-      case Full(infos) => infos.values.toSeq
-      case eb:EmptyBox => val fail = eb?~ s"could not find Nodes "
-          logger.error(fail.msg)
-          Seq()
-    }
-  }
-
-  def loadData(xml:NodeSeq): NodeSeq = {
-    Script(OnLoad(srvGrid.refreshData(() => getNodes, None, "nodes").applied))
-  }
 
   def table(html:NodeSeq): NodeSeq= {
-    srvGrid.displayAndInit(Seq(), "nodes", None, Some(() => getNodes()))
+    srvGrid.displayAndInit(None, "nodes", None, Some(() => None))
   }
 
 }
