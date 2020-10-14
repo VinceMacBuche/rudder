@@ -39,6 +39,7 @@ var anOpen = [];
 var ruleCompliances = {};
 var recentChanges = {};
 var recentChangesCount = {};
+var inventories = {};
 var recentGraphs = {};
 var nodeCompliances = {};
 var nodeSystemCompliances = {};
@@ -1094,11 +1095,16 @@ function createNodeTable(gridId, data, contextPath, refresh) {
                  , "sTitle": "Id"
                  , "fnCreatedCell" : function (nTd, sData, oData, iRow, iCol) {
                      $(nTd).empty();
+                     if (oData.id in inventories){
+                       $(nTd).append(inventories[oData.id].id);
+                     } else {
                      $.get( contextPath + "/secure/api/nodes/"+oData.id
                      , function(data) {
+                           inventories[oData.id] = data.data.nodes[0]
                            $(nTd).append(data.data.nodes[0].id);
                        }
                      )
+                     }
 
                    }
                }
@@ -1107,11 +1113,16 @@ function createNodeTable(gridId, data, contextPath, refresh) {
                  , "sTitle": "Ram"
                  , "fnCreatedCell" : function (nTd, sData, oData, iRow, iCol) {
                      $(nTd).empty();
+                     if (oData.id in inventories){
+                       $(nTd).append(inventories[oData.id].ram);
+                     } else {
                      $.get( contextPath + "/secure/api/nodes/"+oData.id
                      , function(data) {
+                           inventories[oData.id] = data.data.nodes[0]
                            $(nTd).append(data.data.nodes[0].ram);
                        }
                      )
+                     }
 
                    }
                }
@@ -1120,23 +1131,16 @@ function createNodeTable(gridId, data, contextPath, refresh) {
                  , "sTitle": "Agent version"
                  , "fnCreatedCell" : function (nTd, sData, oData, iRow, iCol) {
                      $(nTd).empty();
+                     if (oData.id in inventories){
+                       $(nTd).append(inventories[oData.id].managementTechnology[0].version);
+                     } else {
                      $.get( contextPath + "/secure/api/nodes/"+oData.id
                      , function(data) {
+                           inventories[oData.id] = data.data.nodes[0]
                            $(nTd).append(data.data.nodes[0].managementTechnology[0].version);
                        }
                      )
-                   }
-               }
-    , "agent" : {
-                   "mDataProp": "name"
-                 , "sTitle": "Agent version"
-                 , "fnCreatedCell" : function (nTd, sData, oData, iRow, iCol) {
-                     $(nTd).empty();
-                     $.get( contextPath + "/secure/api/nodes/"+oData.id
-                     , function(data) {
-                           $(nTd).append(data.data.nodes[0].managementTechnology[0].version);
-                       }
-                     )
+                     }
                    }
                }
     , "software" : function(value) { return {
@@ -1144,12 +1148,16 @@ function createNodeTable(gridId, data, contextPath, refresh) {
                  , "sTitle": value + " version"
                  , "fnCreatedCell" : function (nTd, sData, oData, iRow, iCol) {
                      $(nTd).empty();
+                     if (oData.id in inventories && "software" in inventories[oData.id]){
+                       $(nTd).append(inventories[oData.id].software.find(function(x) {return x.name === value}).version);
+                     } else {
                      $.get( contextPath + "/secure/api/nodes/"+oData.id+"?include=software"
-                     ,  function(data) {
+                     , function(data) {
+                           inventories[oData.id] = data.data.nodes[0]
                            $(nTd).append(data.data.nodes[0].software.find(function(x) {return x.name === value}).version);
                        }
-
                      )
+                     }
                    }
                } }
     , "properties" : function(value) { return {
@@ -1157,12 +1165,16 @@ function createNodeTable(gridId, data, contextPath, refresh) {
                  , "sTitle": "Property '"+value+"'"
                  , "fnCreatedCell" : function (nTd, sData, oData, iRow, iCol) {
                      $(nTd).empty();
+                     if (oData.id in inventories){
+                       $(nTd).append(inventories[oData.id].properties.find(function(x) {return x.name === value}).value);
+                     } else {
                      $.get( contextPath + "/secure/api/nodes/"+oData.id
-                      , function(data) {
+                     , function(data) {
+                           inventories[oData.id] = data.data.nodes[0]
                            $(nTd).append(data.data.nodes[0].properties.find(function(x) {return x.name === value}).value);
-
                        }
                      )
+                     }
                    }
                } }
     , "policyMode" :  {
@@ -1179,12 +1191,21 @@ function createNodeTable(gridId, data, contextPath, refresh) {
                  , "sTitle": "Ip addresses"
                  , "fnCreatedCell" : function (nTd, sData, oData, iRow, iCol) {
                      $(nTd).empty();
+                     if (oData.id in inventories){
+                       $(nTd).append(inventories[oData.id].ipAddresses.sort().join("</li><li>") + "</li>");
+                     } else {
+                     $.get( contextPath + "/secure/api/nodes/"+oData.id
+                     , function(data) {
+                           inventories[oData.id] = data.data.nodes[0]
+                           $(nTd).append(data.data.nodes[0].ipAddresses.sort().join("</li><li>") + "</li>");
+                       }
+                     )
                      $.get( contextPath + "/secure/api/nodes/"+oData.id
                      , function(data) {
                            $(nTd).append("<ul><li>" + data.data.nodes[0].ipAddresses.sort().join("</li><li>") + "</li>");
                        }
                      )
-
+}
                    }
                }
     , "machineType" : {
@@ -1274,7 +1295,7 @@ function createNodeTable(gridId, data, contextPath, refresh) {
         $('.rudder-label').bsTooltip();
       }
     , "aaSorting": [[ 1, "asc" ]]
-    , "sDom": '<"dataTables_wrapper_top newFilter"f<"dataTables_refresh">>rt<"dataTables_wrapper_bottom"lip>'
+    , "sDom": '<"dataTables_wrapper_top newFilter "f <"select-columns"> <"dataTables_refresh">>rt<"dataTables_wrapper_bottom"lip>'
   };
 
   createTable(gridId,data, columns, params, contextPath, refresh, "nodes");
