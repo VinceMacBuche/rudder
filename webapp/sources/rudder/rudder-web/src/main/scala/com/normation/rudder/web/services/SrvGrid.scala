@@ -125,7 +125,7 @@ class SrvGrid(
     , refreshNodes : Option[ () => Seq[NodeInfo]]
   ) : JsCmd = {
 
-    val data = getTableData(nodes,callback)
+    val data = getTableData(Seq(),callback)
 
     val globalOverride = globalPolicyMode.overridable match {
       case Always => true
