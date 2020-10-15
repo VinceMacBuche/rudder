@@ -59,7 +59,7 @@ class NodeDetailsAPI (
       ~  ("machineType" -> nodeInfo.machine.map(_.machineType.toString))
       ~  ("os" -> nodeInfo.osDetails.fullName)
       ~  ("state" -> nodeInfo.state.name)
-      ~  ("ipAddresses" -> nodeInfo.ips)
+      ~  ("ipAddresses" -> nodeInfo.ips.filter(ip => ip != "127.0.0.1" || ip != "0:0:0:0:0:0:0:1"))
       ~  ("lastRun" -> agentRunWithNodeConfig.map(d => DateFormaterService.getDisplayDate(d.agentRunId.date)).getOrElse("Never"))
      // ~  ("software" -> JObject(softs.toList.map(s => JField(s.name.getOrElse(""), JString(s.version.map(_.value).getOrElse("N/A"))))))
       ~  ("properties" -> JObject(nodeInfo.properties.filter(p => properties.contains(p.name)).map(p => JField(p.name, parse(p.value.render(ConfigRenderOptions.concise()) ) )) ))
@@ -68,13 +68,26 @@ class NodeDetailsAPI (
   def requestDispatch: PartialFunction[Req, () => Box[LiftResponse]] = {
     case Get(Nil, req) =>
       import com.normation.box._
+
+      val n1 = System.currentTimeMillis
       for {
+
         nodes <- nodeInfoService.getAll()
+        n2 = System.currentTimeMillis
+        _ = println(s"Getting node infos: ${n2 - n1}ms")
         runs <- reportsExecutionRepository.getNodesLastRun(nodes.keySet)
+        n3 = System.currentTimeMillis
+        _ = println(s"Getting run infos: ${n3 - n2}ms")
         globalMode <- getGlobalMode()
+        n4 = System.currentTimeMillis
+        _ = println(s"Getting global mode: ${n4 - n3}ms")
         //softs <- readOnlySoftwareDAO.getSoftwareByNode(nodes.keySet,AcceptedInventory).toBox
       } yield {
-        JsonResponse(JArray(nodes.values.toList.map(n => serialize(runs.get(n.id).flatten,globalMode,n, req.params.get("properties").getOrElse(Nil), Seq()))))
+        val res = JsonResponse(JArray(nodes.values.toList.map(n => serialize(runs.get(n.id).flatten,globalMode,n, req.params.get("properties").getOrElse(Nil), Seq()))))
+
+        val n5 = System.currentTimeMillis
+        println(s"response: ${n5 - n4}ms")
+        res
       }
   }
 
