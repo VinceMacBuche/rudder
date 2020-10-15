@@ -1091,94 +1091,28 @@ function createNodeTable(gridId, data, contextPath, refresh) {
   var dynColumns = {
 
     "name" : {
-                   "mDataProp": "name"
+                   "mDataProp": "id"
                  , "sTitle": "Id"
-                 , "fnCreatedCell" : function (nTd, sData, oData, iRow, iCol) {
-                     $(nTd).empty();
-                     if (oData.id in inventories){
-                       $(nTd).append(inventories[oData.id].id);
-                     } else {
-                     $.get( contextPath + "/secure/api/nodes/"+oData.id
-                     , function(data) {
-                           inventories[oData.id] = data.data.nodes[0]
-                           $(nTd).append(data.data.nodes[0].id);
-                       }
-                     )
-                     }
-
-                   }
                }
     , "ram" : {
-                   "mDataProp": "name"
+                   "mDataProp": "ram"
                  , "sTitle": "Ram"
-                 , "fnCreatedCell" : function (nTd, sData, oData, iRow, iCol) {
-                     $(nTd).empty();
-                     if (oData.id in inventories){
-                       $(nTd).append(inventories[oData.id].ram);
-                     } else {
-                     $.get( contextPath + "/secure/api/nodes/"+oData.id
-                     , function(data) {
-                           inventories[oData.id] = data.data.nodes[0]
-                           $(nTd).append(data.data.nodes[0].ram);
-                       }
-                     )
-                     }
 
-                   }
                }
     , "agent" : {
-                   "mDataProp": "name"
+                   "mDataProp": "agentVersion"
                  , "sTitle": "Agent version"
-                 , "fnCreatedCell" : function (nTd, sData, oData, iRow, iCol) {
-                     $(nTd).empty();
-                     if (oData.id in inventories){
-                       $(nTd).append(inventories[oData.id].managementTechnology[0].version);
-                     } else {
-                     $.get( contextPath + "/secure/api/nodes/"+oData.id
-                     , function(data) {
-                           inventories[oData.id] = data.data.nodes[0]
-                           $(nTd).append(data.data.nodes[0].managementTechnology[0].version);
-                       }
-                     )
-                     }
-                   }
                }
     , "software" : function(value) { return {
-                   "mDataProp": "name"
+                   "mDataProp": "software."+value
                  , "sTitle": value + " version"
-                 , "fnCreatedCell" : function (nTd, sData, oData, iRow, iCol) {
-                     $(nTd).empty();
-                     if (oData.id in inventories && "software" in inventories[oData.id]){
-                       $(nTd).append(inventories[oData.id].software.find(function(x) {return x.name === value}).version);
-                     } else {
-                     $.get( contextPath + "/secure/api/nodes/"+oData.id+"?include=software"
-                     , function(data) {
-                           inventories[oData.id] = data.data.nodes[0]
-                           $(nTd).append(data.data.nodes[0].software.find(function(x) {return x.name === value}).version);
-                       }
-                     )
-                     }
-                   }
                } }
     , "properties" : function(value) { return {
-                   "mDataProp": "name"
+                   "mDataProp": "properties."+value
                  , "sTitle": "Property '"+value+"'"
-                 , "fnCreatedCell" : function (nTd, sData, oData, iRow, iCol) {
-                     $(nTd).empty();
-                     if (oData.id in inventories){
-                       $(nTd).append(inventories[oData.id].properties.find(function(x) {return x.name === value}).value);
-                     } else {
-                     $.get( contextPath + "/secure/api/nodes/"+oData.id
-                     , function(data) {
-                           inventories[oData.id] = data.data.nodes[0]
-                           $(nTd).append(data.data.nodes[0].properties.find(function(x) {return x.name === value}).value);
-                       }
-                     )
-                     }
-                   }
                } }
     , "policyMode" :  {
-                           "mDataProp": "agentPolicyMode"
+                           "mDataProp": "policyMode"
                          , "sTitle": "Policy Mode"
                          , "sClass" : "tw-bs"
                          , "fnCreatedCell" : function (nTd, sData, oData, iRow, iCol) {
@@ -1187,26 +1121,13 @@ function createNodeTable(gridId, data, contextPath, refresh) {
                            }
                        }
     , "ips" : {
-                   "mDataProp": "name"
+                   "mDataProp": "ipAddresses"
                  , "sTitle": "Ip addresses"
                  , "fnCreatedCell" : function (nTd, sData, oData, iRow, iCol) {
-                     $(nTd).empty();
-                     if (oData.id in inventories){
-                       $(nTd).append(inventories[oData.id].ipAddresses.sort().join("</li><li>") + "</li>");
-                     } else {
-                     $.get( contextPath + "/secure/api/nodes/"+oData.id
-                     , function(data) {
-                           inventories[oData.id] = data.data.nodes[0]
-                           $(nTd).append(data.data.nodes[0].ipAddresses.sort().join("</li><li>") + "</li>");
-                       }
-                     )
-                     $.get( contextPath + "/secure/api/nodes/"+oData.id
-                     , function(data) {
-                           $(nTd).append("<ul><li>" + data.data.nodes[0].ipAddresses.sort().join("</li><li>") + "</li>");
-                       }
-                     )
-}
-                   }
+                             $(nTd).empty();
+                             $(nTd).prepend("<ul><li>"+oData.ipAddresses.sort().join("</li><li>") + "</li></ul>");
+                           }
+
                }
     , "machineType" : {
           "mDataProp": "machineType"
@@ -1218,10 +1139,10 @@ function createNodeTable(gridId, data, contextPath, refresh) {
 
   var columns = [ {
       //only for search, not visible - see "columnDefs" def in parameter
-      "mDataProp": "state"
+      "data": "state"
   } , {
-     "mDataProp": "name"
-    , "sTitle": "Node name"
+     "data": "name"
+    , "title": "Node name"
     , "fnCreatedCell" : function (nTd, sData, oData, iRow, iCol) {
         var link = callbackElement(oData, false)
         var state = "";
@@ -1237,11 +1158,11 @@ function createNodeTable(gridId, data, contextPath, refresh) {
         $(nTd).append(link);
       }
   }  , {
-      "mDataProp": "os"
-    , "sTitle": "Operating System"
+      "data": "os"
+    , "title": "Operating System"
   }  , {
-      "mDataProp": "name"
-    , "sTitle": "Compliance"
+      "data": "name"
+    , "title": "Compliance"
     , "sSortDataType": "node-compliance"
     , "sType" : "numeric"
     , "sClass" : "tw-bs"
@@ -1253,29 +1174,33 @@ function createNodeTable(gridId, data, contextPath, refresh) {
         $(nTd).prepend(link);
       }
   } , {
-     "mDataProp": "lastReport"
-    , "sTitle": "Last run date"
+     "data": "lastRun"
+    , "title": "Last run date"
   } ];
 
   var params = {
-      "bFilter" : true
-    , "bPaginate" : true
-    , "bLengthChange": true
-    , "bDestroy" : true
-    , "sPaginationType": "full_numbers"
-    , "oLanguage": {
-        "sSearch": ""
+      "filter" : true
+    , "paging" : true
+    , "lengthChange": true
+    , "destroy" : true
+    , "pagingType": "full_numbers"
+    , "language": {
+        "search": ""
+    }
+    , "ajax" : {
+    "url" : contextPath + "/secure/api/nodeDetails?properties=datacenter"
+    , "dataSrc" : ""
     }
     , "columnDefs": [{
           "targets": [ 0 ]
-        , "visible": false
+        , "visible": true
         , "searchable": true
 
       } , {
         "type"    : "natural-ci"
       , "targets" : 3
       }]
-    , "fnDrawCallback": function( oSettings ) {
+    , "drawCallback": function( oSettings ) {
 
         $('[data-toggle="tooltip"]').bsTooltip();
         var rows = this._('tr', {"page":"current"});
@@ -1294,26 +1219,24 @@ function createNodeTable(gridId, data, contextPath, refresh) {
         })
         $('.rudder-label').bsTooltip();
       }
-    , "aaSorting": [[ 1, "asc" ]]
-    , "sDom": '<"dataTables_wrapper_top newFilter "f <"select-columns"> <"dataTables_refresh">>rt<"dataTables_wrapper_bottom"lip>'
+    , "dom": '<"dataTables_wrapper_top newFilter "f <"select-columns"> <"dataTables_refresh">>rt<"dataTables_wrapper_bottom"lip>'
   };
 
-  createTable(gridId,data, columns, params, contextPath, refresh, "nodes");
+  createTable(gridId, data , columns, params, contextPath, refresh, "nodes");
 
+  console.log($('#'+gridId).DataTable())
  function addColumn(columnName, value) {
-   console.log(columnName)
-  var table = $('#'+gridId).DataTable();;
+  var table = $('#'+gridId).DataTable();
    var data2 = table.rows().data();
    var init = table.init();
    table.destroy();
    $('#'+gridId).empty();
    if (columnName =="properties" || columnName =="software" ) {
-   init.aoColumns.push(dynColumns[columnName](value))
+     init.aoColumns.push(dynColumns[columnName](value))
    } else {
-
-   init.aoColumns.push(dynColumns[columnName])
+     init.aoColumns.push(dynColumns[columnName])
    }
-   console.log(data)
+   delete params["ajax"];
 
    createTable(gridId,data2, init.aoColumns, params, contextPath, refresh, "nodes");
 
@@ -2055,6 +1978,8 @@ function createTable(gridId,data,columns, customParams, contextPath, refresh, st
   }
 
   var params = $.extend({},defaultParams,customParams);
+  console.log(params)
+  console.log($('#'+gridId))
   var table = $('#'+gridId).DataTable( params );
 
   $('#'+gridId+' thead tr').addClass("head");

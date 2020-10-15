@@ -134,7 +134,7 @@ class SrvGrid(
     val objGlobalPolicyMode = JsObj(("override"->globalOverride), ("policyMode"->globalPolicyMode.mode.name))
     val refresh = refreshNodes.map(refreshData(_,callback,tableId).toJsCmd).getOrElse("undefined")
 
-    JsRaw(s"""createNodeTable("${tableId}",${data.json.toJsCmd},"${S.contextPath}",${refresh}, ${objGlobalPolicyMode});""")
+    JsRaw(s"""createNodeTable("${tableId}",[],"${S.contextPath}",${refresh}, ${objGlobalPolicyMode});""")
   }
 
   def getTableData (
@@ -184,7 +184,7 @@ class SrvGrid(
       JsRaw(s"""
           nodeCompliances = {};
           nodeSystemCompliances = {};
-          refreshTable("${tableId}",${data.json.toJsCmd});
+
           ${futureCompliances.toJsCmd}
           ${futureSystemCompliances.toJsCmd}
       """)
