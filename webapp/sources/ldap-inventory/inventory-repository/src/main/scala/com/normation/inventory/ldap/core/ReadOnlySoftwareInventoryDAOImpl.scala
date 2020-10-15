@@ -175,10 +175,16 @@ class ReadOnlySoftwareDAOImpl(
   }
 
   def getNodesbySofwareName(softName: String): IOResult[Map[NodeId, List[Software]]] = {
+
+    val n1 = System.currentTimeMillis
     for {
 
       con           <- ldap
+      n2 = System.currentTimeMillis
+      _ = println(s"init ldap: ${n2 - n1}ms")
       entries <- con.searchOne(inventoryDitService.getSoftwareBaseDN, EQ(A_NAME,softName )).map(_.toVector)
+      n3 = System.currentTimeMillis
+      _ = println(s"soft request ldap: ${n3 - n2}ms")
       res    <- ZIO.foreach(entries) { entry =>
         val dit = inventoryDitService.getDit(AcceptedInventory)
         for {
@@ -191,6 +197,8 @@ class ReadOnlySoftwareDAOImpl(
         }
       }
 
+      n4 = System.currentTimeMillis
+      _ = println(s"node request ldap: ${n3 - n2}ms")
 
     } yield {
       res.flatten.groupMap(_._1)(_._2)

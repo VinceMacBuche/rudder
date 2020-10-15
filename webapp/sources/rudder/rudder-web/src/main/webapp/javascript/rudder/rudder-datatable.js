@@ -1188,7 +1188,7 @@ function createNodeTable(gridId, data, contextPath, refresh) {
         "search": ""
     }
     , "ajax" : {
-    "url" : contextPath + "/secure/api/nodeDetails?properties=datacenter&software=apt"
+    "url" : contextPath + "/secure/api/nodeDetails?properties=datacenter&software=audit"
     , "dataSrc" : ""
     }
     , "columnDefs": [{
