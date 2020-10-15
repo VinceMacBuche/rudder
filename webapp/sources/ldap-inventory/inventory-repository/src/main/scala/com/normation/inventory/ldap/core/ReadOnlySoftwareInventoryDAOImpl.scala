@@ -198,7 +198,7 @@ class ReadOnlySoftwareDAOImpl(
       }
 
       n4 = System.currentTimeMillis
-      _ = println(s"node request ldap: ${n3 - n2}ms")
+      _ = println(s"node request ldap: ${n4 - n3}ms")
 
     } yield {
       res.flatten.groupMap(_._1)(_._2)
