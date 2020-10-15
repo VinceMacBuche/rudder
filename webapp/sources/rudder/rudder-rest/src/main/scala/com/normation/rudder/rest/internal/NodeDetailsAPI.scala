@@ -61,7 +61,7 @@ class NodeDetailsAPI (
       ~  ("state" -> nodeInfo.state.name)
       ~  ("ipAddresses" -> nodeInfo.ips)
       ~  ("lastRun" -> agentRunWithNodeConfig.map(d => DateFormaterService.getDisplayDate(d.agentRunId.date)).getOrElse("Never"))
-      ~  ("software" -> JObject(softs.toList.map(s => JField(s.name.getOrElse(""), JString(s.version.map(_.value).getOrElse("N/A"))))))
+     // ~  ("software" -> JObject(softs.toList.map(s => JField(s.name.getOrElse(""), JString(s.version.map(_.value).getOrElse("N/A"))))))
       ~  ("properties" -> JObject(nodeInfo.properties.filter(p => properties.contains(p.name)).map(p => JField(p.name, parse(p.value.render(ConfigRenderOptions.concise()) ) )) ))
       )
   }
@@ -72,9 +72,9 @@ class NodeDetailsAPI (
         nodes <- nodeInfoService.getAll()
         runs <- reportsExecutionRepository.getNodesLastRun(nodes.keySet)
         globalMode <- getGlobalMode()
-        softs <- readOnlySoftwareDAO.getSoftwareByNode(nodes.keySet,AcceptedInventory).toBox
+        //softs <- readOnlySoftwareDAO.getSoftwareByNode(nodes.keySet,AcceptedInventory).toBox
       } yield {
-        JsonResponse(JArray(nodes.values.toList.map(n => serialize(runs.get(n.id).flatten,globalMode,n, req.params.get("properties").getOrElse(Nil), softs.get(n.id).getOrElse(Seq())))))
+        JsonResponse(JArray(nodes.values.toList.map(n => serialize(runs.get(n.id).flatten,globalMode,n, req.params.get("properties").getOrElse(Nil), Seq()))))
       }
   }
 
