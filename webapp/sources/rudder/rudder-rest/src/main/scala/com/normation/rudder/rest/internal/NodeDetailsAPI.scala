@@ -87,10 +87,7 @@ class NodeDetailsAPI (
         softs <-
           ZIO.foreach(softToLookAfter) {
             soft => readOnlySoftwareDAO.getNodesbySofwareName(soft)
-          }.toBox.map(_.reduce[Map[NodeId,List[Software]]] {
-            case (map1,map2) =>
-              (map1.toList ::: map2.toList).groupMap(_._1)(_._2).view.mapValues(_.flatten).toMap
-          })
+          }.toBox.map(_.flatten.groupMap(_._1)(_._2))
         n5 = System.currentTimeMillis
         _ = println(s"response: ${n5 - n4}ms")
       } yield {

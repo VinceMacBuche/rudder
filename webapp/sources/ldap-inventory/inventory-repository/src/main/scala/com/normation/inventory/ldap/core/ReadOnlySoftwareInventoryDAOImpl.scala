@@ -174,7 +174,7 @@ class ReadOnlySoftwareDAOImpl(
     }
   }
 
-  def getNodesbySofwareName(softName: String): IOResult[Map[NodeId, List[Software]]] = {
+  def getNodesbySofwareName(softName: String): IOResult[List[(NodeId, Software)]] = {
 
     val n1 = System.currentTimeMillis
     for {
@@ -201,7 +201,7 @@ class ReadOnlySoftwareDAOImpl(
       _ = println(s"node request ldap: ${n4 - n3}ms")
 
     } yield {
-      res.flatten.groupMap(_._1)(_._2)
+      res.flatten
     }
   }
 }
