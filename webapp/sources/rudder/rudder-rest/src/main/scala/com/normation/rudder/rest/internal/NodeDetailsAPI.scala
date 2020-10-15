@@ -1,6 +1,7 @@
 package com.normation.rudder.rest.internal
 
 import com.normation.inventory.domain.AcceptedInventory
+import com.normation.inventory.domain.NodeId
 import com.normation.inventory.domain.Software
 import com.normation.inventory.services.core.ReadOnlySoftwareDAO
 import com.normation.rudder.domain.nodes.NodeInfo
@@ -24,6 +25,7 @@ import net.liftweb.json.JsonAST.JField
 import net.liftweb.json.JsonAST.JObject
 import net.liftweb.json.JsonAST.JString
 import net.liftweb.json.parse
+import zio.ZIO
 
 class NodeDetailsAPI (
   nodeInfoService: NodeInfoService
@@ -35,7 +37,7 @@ class NodeDetailsAPI (
 ) extends  RestHelper with  Loggable {
 
 
-  def serialize(agentRunWithNodeConfig: Option[AgentRunWithNodeConfig], globalPolicyMode: GlobalPolicyMode, nodeInfo : NodeInfo, properties : List[String], softs: Seq[Software]) = {
+  def serialize(agentRunWithNodeConfig: Option[AgentRunWithNodeConfig], globalPolicyMode: GlobalPolicyMode, nodeInfo : NodeInfo, properties : List[String], softs: List[Software]) = {
     import net.liftweb.json.JsonDSL._
 
     val (policyMode,explanation) =
@@ -81,11 +83,19 @@ class NodeDetailsAPI (
         globalMode <- getGlobalMode()
         n4 = System.currentTimeMillis
         _ = println(s"Getting global mode: ${n4 - n3}ms")
-        softs <- readOnlySoftwareDAO.getSoftwareByNode(nodes.keySet,AcceptedInventory).toBox
+        softToLookAfter = req.params.getOrElse("software", Nil)
+        softs <-
+          ZIO.foreach(softToLookAfter) {
+            soft => readOnlySoftwareDAO.getNodesbySofwareName(soft)
+          }.toBox.map(_.reduce[Map[NodeId,List[Software]]] {
+            case (map1,map2) =>
+              (map1.toList ::: map2.toList).groupMap(_._1)(_._2).view.mapValues(_.flatten).toMap
+          })
         n5 = System.currentTimeMillis
         _ = println(s"response: ${n5 - n4}ms")
       } yield {
-        val res = JsonResponse(JArray(nodes.values.toList.map(n => serialize(runs.get(n.id).flatten,globalMode,n, req.params.get("properties").getOrElse(Nil), softs.getOrElse(n.id,Seq())))))
+
+        val res = JsonResponse(JArray(nodes.values.toList.map(n => serialize(runs.get(n.id).flatten,globalMode,n, req.params.get("properties").getOrElse(Nil), softs.get(n.id).getOrElse(Nil)))))
 
         val n6 = System.currentTimeMillis
         println(s"response: ${n6 - n5}ms")
