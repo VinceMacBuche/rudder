@@ -1106,10 +1106,12 @@ function createNodeTable(gridId, data, contextPath, refresh) {
     , "software" : function(value) { return {
                    "mDataProp": "software."+value
                  , "sTitle": value + " version"
+                 , "defaultContent" : "<span class='text-muted'>N/A</span>"
                } }
     , "properties" : function(value) { return {
                    "mDataProp": "properties."+value
                  , "sTitle": "Property '"+value+"'"
+                 , "defaultContent" : "N/A"
                } }
     , "policyMode" :  {
                            "mDataProp": "policyMode"
@@ -1182,6 +1184,7 @@ function createNodeTable(gridId, data, contextPath, refresh) {
       "filter" : true
     , "paging" : true
     , "lengthChange": true
+    , "fixedHeader": true
     , "destroy" : true
     , "pagingType": "full_numbers"
     , "language": {
