@@ -1130,6 +1130,7 @@ var allColumns = {
   , "Hostname" :
     { "data": "name"
     , "title": "Hostname"
+
     , "createdCell" : function (nTd, sData, oData, iRow, iCol) {
         var link = callbackElement(oData, false)
         var state = "";
@@ -1169,9 +1170,8 @@ var allColumns = {
     }
 }
 
-var dynColumns = []
-function createNodeTable(gridId, data, contextPath, refresh) {
-  fnction callbackElement(oData, displayCompliance) {
+
+  function callbackElement(oData, displayCompliance) {
     var elem = $("<a></a>");
     if("callback" in oData) {
         elem.click(function(e) {
@@ -1185,8 +1185,13 @@ function createNodeTable(gridId, data, contextPath, refresh) {
     return elem;
   }
 
-  var columns = [ allColumns["Hostname"],  allColumns["OS"],  allColumns["Compliance"],  allColumns["Last Run"]]
+var dynColumns = []
+function createNodeTable(gridId, data, contextPath, refresh) {
 
+
+  var columns = [ allColumns["Hostname"],  allColumns["OS"],  allColumns["Compliance"],  allColumns["Last run"]]
+
+  console.log(columns)
   dynColumns = [ "Id", "Server", "Ram", "Property", "Software", "Agent version", "Policy mode", "IP addresses", "Machine type" ]
   var params = {
       "filter" : true
@@ -1198,19 +1203,14 @@ function createNodeTable(gridId, data, contextPath, refresh) {
     , "language": {
         "search": ""
     }
+    , columnDefs : {
+       "target" : 0
+       , "visible" : true
+    }
     , "ajax" : {
     "url" : contextPath + "/secure/api/nodeDetails?properties=datacenter&software=audit"
     , "dataSrc" : ""
     }
-    , "columnDefs": [{
-          "targets": [ 0 ]
-        , "visible": false
-        , "searchable": true
-
-      } , {
-        "type"    : "natural-ci"
-      , "targets" : 3
-      }]
     , "drawCallback": function( oSettings ) {
 
         $('[data-toggle="tooltip"]').bsTooltip();
@@ -1230,10 +1230,11 @@ function createNodeTable(gridId, data, contextPath, refresh) {
         })
         $('.rudder-label').bsTooltip();
       }
-    , "dom": '<"dataTables_wrapper_top newFilter "f <"select-columns"> <"dataTables_refresh">>rt<"dataTables_wrapper_bottom"lip>'
+    , "dom": ' <"dataTables_wrapper_top newFilter "<"#first_line_header" f <"dataTables_refresh"> <"#edit-columns">> <"#select-columns"> >rt<"dataTables_wrapper_bottom"lip>'
   };
 
   createTable(gridId, data , columns, params, contextPath, refresh, "nodes");
+  $("#first_line_header input").addClass("form-control")
 
   console.log($('#'+gridId).DataTable())
  function addColumn(columnName, value) {
@@ -1246,33 +1247,73 @@ function createNodeTable(gridId, data, contextPath, refresh) {
      init.aoColumns.push(allColumns[columnName](value))
    } else {
      init.aoColumns.push(allColumns[columnName])
+     dynColumns = dynColumns.filter(function(col) { return col != columnName})
    }
 
      delete params["ajax"];
    createTable(gridId,data2, init.aoColumns, params, contextPath, refresh, "nodes");
+   $("#first_line_header input").addClass("form-control")
+   columnSelect(true);
 
  }
 
- var select = "<div class='col-xs-12 form-group'> <div class='col-xs-2'> <select placeholder='Select column to add' class='  form-control'>"
- for (var value in dynColumns) {
+  function removeColumn(columnIndex) {
+   var table = $('#'+gridId).DataTable();
+    var data2 = table.rows().data();
+    var init = table.init();
+    table.destroy();
+    $('#'+gridId).empty();
+    dynColumns.push(init.aoColumns[columnIndex].title)
+    init.aoColumns.splice(columnIndex, 1)
+
+    delete params["ajax"];
+    createTable(gridId,data2, init.aoColumns, params, contextPath, refresh, "nodes");
+    $("#first_line_header input").addClass("form-control")
+    columnSelect(true);
+
+  }
+
+function columnSelect(editOpen) {
+$("#edit-columns").html($("<button class='btn btn-blue' > <i class='fa fa-pencil'></i> Edit columns</button>").click(function(){$("#select-columns").toggle()}))
+
+ var select = "<div class='col-xs-12 row form-group'> <div class='col-xs-2' style='margin-left : -15px'  > <select placeholder='Select column to add' class='  form-control'>"
+ for (var key in dynColumns) {
+ value = dynColumns[key]
  select += "<option value="+value+">"+value+"</option>"
  }
- select += "</select></div><div class='col-xs-2'><input class='form-control' type='text'></div> <button class='btn btn-blue'  ><i class='fa fa-plus-circle'> Add column</button></div>"
+ select += "</select></div><div class='col-xs-2' style='margin-left : -15px'><input class='form-control' type='text'></div> <button class='btn btn-success'  ><i class='fa fa-plus-circle'> Add column</button></div>"
 
+ editOpen ? $("#select-columns").show() : $("#select-columns").hide()
  $("#select-columns").html(select)
+
+ var selectedColumns =""
+ for (var key in columns) {
+   var elem = $("<span class='rudder-label label-state' style='cursor: normal' >" + columns[key].title + "  </span>")
+   elem.append($("<i class='fa fa-times' style='cursor: pointer'> </i>").hover(function() { $(this).parent().toggleClass("label-state label-error")}).click(function(value) { return function() {removeColumn(value)}}(key)))
+
+     $("#select-columns").append(elem)
+ }
+
+ if (dynColumns[0] != "Property" && dynColumns[0] !="Software" ) {
+   $("#select-columns input").parent().hide()
+ }
  $("#select-columns select").change(function(e) {
 
- if (this.value =="properties" || this.value =="software" ) {
+ if (this.value =="Property" || this.value =="Software" ) {
    $("#select-columns input").parent().show()
 
    $("#select-columns input").attr('placeholder', this.value + " name" )
  } else {
    $("#select-columns input").parent().hide()
  }})
- $("#select-columns button").click(function(e) {
+ $("#select-columns div button").click(function(e) {
 
  addColumn($("#select-columns select").val(), $("#select-columns input").val())
+
  })
+}
+ columnSelect(false)
+
  /* var table = $('#'+gridId).DataTable();
   table.clear();
   table.destroy();

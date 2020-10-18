@@ -1,7 +1,5 @@
 package com.normation.rudder.rest.internal
 
-import com.normation.inventory.domain.AcceptedInventory
-import com.normation.inventory.domain.NodeId
 import com.normation.inventory.domain.Software
 import com.normation.inventory.services.core.ReadOnlySoftwareDAO
 import com.normation.rudder.domain.nodes.NodeInfo
@@ -68,13 +66,34 @@ class NodeDetailsAPI (
       )
   }
   def requestDispatch: PartialFunction[Req, () => Box[LiftResponse]] = {
-    case Get(Nil, req) =>
+    case Post("software" :: software :: Nil , req) =>
       import com.normation.box._
 
       val n1 = System.currentTimeMillis
       for {
 
-        nodes <- nodeInfoService.getAll()
+        optNodeIds <- req.json.flatMap(restExtractor.extractNodeIdsFromJson)
+
+        nodes <- optNodeIds match {
+          case None => nodeInfoService.getAll()
+          case Some(nodeIds) => com.normation.utils.Control.sequence(nodeIds)( nodeInfoService.getNodeInfo(_).map(_.map(n => (n.id, n)))).map(_.flatten.toMap)
+        }
+        softs <- readOnlySoftwareDAO.getNodesbySofwareName(software).toBox.map(_.toMap)
+      } yield {
+        JsonResponse(JObject(nodes.keySet.toList.flatMap(id => softs.get(id).flatMap(_.version.map(v => JField(id.value, JString(v.value)))))))
+
+      }
+    case Post(Nil, req) =>
+      import com.normation.box._
+
+      val n1 = System.currentTimeMillis
+      for {
+
+        optNodeIds <- req.json.flatMap(restExtractor.extractNodeIdsFromJson)
+        nodes <- optNodeIds match {
+          case None => nodeInfoService.getAll()
+          case Some(nodeIds) => com.normation.utils.Control.sequence(nodeIds)( nodeInfoService.getNodeInfo(_).map(_.map(n => (n.id, n)))).map(_.flatten.toMap)
+        }
         n2 = System.currentTimeMillis
         _ = println(s"Getting node infos: ${n2 - n1}ms")
         runs <- reportsExecutionRepository.getNodesLastRun(nodes.keySet)
