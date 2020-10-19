@@ -62,7 +62,7 @@ class NodeDetailsAPI (
       ~  ("ipAddresses" -> nodeInfo.ips.filter(ip => ip != "127.0.0.1" || ip != "0:0:0:0:0:0:0:1"))
       ~  ("lastRun" -> agentRunWithNodeConfig.map(d => DateFormaterService.getDisplayDate(d.agentRunId.date)).getOrElse("Never"))
       ~  ("software" -> JObject(softs.toList.map(s => JField(s.name.getOrElse(""), JString(s.version.map(_.value).getOrElse("N/A"))))))
-      ~  ("properties" -> JObject(nodeInfo.properties.filter(p => properties.contains(p.name)).map(p => JField(p.name, parse(p.value.render(ConfigRenderOptions.concise()) ) )) ))
+      ~  ("property" -> JObject(nodeInfo.properties.filter(p => properties.contains(p.name)).map(p => JField(p.name, parse(p.value.render(ConfigRenderOptions.concise()) ) )) ))
       )
   }
   def requestDispatch: PartialFunction[Req, () => Box[LiftResponse]] = {
@@ -81,6 +81,23 @@ class NodeDetailsAPI (
         softs <- readOnlySoftwareDAO.getNodesbySofwareName(software).toBox.map(_.toMap)
       } yield {
         JsonResponse(JObject(nodes.keySet.toList.flatMap(id => softs.get(id).flatMap(_.version.map(v => JField(id.value, JString(v.value)))))))
+
+      }
+
+    case Post("property" :: property :: Nil , req) =>
+      import com.normation.box._
+
+      val n1 = System.currentTimeMillis
+      for {
+
+        optNodeIds <- req.json.flatMap(restExtractor.extractNodeIdsFromJson)
+
+        nodes <- optNodeIds match {
+          case None => nodeInfoService.getAll()
+          case Some(nodeIds) => com.normation.utils.Control.sequence(nodeIds)( nodeInfoService.getNodeInfo(_).map(_.map(n => (n.id, n)))).map(_.flatten.toMap)
+        }
+      } yield {
+        JsonResponse(JObject(nodes.flatMap{ case (id,nodeInfo) => nodeInfo.properties.find(_.name == property).map( p => JField(id.value, JString(p.value.render())))}.toList))
 
       }
     case Post(Nil, req) =>
