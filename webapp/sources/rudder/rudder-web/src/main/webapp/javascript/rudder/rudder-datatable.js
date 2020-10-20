@@ -1079,18 +1079,23 @@ var allColumns = {
     "Id" :
     { "data": "id"
     , "title": "Id"
+             , "defaultContent" : "<span class='text-muted'>N/A</span>"
     }
   , "Server" :
     { "data": "policyServerId"
     , "title": "Server"
+             , "defaultContent" : "<span class='text-muted'>N/A</span>"
     }
   , "Ram" :
     { "data": "ram"
     , "title": "Ram"
+             , "defaultContent" : "<span class='text-muted'>N/A</span>"
     }
   , "Agent Version" :
     { "data": "agentVersion"
     , "title": "Agent version"
+             , "defaultContent" : "<span class='text-muted'>N/A</span>"
+
     }
   , "Software" :
     function(value) {
@@ -1109,6 +1114,7 @@ var allColumns = {
   , "Policy mode" :
     { "data": "policyMode"
     , "title": "Policy Mode"
+             , "defaultContent" : "<span class='text-muted'>N/A</span>"
     , "createdCell" :
       function (nTd, sData, oData, iRow, iCol) {
         $(nTd).empty();
@@ -1118,6 +1124,7 @@ var allColumns = {
   , "IP addresses" :
     { "data": "ipAddresses"
     , "title": "IP addresses"
+             , "defaultContent" : "<span class='text-muted'>N/A</span>"
     , "createdCell" :
       function (nTd, sData, oData, iRow, iCol) {
         $(nTd).empty();
@@ -1126,14 +1133,17 @@ var allColumns = {
     }
   , "Machine type" :
     { "data": "machineType"
-    , "sTitle": "Machine type"
+             , "defaultContent" : "<span class='text-muted'>N/A</span>"
+    , "title": "Machine type"
     }
   , "Kernel" :
     { "data": "kernel"
-    , "sTitle": "Kernel"
+             , "defaultContent" : "<span class='text-muted'>N/A</span>"
+    , "title": "Kernel"
     }
   , "Hostname" :
     { "data": "name"
+             , "defaultContent" : "<span class='text-muted'>N/A</span>"
     , "title": "Hostname"
 
     , "createdCell" : function (nTd, sData, oData, iRow, iCol) {
@@ -1153,10 +1163,12 @@ var allColumns = {
     }
   , "OS" :
     { "data": "os"
+             , "defaultContent" : "<span class='text-muted'>N/A</span>"
     , "title": "OS"
     }
   , "Compliance" :
     { "data": "name"
+             , "defaultContent" : "<span class='text-muted'>N/A</span>"
     , "title": "Compliance"
     , "sSortDataType": "node-compliance"
     , "type" : "numeric"
@@ -1171,6 +1183,7 @@ var allColumns = {
     }
   , "Last run" :
     { "data": "lastRun"
+             , "defaultContent" : "<span class='text-muted'>N/A</span>"
     , "title": "Last run"
     }
 }
