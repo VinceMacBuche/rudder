@@ -52,7 +52,7 @@ class NodeDetailsAPI (
       ~  ("policyServerId" -> nodeInfo.policyServerId.value)
       ~  ("policyMode" -> policyMode.name)
       ~  ("explanation" -> explanation)
-
+      ~  ("kernel" -> nodeInfo.osDetails.kernelVersion.value)
       ~  ("agentVersion" -> nodeInfo.agentsName.headOption.flatMap(_.version.map(_.value)))
       ~  ("id" -> nodeInfo.id.value)
       ~  ("ram" -> nodeInfo.ram.map(_.toStringMo()))

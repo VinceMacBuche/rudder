@@ -43,6 +43,7 @@ var inventories = {};
 var recentGraphs = {};
 var nodeCompliances = {};
 var nodeSystemCompliances = {};
+var nodeIds = undefined;
 /* Create an array with the values of all the checkboxes in a column */
 $.fn.dataTable.ext.order['dom-checkbox'] = function  ( settings, col )
 {
@@ -1127,6 +1128,10 @@ var allColumns = {
     { "data": "machineType"
     , "sTitle": "Machine type"
     }
+  , "Kernel" :
+    { "data": "kernel"
+    , "sTitle": "Kernel"
+    }
   , "Hostname" :
     { "data": "name"
     , "title": "Hostname"
@@ -1186,12 +1191,12 @@ var allColumns = {
   }
 
 var dynColumns = []
-function createNodeTable(gridId, nodeIds, contextPath, refresh) {
+function createNodeTable(gridId, nope, contextPath, refresh) {
 
 
   var columns = [ allColumns["Hostname"],  allColumns["OS"],  allColumns["Compliance"],  allColumns["Last run"]]
 
-  dynColumns = [ "Id", "Server", "Ram", "Property", "Software", "Agent version", "Policy mode", "IP addresses", "Machine type" ]
+  dynColumns = [ "Id", "Server", "Ram", "Property", "Software", "Agent version", "Policy mode", "IP addresses", "Machine type", "Kernel" ]
   var params = {
       "filter" : true
     , "paging" : true
@@ -1212,7 +1217,7 @@ function createNodeTable(gridId, nodeIds, contextPath, refresh) {
     , "contentType": "application/json"
     , "data" : function(d) {
         var data = d
-        if (nodeIds.length > 0) { data = $.extend({}, d, {"nodeIds": nodeIds} ) }
+        if (nodeIds !== undefined) { data = $.extend({}, d, {"nodeIds": nodeIds} ) }
         return JSON.stringify(data)
       }
     , "dataSrc" : ""
@@ -1243,7 +1248,7 @@ function createNodeTable(gridId, nodeIds, contextPath, refresh) {
   $("#first_line_header input").addClass("form-control")
 
   console.log($('#'+gridId).DataTable())
- function addColumn(columnName, value, nodeIds) {
+ function addColumn(columnName, value) {
   var table = $('#'+gridId).DataTable();
    var data2 = table.rows().data();
    var init = table.init();
@@ -1257,7 +1262,7 @@ function createNodeTable(gridId, nodeIds, contextPath, refresh) {
                         , "contentType": "application/json"
                         , "data" : function(d) {
                              var data = d
-                                if (nodeIds.length > 0) { data = $.extend({}, d, {"nodeIds": nodeIds} ) }
+                                if (nodeIds !== undefined ) { data = $.extend({}, d, {"nodeIds": nodeIds} ) }
                                   return JSON.stringify(data)
                              }
                              , "dataSrc" : function(d) {
@@ -1287,11 +1292,11 @@ function createNodeTable(gridId, nodeIds, contextPath, refresh) {
    }
 
    $("#first_line_header input").addClass("form-control")
-   columnSelect(true, nodeIds);
+   columnSelect(true);
 
  }
 
-  function removeColumn(columnIndex, nodeIds) {
+  function removeColumn(columnIndex) {
    var table = $('#'+gridId).DataTable();
     var data2 = table.rows().data();
     var init = table.init();
@@ -1303,11 +1308,11 @@ function createNodeTable(gridId, nodeIds, contextPath, refresh) {
     delete params["ajax"];
     createTable(gridId,data2, init.aoColumns, params, contextPath, refresh, "nodes");
     $("#first_line_header input").addClass("form-control")
-    columnSelect(true, nodeIds);
+    columnSelect(true);
 
   }
 
-function columnSelect(editOpen, nodeIds) {
+function columnSelect(editOpen) {
 $("#edit-columns").html($("<button class='btn btn-blue' > <i class='fa fa-pencil'></i> Edit columns</button>").click(function(){$("#select-columns").toggle()}))
 
  var select = "<div class='col-xs-12 row form-group'> <div class='col-xs-2' style='margin-left : -15px'  > <select placeholder='Select column to add' class='  form-control'>"
@@ -1323,7 +1328,7 @@ $("#edit-columns").html($("<button class='btn btn-blue' > <i class='fa fa-pencil
  var selectedColumns =""
  for (var key in columns) {
    var elem = $("<span class='rudder-label label-state' style='cursor: normal' >" + columns[key].title + "  </span>")
-   elem.append($("<i class='fa fa-times' style='cursor: pointer'> </i>").hover(function() { $(this).parent().toggleClass("label-state label-error")}).click(function(value) { return function() {removeColumn(value, nodeIds)}}(key)))
+   elem.append($("<i class='fa fa-times' style='cursor: pointer'> </i>").hover(function() { $(this).parent().toggleClass("label-state label-error")}).click(function(value) { return function() {removeColumn(value)}}(key)))
 
      $("#select-columns").append(elem)
  }
@@ -1342,11 +1347,11 @@ $("#edit-columns").html($("<button class='btn btn-blue' > <i class='fa fa-pencil
  }})
  $("#select-columns div button").click(function(e) {
 
- addColumn($("#select-columns select").val(), $("#select-columns input").val(), nodeIds)
+ addColumn($("#select-columns select").val(), $("#select-columns input").val())
 
  })
 }
- columnSelect(false, nodeIds)
+ columnSelect(false)
 
  /* var table = $('#'+gridId).DataTable();
   table.clear();

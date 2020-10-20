@@ -351,7 +351,7 @@ class SearchNodeComponent(
     val tableId = if(isGroupsPage){"groupNodesTable"}else{"serverGrid"}
     srvList match {
       case Full(seq) =>
-        val refresh = srvGrid.refreshData(() => seq, onClickCallback, tableId)
+        val refresh = srvGrid.refreshData(() => Some(seq), onClickCallback, tableId)
         JsRaw(s"""(${refresh.toJsCmd}());createTooltip();""")
 
       case Empty =>
