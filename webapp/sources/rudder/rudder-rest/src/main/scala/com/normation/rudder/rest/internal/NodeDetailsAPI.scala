@@ -59,7 +59,7 @@ class NodeDetailsAPI (
       ~  ("machineType" -> nodeInfo.machine.map(_.machineType.toString))
       ~  ("os" -> nodeInfo.osDetails.fullName)
       ~  ("state" -> nodeInfo.state.name)
-      ~  ("ipAddresses" -> nodeInfo.ips.filter(ip => ip != "127.0.0.1" || ip != "0:0:0:0:0:0:0:1"))
+      ~  ("ipAddresses" -> nodeInfo.ips.filter(ip => ip != "127.0.0.1" && ip != "0:0:0:0:0:0:0:1"))
       ~  ("lastRun" -> agentRunWithNodeConfig.map(d => DateFormaterService.getDisplayDate(d.agentRunId.date)).getOrElse("Never"))
       ~  ("software" -> JObject(softs.toList.map(s => JField(s.name.getOrElse(""), JString(s.version.map(_.value).getOrElse("N/A"))))))
       ~  ("property" -> JObject(nodeInfo.properties.filter(p => properties.contains(p.name)).map(p => JField(p.name, parse(p.value.render(ConfigRenderOptions.concise()) ) )) ))

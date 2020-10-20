@@ -1091,7 +1091,7 @@ var allColumns = {
     , "title": "Ram"
              , "defaultContent" : "<span class='text-muted'>N/A</span>"
     }
-  , "Agent Version" :
+  , "Agent version" :
     { "data": "agentVersion"
     , "title": "Agent version"
              , "defaultContent" : "<span class='text-muted'>N/A</span>"
@@ -1113,7 +1113,7 @@ var allColumns = {
     }
   , "Policy mode" :
     { "data": "policyMode"
-    , "title": "Policy Mode"
+    , "title": "Policy mode"
              , "defaultContent" : "<span class='text-muted'>N/A</span>"
     , "createdCell" :
       function (nTd, sData, oData, iRow, iCol) {
@@ -1204,10 +1204,12 @@ var allColumns = {
   }
 
 var dynColumns = []
+
+  var columns = [];
 function createNodeTable(gridId, nope, contextPath, refresh) {
 
 
-  var columns = [ allColumns["Hostname"],  allColumns["OS"],  allColumns["Compliance"],  allColumns["Last run"]]
+  columns = [ allColumns["Hostname"],  allColumns["OS"],  allColumns["Compliance"],  allColumns["Last run"]]
 
   dynColumns = [ "Id", "Server", "Ram", "Property", "Software", "Agent version", "Policy mode", "IP addresses", "Machine type", "Kernel" ]
   var params = {
@@ -1298,6 +1300,8 @@ function createNodeTable(gridId, nope, contextPath, refresh) {
 
      createTable(gridId,[], init.aoColumns, params, contextPath, refresh, "nodes");
    } else {
+     console.log(allColumns)
+     console.log(columnName)
      init.aoColumns.push(allColumns[columnName])
      dynColumns = dynColumns.filter(function(col) { return col != columnName})
      delete params["ajax"];
@@ -1326,12 +1330,15 @@ function createNodeTable(gridId, nope, contextPath, refresh) {
   }
 
 function columnSelect(editOpen) {
+
+  var table = $('#'+gridId).DataTable();
+   var init = table.init();
 $("#edit-columns").html($("<button class='btn btn-blue' > <i class='fa fa-pencil'></i> Edit columns</button>").click(function(){$("#select-columns").toggle()}))
 
  var select = "<div class='col-xs-12 row form-group'> <div class='col-xs-2' style='margin-left : -15px'  > <select placeholder='Select column to add' class='  form-control'>"
  for (var key in dynColumns) {
  value = dynColumns[key]
- select += "<option value="+value+">"+value+"</option>"
+ select += "<option value='"+value+"'>"+value+"</option>"
  }
  select += "</select></div><div class='col-xs-2' style='margin-left : -15px'><input class='form-control' type='text'></div> <button class='btn btn-success'  ><i class='fa fa-plus-circle'> Add column</button></div>"
 
@@ -1339,8 +1346,10 @@ $("#edit-columns").html($("<button class='btn btn-blue' > <i class='fa fa-pencil
  $("#select-columns").html(select)
 
  var selectedColumns =""
- for (var key in columns) {
-   var elem = $("<span class='rudder-label label-state' style='cursor: normal' >" + columns[key].title + "  </span>")
+ for (var key in init.aoColumns) {
+   console.log(key)
+   console.log(init.aoColumns)
+   var elem = $("<span class='rudder-label label-state' style='cursor: normal' >" + init.aoColumns[key].title + "  </span>")
    elem.append($("<i class='fa fa-times' style='cursor: pointer'> </i>").hover(function() { $(this).parent().toggleClass("label-state label-error")}).click(function(value) { return function() {removeColumn(value)}}(key)))
 
      $("#select-columns").append(elem)
