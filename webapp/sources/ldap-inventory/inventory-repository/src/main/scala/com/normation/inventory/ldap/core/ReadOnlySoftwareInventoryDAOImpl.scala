@@ -45,7 +45,6 @@ import com.normation.inventory.services.core.WriteOnlySoftwareDAO
 import com.normation.ldap.sdk.BuildFilter.EQ
 import com.normation.ldap.sdk.BuildFilter.OR
 import com.normation.ldap.sdk.BuildFilter.IS
-import com.normation.ldap.sdk.BuildFilter.IS
 import com.normation.ldap.sdk._
 import com.unboundid.ldap.sdk.DN
 import zio._

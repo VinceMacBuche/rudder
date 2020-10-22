@@ -1206,6 +1206,12 @@ var allColumns = {
 var dynColumns = []
 
   var columns = [];
+
+
+function reloadTable(gridId) {
+  var table = $('#'+gridId).DataTable();
+  table.ajax.reload();
+}
 function createNodeTable(gridId, nope, contextPath, refresh) {
 
 
@@ -1232,6 +1238,7 @@ function createNodeTable(gridId, nope, contextPath, refresh) {
     , "contentType": "application/json"
     , "data" : function(d) {
         var data = d
+        console.log(nodeIds)
         if (nodeIds !== undefined) { data = $.extend({}, d, {"nodeIds": nodeIds} ) }
         return JSON.stringify(data)
       }

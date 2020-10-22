@@ -1,5 +1,6 @@
 package com.normation.rudder.rest.internal
 
+import com.normation.inventory.domain.NodeId
 import com.normation.inventory.domain.Software
 import com.normation.inventory.services.core.ReadOnlySoftwareDAO
 import com.normation.rudder.domain.nodes.NodeInfo
@@ -8,11 +9,13 @@ import com.normation.rudder.domain.policies.PolicyModeOverrides.Always
 import com.normation.rudder.domain.policies.PolicyModeOverrides.Unoverridable
 import com.normation.rudder.reports.execution.AgentRunWithNodeConfig
 import com.normation.rudder.reports.execution.RoReportsExecutionRepository
+import com.normation.rudder.repository.json.DataExtractor.OptionnalJson
 import com.normation.rudder.rest.RestExtractorService
 import com.normation.rudder.services.nodes.NodeInfoService
 import com.normation.rudder.web.components.DateFormaterService
 import com.typesafe.config.ConfigRenderOptions
 import net.liftweb.common.Box
+import net.liftweb.common.Full
 import net.liftweb.common.Loggable
 import net.liftweb.http.JsonResponse
 import net.liftweb.http.LiftResponse
@@ -20,6 +23,7 @@ import net.liftweb.http.Req
 import net.liftweb.http.rest.RestHelper
 import net.liftweb.json.JsonAST.JArray
 import net.liftweb.json.JsonAST.JField
+import net.liftweb.json.JsonAST.JNothing
 import net.liftweb.json.JsonAST.JObject
 import net.liftweb.json.JsonAST.JString
 import net.liftweb.json.parse
@@ -104,9 +108,13 @@ class NodeDetailsAPI (
       import com.normation.box._
 
       val n1 = System.currentTimeMillis
+
       for {
 
-        optNodeIds <- req.json.flatMap(restExtractor.extractNodeIdsFromJson)
+        optNodeIds <- req.json.flatMap(j => OptionnalJson.extractJsonListString(j, "nodeIds",( values => Full(values.map(NodeId(_))))))
+        _ = println(optNodeIds)
+        _ = println(restExtractor.extractNodeIdsFromJson(req.json.getOrElse(JNothing)))
+        _ = println(req.json)
         nodes <- optNodeIds match {
           case None => nodeInfoService.getAll()
           case Some(nodeIds) => com.normation.utils.Control.sequence(nodeIds)( nodeInfoService.getNodeInfo(_).map(_.map(n => (n.id, n)))).map(_.flatten.toMap)
