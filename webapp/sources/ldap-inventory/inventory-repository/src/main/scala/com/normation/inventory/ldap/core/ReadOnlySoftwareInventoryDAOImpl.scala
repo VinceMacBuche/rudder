@@ -207,7 +207,7 @@ class ReadOnlySoftwareDAOImpl(
       _ = TimingDebugLoggerPure.trace(s"node request ldap: ${n4 - n3}ms")
 
     } yield {
-      res.flatten
+      res.flatten.toList
     }
   }
 }
