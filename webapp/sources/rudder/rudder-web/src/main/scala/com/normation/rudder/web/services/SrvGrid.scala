@@ -188,7 +188,6 @@ class SrvGrid(
       val futureSystemCompliances = asyncComplianceService.systemComplianceByNode(nodes.map(_.id).toSet, systemRules, tableId)
 
       JsRaw(s"""
-                console.log("yoyo");
           nodeCompliances = {};
           nodeSystemCompliances = {};
           nodeIds = ${ nodeIds}

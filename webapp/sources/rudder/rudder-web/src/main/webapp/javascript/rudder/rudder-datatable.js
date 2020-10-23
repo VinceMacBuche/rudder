@@ -1238,7 +1238,7 @@ function createNodeTable(gridId, nope, contextPath, refresh) {
     , "contentType": "application/json"
     , "data" : function(d) {
         var data = d
-        console.log(nodeIds)
+
         if (nodeIds !== undefined) { data = $.extend({}, d, {"nodeIds": nodeIds} ) }
         return JSON.stringify(data)
       }
@@ -1269,7 +1269,7 @@ function createNodeTable(gridId, nope, contextPath, refresh) {
   createTable(gridId, [] , columns, params, contextPath, refresh, "nodes");
   $("#first_line_header input").addClass("form-control")
 
-  console.log($('#'+gridId).DataTable())
+
  function addColumn(columnName, value) {
   var table = $('#'+gridId).DataTable();
    var data2 = table.rows().data();
@@ -1289,26 +1289,26 @@ function createNodeTable(gridId, nope, contextPath, refresh) {
                              }
                              , "dataSrc" : function(d) {
 
-                                console.log(data2.rows().data().toArray())
-                                console.log(columnName)
+
+
                                 for ( index in data2.rows().data().toArray() ) {
                                   var node = data2[index]
-                                  console.log(node)
-                                  console.log(index)
+
+
                                   if (node[columnName.toLowerCase()] === undefined) {
                                     node[columnName.toLowerCase()] = {}
                                   }
                                   node[columnName.toLowerCase()][value] = d[node.id]
                                 }
-                                console.log(data2)
+
                                 return data2
                              }
                         }
 
      createTable(gridId,[], init.aoColumns, params, contextPath, refresh, "nodes");
    } else {
-     console.log(allColumns)
-     console.log(columnName)
+
+
      init.aoColumns.push(allColumns[columnName])
      dynColumns = dynColumns.filter(function(col) { return col != columnName})
      delete params["ajax"];
@@ -1354,8 +1354,8 @@ $("#edit-columns").html($("<button class='btn btn-blue' > <i class='fa fa-pencil
 
  var selectedColumns =""
  for (var key in init.aoColumns) {
-   console.log(key)
-   console.log(init.aoColumns)
+
+
    var elem = $("<span class='rudder-label label-state' style='cursor: normal' >" + init.aoColumns[key].title + "  </span>")
    elem.append($("<i class='fa fa-times' style='cursor: pointer'> </i>").hover(function() { $(this).parent().toggleClass("label-state label-error")}).click(function(value) { return function() {removeColumn(value)}}(key)))
 
@@ -1382,17 +1382,6 @@ $("#edit-columns").html($("<button class='btn btn-blue' > <i class='fa fa-pencil
 }
  columnSelect(false)
 
- /* var table = $('#'+gridId).DataTable();
-  table.clear();
-  table.destroy();
-  $('#'+gridId).empty();
-  console.log(table.init())
-  var init = table.init()
-  init.aoColumns.push(dynColumns['name'])
-  init.aoColumns.push(dynColumns['ips'])
-
-  createTable(gridId,data, init.aoColumns, params, contextPath, refresh, "nodes");
- */
 }
 
 
@@ -2098,8 +2087,7 @@ function createTable(gridId,data,columns, customParams, contextPath, refresh, st
   }
 
   var params = $.extend({},defaultParams,customParams);
-  console.log(params)
-  console.log($('#'+gridId))
+
   var table = $('#'+gridId).DataTable( params );
 
   $('#'+gridId+' thead tr').addClass("head");

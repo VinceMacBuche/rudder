@@ -37,6 +37,7 @@
 
 package com.normation.inventory.ldap.core
 
+import com.normation.NamedZioLogger
 import com.normation.errors._
 import com.normation.inventory.domain._
 import com.normation.inventory.ldap.core.LDAPConstants._
@@ -50,6 +51,12 @@ import com.unboundid.ldap.sdk.DN
 import zio._
 import zio.syntax._
 import com.normation.zio._
+
+
+
+object TimingDebugLoggerPure extends NamedZioLogger {
+  override def loggerName: String = "debug_timing"
+}
 
 class ReadOnlySoftwareDAOImpl(
   inventoryDitService:InventoryDitService,
@@ -180,10 +187,10 @@ class ReadOnlySoftwareDAOImpl(
 
       con           <- ldap
       n2 = System.currentTimeMillis
-      _ = println(s"init ldap: ${n2 - n1}ms")
+      _ <- TimingDebugLoggerPure.trace(s"init ldap: ${n2 - n1}ms")
       entries <- con.searchOne(inventoryDitService.getSoftwareBaseDN, EQ(A_NAME,softName )).map(_.toVector)
       n3 = System.currentTimeMillis
-      _ = println(s"soft request ldap: ${n3 - n2}ms")
+      _ <- TimingDebugLoggerPure.trace(s"soft request ldap: ${n3 - n2}ms")
       res    <- ZIO.foreach(entries) { entry =>
         val dit = inventoryDitService.getDit(AcceptedInventory)
         for {
@@ -197,7 +204,7 @@ class ReadOnlySoftwareDAOImpl(
       }
 
       n4 = System.currentTimeMillis
-      _ = println(s"node request ldap: ${n4 - n3}ms")
+      _ = TimingDebugLoggerPure.trace(s"node request ldap: ${n4 - n3}ms")
 
     } yield {
       res.flatten
