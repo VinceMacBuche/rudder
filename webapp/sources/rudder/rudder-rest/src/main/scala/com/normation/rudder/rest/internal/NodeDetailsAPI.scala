@@ -73,7 +73,6 @@ class NodeDetailsAPI (
     case Post("software" :: software :: Nil , req) =>
       import com.normation.box._
 
-      val n1 = System.currentTimeMillis
       for {
 
         optNodeIds <- req.json.flatMap(restExtractor.extractNodeIdsFromJson)
@@ -89,9 +88,7 @@ class NodeDetailsAPI (
       }
 
     case Post("property" :: property :: Nil , req) =>
-      import com.normation.box._
 
-      val n1 = System.currentTimeMillis
       for {
 
         optNodeIds <- req.json.flatMap(restExtractor.extractNodeIdsFromJson)
