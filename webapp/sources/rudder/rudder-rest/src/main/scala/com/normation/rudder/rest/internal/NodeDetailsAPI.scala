@@ -3,6 +3,7 @@ package com.normation.rudder.rest.internal
 import com.normation.inventory.domain.NodeId
 import com.normation.inventory.domain.Software
 import com.normation.inventory.services.core.ReadOnlySoftwareDAO
+import com.normation.rudder.domain.logger.TimingDebugLoggerPure
 import com.normation.rudder.domain.nodes.NodeInfo
 import com.normation.rudder.domain.policies.GlobalPolicyMode
 import com.normation.rudder.domain.policies.PolicyModeOverrides.Always
@@ -109,34 +110,32 @@ class NodeDetailsAPI (
       for {
 
         optNodeIds <- req.json.flatMap(j => OptionnalJson.extractJsonListString(j, "nodeIds",( values => Full(values.map(NodeId(_))))))
-        _ = println(optNodeIds)
-        _ = println(restExtractor.extractNodeIdsFromJson(req.json.getOrElse(JNothing)))
-        _ = println(req.json)
+
         nodes <- optNodeIds match {
           case None => nodeInfoService.getAll()
           case Some(nodeIds) => com.normation.utils.Control.sequence(nodeIds)( nodeInfoService.getNodeInfo(_).map(_.map(n => (n.id, n)))).map(_.flatten.toMap)
         }
         n2 = System.currentTimeMillis
-        _ = println(s"Getting node infos: ${n2 - n1}ms")
+        _ = TimingDebugLoggerPure.trace(s"Getting node infos: ${n2 - n1}ms")
         runs <- reportsExecutionRepository.getNodesLastRun(nodes.keySet)
         n3 = System.currentTimeMillis
-        _ = println(s"Getting run infos: ${n3 - n2}ms")
+        _ = TimingDebugLoggerPure.trace(s"Getting run infos: ${n3 - n2}ms")
         globalMode <- getGlobalMode()
         n4 = System.currentTimeMillis
-        _ = println(s"Getting global mode: ${n4 - n3}ms")
+        _ = TimingDebugLoggerPure.trace(s"Getting global mode: ${n4 - n3}ms")
         softToLookAfter = req.params.getOrElse("software", Nil)
         softs <-
           ZIO.foreach(softToLookAfter) {
             soft => readOnlySoftwareDAO.getNodesbySofwareName(soft)
           }.toBox.map(_.flatten.groupMap(_._1)(_._2))
         n5 = System.currentTimeMillis
-        _ = println(s"response: ${n5 - n4}ms")
+        _ = TimingDebugLoggerPure.trace(s"all data fetched for response: ${n5 - n4}ms")
       } yield {
 
         val res = JsonResponse(JArray(nodes.values.toList.map(n => serialize(runs.get(n.id).flatten,globalMode,n, req.params.get("properties").getOrElse(Nil), softs.get(n.id).getOrElse(Nil)))))
 
         val n6 = System.currentTimeMillis
-        println(s"response: ${n6 - n5}ms")
+        TimingDebugLoggerPure.trace(s"serialized to json: ${n6 - n5}ms")
         res
       }
   }
