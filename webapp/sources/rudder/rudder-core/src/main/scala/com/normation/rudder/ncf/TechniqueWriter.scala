@@ -379,20 +379,20 @@ class ClassicTechniqueWriter(basePath : String, parameterTypeService: ParameterT
 
   def writeAgentFiles( technique : Technique, methods : Map[BundleName, GenericMethod] )  : IOResult[Seq[String]] = {
 
-    val bundleParams = if (technique.parameters.nonEmpty) technique.parameters.map(_.name.canonify).mkString("(",",",")") else ""
+    val bundleParams = if (technique.parameters.nonEmpty) technique.parameters.map(_.name.canonify).mkString("(", ",", ")") else ""
 
     val methodCalls =
-      ( for {
-        (method,index) <- technique.methodCalls.zipWithIndex
+      (for {
+        (method, index) <- technique.methodCalls.zipWithIndex
         method_info <- methods.get(method.methodId)
-        (_, classParameterValue) <- method.parameters.find( _._1 == method_info.classParameter)
+        (_, classParameterValue) <- method.parameters.find(_._1 == method_info.classParameter)
 
         params <- Control.sequence(method_info.parameters) {
           p =>
-            import  com.normation.box.EitherToBox
+            import com.normation.box.EitherToBox
             for {
-              (_,value) <- Box(method.parameters.find(_._1 == p.id))
-              escaped   <- parameterTypeService.translate(value, p.parameterType, AgentType.CfeCommunity).toBox
+              (_, value) <- Box(method.parameters.find(_._1 == p.id))
+              escaped <- parameterTypeService.translate(value, p.parameterType, AgentType.CfeCommunity).toBox
             } yield {
               escaped
             }
@@ -404,10 +404,16 @@ class ClassicTechniqueWriter(basePath : String, parameterTypeService: ParameterT
         // Check constraint and missing value
         val args = params.mkString(", ")
 
+        val escapedValue = escapeCFEngineString(classParameterValue)
+        val classPrefix = s"$${class_prefix}_${method_info.classPrefix}_${escapedValue}"
+        val message = s"""Skipping method '${method_info.name}' with key parameter '${escapedValue}' since condition '${method.condition}' is not reached"""
+
         s"""    "${promiser}" usebundle => ${reportingContext(method, classParameterValue)},
-           |     ${promiser.map(_ => ' ')}         if => concat("${condition}");
+           |     ${promiser.map(_ => ' ')}         if => any;
            |    "${promiser}" usebundle => ${method.methodId.value}(${args}),
-           |     ${promiser.map(_ => ' ')}         if => concat("${condition}");""".stripMargin('|')
+           |     ${promiser.map(_ => ' ')}         if => concat("${condition}");
+           |    "${promiser}" usebundle => log_na_rudder("${message}", "", "${classPrefix}", @{args}),
+           |     ${promiser.map(_ => ' ')}     unless => ${condition};""".stripMargin('|')
 
       }).mkString("\n")
 
@@ -418,10 +424,13 @@ class ClassicTechniqueWriter(basePath : String, parameterTypeService: ParameterT
       s"""# @name ${technique.name}
          |# @description ${technique.description.replaceAll("\\R", "\n# ")}
          |# @version ${technique.version.value}
-         |${technique.parameters.map { p =>
-            val param = ("name" -> p.name.value) ~ ("id" -> p.id.value) ~ ("description" -> p.description.replaceAll("\\R", "£# ") )
-            // for historical reason, we want to have real \n in the string, and not the char \n (because of how liftweb print them)
-            s"""# @parameter ${compactRender(param).replaceAll("£#","\n#")}""" }.mkString("\n")}
+         |${
+        technique.parameters.map { p =>
+          val param = ("name" -> p.name.value) ~ ("id" -> p.id.value) ~ ("description" -> p.description.replaceAll("\\R", "£# "))
+          // for historical reason, we want to have real \n in the string, and not the char \n (because of how liftweb print them)
+          s"""# @parameter ${compactRender(param).replaceAll("£#", "\n#")}"""
+        }.mkString("\n")
+      }
          |
          |bundle agent ${technique.bundleName.value}${bundleParams}
          |{
@@ -433,85 +442,13 @@ class ClassicTechniqueWriter(basePath : String, parameterTypeService: ParameterT
     }
 
     implicit val charset = StandardCharsets.UTF_8
-    val techFile = File(basePath) / "techniques"/ technique.category / technique.bundleName.value / technique.version.value / "technique.cf"
-    val t = IOResult.effect(s"Could not write na reporting Technique file '${technique.name}' in path ${techFile.path.toString}") {
+    val techFile = File(basePath) / "techniques" / technique.category / technique.bundleName.value / technique.version.value / "technique.cf"
+    IOResult.effect(s"Could not write na reporting Technique file '${technique.name}' in path ${techFile.path.toString}") {
       techFile.createFileIfNotExists(true).write(content.stripMargin('|'))
-      File(basePath).relativize(techFile.path).toString
-    }
-
-
-
-    val t2 = if ( ! needReportingBundle(technique, methods)) {
-      ZIO.succeed(Nil)
-    } else {
-
-      val bundleParams = if (technique.parameters.nonEmpty) technique.parameters.map(_.name.canonify).mkString("(",",",")") else ""
-      val args = technique.parameters.map(p => s"$${${p.name.canonify}}").mkString(", ")
-
-      val methodsReporting =
-        ( for {
-          (method,index) <- technique.methodCalls.zipWithIndex
-          // Skip that method if name starts with _
-          if ! method.methodId.value.startsWith("_")
-          method_info <- methods.get(method.methodId)
-          (_,classParameterValue) <- method.parameters.find(_._1 == method_info.classParameter)
-
-          escapedClassParameterValue = escapeCFEngineString(classParameterValue)
-          classPrefix = s"$${class_prefix}_${method_info.classPrefix}_${escapedClassParameterValue}"
-          promiser = s"dummy_report_${index}"
-        } yield {
-          def naReport(condition : String, message : String) = {
-            s"""    "${promiser}" usebundle => ${reportingContext(method, classParameterValue)},
-               |     ${promiser.map(_ => ' ')}     unless => ${condition};
-               |    "${promiser}" usebundle => log_na_rudder("${message}", "${escapedClassParameterValue}", "${classPrefix}", @{args}),
-               |     ${promiser.map(_ => ' ')}     unless => ${condition};""".stripMargin('|')
-          }
-
-
-          // Write report if the method does not support CFEngine ...
-          ( if (! method_info.agentSupport.contains(AgentType.CfeCommunity)) {
-            val message = s"""'${method_info.name}' method is not available on classic Rudder agent, skip"""
-            val condition = "\"false\""
-            Some((condition,message))
-         } else {
-           // ... or if the condition needs rudder_reporting
-           if (methodNeedReporting(method, method_info)) {
-             val message =  s"""Skipping method '${method_info.name}' with key parameter '${escapedClassParameterValue}' since condition '${method.condition}' is not reached"""
-             val condition = s"""concat("${canonifyCondition(method)}")"""
-             Some((condition,message))
-           } else {
-             None
-           }
-         }).map((naReport _).tupled)
-       }).flatten
-
-       val content =
-        s"""bundle agent ${technique.bundleName.value}_rudder_reporting${bundleParams}
-           |{
-           |  vars:
-           |    "args"               slist => { ${args} };
-           |    "report_param"      string => join("_", args);
-           |    "full_class_prefix" string => canonify("${technique.bundleName.value}_rudder_reporting_$${report_param}");
-           |    "class_prefix"      string => string_head("$${full_class_prefix}", "1000");
-           |
-           |  methods:
-           |${methodsReporting.mkString("\n")}
-           |}"""
-
-      val reportingFile = File(basePath) / "techniques"/ technique.category / technique.bundleName.value / technique.version.value / "rudder_reporting.cf"
-      IOResult.effect(s"Could not write na reporting Technique file '${technique.name}' in path ${reportingFile.path.toString}") {
-        reportingFile.createFileIfNotExists(true).write(content.stripMargin('|'))
-        Seq(File(basePath).relativize(reportingFile.path).toString)
-      }
-    }
-
-    for {
-      tech <- t
-      repo <- t2
-    } yield {
-      tech +: repo
+      Seq(File(basePath).relativize(techFile.path).toString)
     }
   }
+
   def agentMetadata ( technique : Technique, methods : Map[BundleName, GenericMethod] )  : PureResult[NodeSeq] = {
     // We need to add reporting bundle if there is a method call that does not support cfengine (agent support does not contains both cfe agent)
     val noAgentSupportReporting = technique.methodCalls.exists(  m =>
@@ -519,21 +456,14 @@ class ClassicTechniqueWriter(basePath : String, parameterTypeService: ParameterT
                            ! (gm.agentSupport.contains(AgentType.CfeEnterprise) || (gm.agentSupport.contains(AgentType.CfeCommunity)))
                          )
                        )
-    val needReporting = needReportingBundle(technique, methods)
     val xml = <AGENT type="cfengine-community,cfengine-nova">
       <BUNDLES>
         <NAME>{technique.bundleName.value}</NAME>
-        {if (noAgentSupportReporting || needReporting) <NAME>{technique.bundleName.value}_rudder_reporting</NAME>}
       </BUNDLES>
       <FILES>
         <FILE name={s"RUDDER_CONFIGURATION_REPOSITORY/techniques/${technique.category}/${technique.bundleName.value}/${technique.version.value}/technique.cf"}>
           <INCLUDED>true</INCLUDED>
         </FILE>
-        { if (noAgentSupportReporting || needReporting)
-          <FILE name={s"RUDDER_CONFIGURATION_REPOSITORY/techniques/${technique.category}/${technique.bundleName.value}/${technique.version.value}/rudder_reporting.cf"}>
-            <INCLUDED>true</INCLUDED>
-          </FILE>
-        }
         { for {
             resource <- technique.ressources
             if resource.state != ResourceFileState.Deleted
