@@ -1697,7 +1697,7 @@ function computeComplianceOK (complianceArray) {
     , complianceArray[1][1] + complianceArray[9][1] + complianceArray[3][1] + complianceArray[2][1] + complianceArray[10][1]
     ]
   } else {
-    return { percent: 0, number: 0};
+    return [ 0, 0 ];
   }
 }
 
@@ -1732,7 +1732,7 @@ function buildComplianceBar(compliance, minPxSize) {
       var index = compliancePercent.indexOf(max_of_array);
       var toRemove = sum - 100;
       var newMax = compliance[index];
-      newMax[percent] = max_of_array - toRemove;
+      newMax[1] = max_of_array - toRemove;
       compliance[index] = newMax;
     }
 
@@ -1753,13 +1753,13 @@ function buildComplianceBar(compliance, minPxSize) {
 
     var okStatus = computeComplianceOK(compliance);
     var unexpected =
-    { percent : missing[1] + unknown[1] + badPolicyMode[1]
-    , number : missing[0] + unknown[0] + badPolicyMode[0]
-    };
+    [ missing[0] + unknown[0] + badPolicyMode[0]
+    , missing[1] + unknown[1] + badPolicyMode[1]
+    ];
     var error =
-    { percent : enforceError[1] + auditError[1]
-    , number : enforceError[0] + auditError[0]
-    };
+    [  enforceError[0] + auditError[0]
+    ,  enforceError[1] + auditError[1]
+    ];
 
     var complianceBars = getProgressBars([
         /*0*/ okStatus
