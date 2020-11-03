@@ -1234,6 +1234,7 @@ function createNodeTable(gridId, nope, contextPath, refresh) {
     , "paging" : true
     , "lengthChange": true
     , "fixedHeader": true
+    , "deferRender" : true
     , "destroy" : true
     , "pagingType": "full_numbers"
     , "language": {
