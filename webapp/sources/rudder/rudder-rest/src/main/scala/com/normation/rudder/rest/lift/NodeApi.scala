@@ -553,7 +553,7 @@ class NodeApiService13 (
       , nodeInfo.properties.filter(p => properties.contains(p.name)).map(p => (p.name, p.value.render(ConfigRenderOptions.concise())  )).toMap
       , userCompliance
       , systemCompliance
-      ).asJson.noSpaces
+      ).asJson
   }
 
   def listNodes(req: Req) :Box[String] = {
