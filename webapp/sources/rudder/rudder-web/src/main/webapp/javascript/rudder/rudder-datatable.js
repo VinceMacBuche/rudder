@@ -1160,9 +1160,7 @@ var allColumns = {
         var nodeLink = $(el);
         link.append(nodeLink);
         var systemCompliance = "";
-        if (oData.systemCompliance !== undefined) {
-          var allReports = reportsSum(oData.systemCompliance)
-          if (computeComplianceOK(systemCompliance)[0] != allReports)
+        if (oData.systemError) {
             systemCompliance = $('<span id="system-compliance-bar-'+oData.id+'"></span>').html('  <a href="'+contextPath+'/secure/nodeManager/node/'+oData.id+'?systemStatus=true"  title="Some system policies could not be applied on this node" class="text-danger fa fa-exclamation-triangle"> </a>');
         }
 

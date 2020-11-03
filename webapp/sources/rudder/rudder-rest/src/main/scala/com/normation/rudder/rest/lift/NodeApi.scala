@@ -499,7 +499,6 @@ class NodeApiService13 (
       )
 
     val userCompliance = compliance.map(c => toComplianceArray(ComplianceLevel.sum(c.reports.toSeq.map(_.compliance))))
-    val systemCompliance = sysCompliance.map(c => toComplianceArray(ComplianceLevel.sum(c.reports.toSeq.map(_.compliance))))
     val (policyMode,explanation) =
       (globalPolicyMode.overridable,nodeInfo.policyMode) match {
         case (Always,Some(mode)) =>
@@ -521,7 +520,7 @@ class NodeApiService13 (
       ~  ("os" -> nodeInfo.osDetails.fullName)
       ~  ("state" -> nodeInfo.state.name)
       ~  ("compliance" -> userCompliance )
-      ~  ("systemCompliance" -> systemCompliance )
+      ~  ("systemError" -> sysCompliance.map(_.compliance.compliance < 100 ).getOrElse(true) )
       ~  ("ipAddresses" -> nodeInfo.ips.filter(ip => ip != "127.0.0.1" && ip != "0:0:0:0:0:0:0:1"))
       ~  ("lastRun" -> agentRunWithNodeConfig.map(d => DateFormaterService.getDisplayDate(d.agentRunId.date)).getOrElse("Never"))
       ~  ("software" -> JObject(softs.toList.map(s => JField(s.name.getOrElse(""), JString(s.version.map(_.value).getOrElse("N/A"))))))
