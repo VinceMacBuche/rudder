@@ -113,6 +113,7 @@ import com.normation.rudder.services.nodes.MergeNodeProperties
 import com.normation.rudder.services.reports.ReportingService
 import com.normation.rudder.web.components.DateFormaterService
 import com.typesafe.config.ConfigRenderOptions
+import net.liftweb.http.InMemoryResponse
 import net.liftweb.http.JsonResponse
 import net.liftweb.json.JsonAST.JField
 import net.liftweb.json.JsonAST.JObject
@@ -398,7 +399,7 @@ class NodeApi (
       (for {
         nodes <- apiV13.listNodes(req)
       } yield {
-        JsonResponse(nodes)
+        InMemoryResponse(nodes.getBytes("UTF-8"), ("Content-Type", "application/json; charset=utf-8")  :: Nil, Nil, 200)
       }) match {
         case Full(res) => res
         case eb: EmptyBox =>  JsonResponse(JObject(JField("error", (eb ?~! "An error occurred while getting node details").messageChain)))
@@ -473,28 +474,50 @@ class NodeApiService13 (
   , reportingService: ReportingService
 ) extends Loggable {
 
+  import io.circe.generic.auto._
+
+
+  import io.circe.syntax._
   def serialize(agentRunWithNodeConfig: Option[AgentRunWithNodeConfig], globalPolicyMode: GlobalPolicyMode, nodeInfo : NodeInfo, properties : List[String], softs: List[Software], compliance : Option[NodeStatusReport], sysCompliance : Option[NodeStatusReport]) = {
     import net.liftweb.json.JsonDSL._
 
-
+    case class Compliance(number : Int, percent : Double)
+    case class NodeTableDetails (
+      name : String
+      , policyServerId : String
+      , policyMode : String
+      , explanation : String
+      , kernel : String
+      , agentVersion : Option[String]
+      , id : String
+      , ram : Option[String]
+      , machineType : Option[String]
+      , os : String
+      , state : String
+      , ipAddresses : List[String]
+      , lastRun : String
+      , software : Map[String,String]
+      , property : Map[String,String]
+      , compliance : Option[List[Compliance]]
+      , systemCompliance : Option[List[Compliance]]
+    )
       
-    def toComplianceArray(comp : ComplianceLevel) : JArray =
-      JArray (
-        ( ("number" -> comp.reportsDisabled) ~ ("percent" -> comp.pc.reportsDisabled))  :: //0
-        ( ("number" -> comp.notApplicable) ~ ("percent" -> comp.pc.notApplicable) ) ::       //  1
-        ( ("number" -> comp.success) ~ ("percent" -> comp.pc.success) ) ::         //  2
-        ( ("number" -> comp.repaired) ~ ("percent" -> comp.pc.repaired) ) ::            //  3
-        ( ("number" -> comp.error) ~ ("percent" -> comp.pc.error) ) ::               //  4
-        ( ("number" -> comp.pending) ~ ("percent" -> comp.pc.pending) ) ::             //  5
-        ( ("number" -> comp.noAnswer) ~ ("percent" -> comp.pc.noAnswer) ) ::            //  6
-        ( ("number" -> comp.missing) ~ ("percent" -> comp.pc.missing) ) ::             //  7
-        ( ("number" -> comp.unexpected) ~ ("percent" -> comp.pc.unexpected) ) ::          //  8
-        ( ("number" -> comp.auditNotApplicable) ~ ("percent" -> comp.pc.auditNotApplicable) ) ::  //  9
-        ( ("number" -> comp.compliant) ~ ("percent" -> comp.pc.compliant) ) ::           // 10
-        ( ("number" -> comp.nonCompliant) ~ ("percent" -> comp.pc.nonCompliant) ) ::        // 11
-        ( ("number" -> comp.auditError) ~ ("percent" -> comp.pc.auditError) ) ::          // 12
-        ( ("number" -> comp.badPolicyMode) ~ ("percent" -> comp.pc.badPolicyMode) ) :: Nil       // 13
-      )
+    def toComplianceArray(comp : ComplianceLevel) =
+        Compliance(comp.reportsDisabled,comp.pc.reportsDisabled)  :: //0
+        Compliance(comp.notApplicable,comp.pc.notApplicable) ::       //  1
+        Compliance(comp.success,comp.pc.success) ::         //  2
+        Compliance(comp.repaired,comp.pc.repaired) ::            //  3
+        Compliance(comp.error,comp.pc.error) ::               //  4
+        Compliance(comp.pending,comp.pc.pending) ::             //  5
+        Compliance(comp.noAnswer,comp.pc.noAnswer) ::            //  6
+        Compliance(comp.missing,comp.pc.missing) ::             //  7
+        Compliance(comp.unexpected,comp.pc.unexpected) ::          //  8
+        Compliance(comp.auditNotApplicable,comp.pc.auditNotApplicable) ::  //  9
+        Compliance(comp.compliant,comp.pc.compliant) ::           // 10
+        Compliance(comp.nonCompliant,comp.pc.nonCompliant) ::        // 11
+        Compliance(comp.auditError,comp.pc.auditError) ::          // 12
+        Compliance(comp.badPolicyMode,comp.pc.badPolicyMode) :: Nil       // 13
+      
 
     val userCompliance = compliance.map(c => toComplianceArray(ComplianceLevel.sum(c.reports.toSeq.map(_.compliance))))
     val systemCompliance = sysCompliance.map(c => toComplianceArray(ComplianceLevel.sum(c.reports.toSeq.map(_.compliance))))
@@ -508,63 +531,68 @@ class NodeApiService13 (
         case (Unoverridable,_) =>
           (globalPolicyMode.mode, "<p>This mode is the globally defined default. You can change it in <i><b>Settings</b></i>.</p>")
       }
-    (  ("name" -> nodeInfo.hostname)
-      ~  ("policyServerId" -> nodeInfo.policyServerId.value)
-      ~  ("policyMode" -> policyMode.name)
-      ~  ("explanation" -> explanation)
-      ~  ("kernel" -> nodeInfo.osDetails.kernelVersion.value)
-      ~  ("agentVersion" -> nodeInfo.agentsName.headOption.flatMap(_.version.map(_.value)))
-      ~  ("id" -> nodeInfo.id.value)
-      ~  ("ram" -> nodeInfo.ram.map(_.toStringMo))
-      ~  ("machineType" -> nodeInfo.machine.map(_.machineType.toString))
-      ~  ("os" -> nodeInfo.osDetails.fullName)
-      ~  ("state" -> nodeInfo.state.name)
-      ~  ("compliance" -> userCompliance )
-      ~  ("systemCompliance" -> systemCompliance )
-      ~  ("ipAddresses" -> nodeInfo.ips.filter(ip => ip != "127.0.0.1" && ip != "0:0:0:0:0:0:0:1"))
-      ~  ("lastRun" -> agentRunWithNodeConfig.map(d => DateFormaterService.getDisplayDate(d.agentRunId.date)).getOrElse("Never"))
-      ~  ("software" -> JObject(softs.toList.map(s => JField(s.name.getOrElse(""), JString(s.version.map(_.value).getOrElse("N/A"))))))
-      ~  ("property" -> JObject(nodeInfo.properties.filter(p => properties.contains(p.name)).map(p => JField(p.name, parse(p.value.render(ConfigRenderOptions.concise()) ) )) ))
-      )
+
+   
+    
+
+    NodeTableDetails(
+        nodeInfo.hostname
+      , nodeInfo.policyServerId.value
+      , policyMode.name
+      , explanation
+      , nodeInfo.osDetails.kernelVersion.value
+      , nodeInfo.agentsName.headOption.flatMap(_.version.map(_.value))
+      , nodeInfo.id.value
+      , nodeInfo.ram.map(_.toStringMo)
+      , nodeInfo.machine.map(_.machineType.toString)
+      , nodeInfo.osDetails.fullName
+      , nodeInfo.state.name
+      , nodeInfo.ips.filter(ip => ip != "127.0.0.1" && ip != "0:0:0:0:0:0:0:1")
+      , agentRunWithNodeConfig.map(d => DateFormaterService.getDisplayDate(d.agentRunId.date)).getOrElse("Never")
+      , softs.toList.map(s =>(s.name.getOrElse(""), s.version.map(_.value).getOrElse("N/A"))).toMap
+      , nodeInfo.properties.filter(p => properties.contains(p.name)).map(p => (p.name, p.value.render(ConfigRenderOptions.concise())  )).toMap
+      , userCompliance
+      , systemCompliance
+      ).asJson.noSpaces
   }
 
-  def listNodes(req: Req) = {
+  def listNodes(req: Req) :Box[String] = {
     import com.normation.box._
 
     val n1 = System.currentTimeMillis
 
     for {
 
-      optNodeIds <- req.json.flatMap(j => OptionnalJson.extractJsonListString(j, "nodeIds",( values => Full(values.map(NodeId(_))))))
+      optNodeIds <- req.json.flatMap(j => OptionnalJson.extractJsonListString(j, "nodeIds", (values => Full(values.map(NodeId(_))))))
 
       nodes <- optNodeIds match {
         case None => nodeInfoService.getAll()
-        case Some(nodeIds) => com.normation.utils.Control.sequence(nodeIds)( nodeInfoService.getNodeInfo(_).map(_.map(n => (n.id, n)))).map(_.flatten.toMap)
+        case Some(nodeIds) => com.normation.utils.Control.sequence(nodeIds)(nodeInfoService.getNodeInfo(_).map(_.map(n => (n.id, n)))).map(_.flatten.toMap)
       }
       n2 = System.currentTimeMillis
-      _ = TimingDebugLoggerPure.logEffect.trace(s"Getting node infos: ${n2 - n1}ms")
+      _ = println(s"Getting node infos: ${n2 - n1}ms")
       runs <- reportsExecutionRepository.getNodesLastRun(nodes.keySet)
       n3 = System.currentTimeMillis
-      _  = TimingDebugLoggerPure.logEffect.trace(s"Getting run infos: ${n3 - n2}ms")
+      _ = println(s"Getting run infos: ${n3 - n2}ms")
       (systemCompliances, userCompliances) <- reportingService.getUserAndSystemNodeStatusReports(Some(nodes.keySet))
       n4 = System.currentTimeMillis
-      _ = TimingDebugLoggerPure.logEffect.trace(s"Getting compliance infos: ${n4 - n3}ms")
+      _ = println(s"Getting compliance infos: ${n4 - n3}ms")
       globalMode <- getGlobalMode()
       n5 = System.currentTimeMillis
-      _ = TimingDebugLoggerPure.logEffect.trace(s"Getting global mode: ${n5 - n4}ms")
+      _ = println(s"Getting global mode: ${n5 - n4}ms")
       softToLookAfter = req.params.getOrElse("software", Nil)
       softs <-
         ZIO.foreach(softToLookAfter) {
           soft => readOnlySoftwareDAO.getNodesbySofwareName(soft)
         }.toBox.map(_.flatten.groupMap(_._1)(_._2))
       n6 = System.currentTimeMillis
-      _ = TimingDebugLoggerPure.logEffect.trace(s"all data fetched for response: ${n6 - n5}ms")
+      _ = println(s"all data fetched for response: ${n6 - n5}ms")
     } yield {
 
-      val res = JArray(nodes.values.toList.map(n => serialize(runs.get(n.id).flatten,globalMode,n, req.params.get("properties").getOrElse(Nil), softs.get(n.id).getOrElse(Nil), userCompliances.get(n.id), systemCompliances.get(n.id))))
+      val res = nodes.values.toList.map(n => serialize(runs.get(n.id).flatten, globalMode, n, req.params.get("properties").getOrElse(Nil), softs.get(n.id).getOrElse(Nil), userCompliances.get(n.id), systemCompliances.get(n.id))).asJson.noSpaces
 
       val n7 = System.currentTimeMillis
-      TimingDebugLoggerPure.logEffect.trace(s"serialized to json: ${n7 - n6}ms")
+      println(s"serialized to json: ${n7 - n6}ms")
       res
     }
   }

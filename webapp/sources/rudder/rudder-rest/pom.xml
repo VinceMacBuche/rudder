@@ -44,6 +44,7 @@ along with Rudder.  If not, see <http://www.gnu.org/licenses/>.
     Rudder Rest API endpoints
   </description>
 
+
   <repositories>
     <repository>
       <id>Sonatype snapshot</id>
@@ -95,6 +96,8 @@ along with Rudder.  If not, see <http://www.gnu.org/licenses/>.
   <properties>
     <!-- seriously, maven...  http://stackoverflow.com/questions/13228472/how-to-acces-maven-build-timestamp-for-resource-filtering#13228882 -->
     <build-timestamp>${maven.build.timestamp}</build-timestamp>
+
+    <circe-version>0.12.3</circe-version>
   </properties>
 
   <dependencies>
@@ -167,6 +170,22 @@ along with Rudder.  If not, see <http://www.gnu.org/licenses/>.
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>jcl-over-slf4j</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>io.circe</groupId>
+      <artifactId>circe-core_${scala-binary-version}</artifactId>
+      <version>${circe-version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.circe</groupId>
+      <artifactId>circe-parser_${scala-binary-version}</artifactId>
+      <version>${circe-version}</version>
+    </dependency>
+    <dependency>
+      <groupId>io.circe</groupId>
+      <artifactId>circe-generic_${scala-binary-version}</artifactId>
+      <version>${circe-version}</version>
     </dependency>
 
   </dependencies>
