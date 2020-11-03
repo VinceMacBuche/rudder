@@ -1943,7 +1943,7 @@ function getProgressBars(arr, minPxSize){
       //We calculate the remaining free space of the Compliance Bar
       var baseSize = "(100% - " + totalSmallBars.pixelSize + "px)";
       //Then we calculate the percentage of each bar with respect to this space.
-      var percentBar = compliancePercent / (100 - totalSmallBars[1] );
+      var percentBar = compliancePercent / (100 - totalSmallBars.percent );
       bar = {
         width : "calc( "+baseSize+" * "+percentBar+")"
       , value: displayValue(compliancePercent)
