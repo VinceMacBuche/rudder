@@ -573,7 +573,13 @@ function createRuleComplianceTable(gridId, data, contextPath, refresh) {
         editLink.append(editIcon);
         editLink.addClass("reportIcon");
         $(nTd).append(editLink);
-        $(nTd).prepend(createBadgeAgentPolicyMode('rule', oData.policyMode, oData.explanation));
+        var explanation = "<p>This mode is an override applied to this node. You can change it in the <i><b>node's settings</b></i>.</p>"
+        if (oData.globalModeOverride === 'default') {
+          explanation = "<p>This mode is the globally defined default. You can change it in <i><b>settings</b></i>.</p><p>You can also override it on this node in the <i><b>node's settings</b></i>.</p>"
+        } else if (oData.globalModeOverride === 'none') {
+          explanation = "<p>This mode is the globally defined default. You can change it in <i><b>settings</b></i>.</p>"
+        }
+        $(nTd).prepend(createBadgeAgentPolicyMode('rule', oData.policyMode, explanation));
       }
     }
   } , {

@@ -503,17 +503,16 @@ class NodeApiService13 (
     val (policyMode,explanation) =
       (globalPolicyMode.overridable,nodeInfo.policyMode) match {
         case (Always,Some(mode)) =>
-          (mode,"<p>This mode is an override applied to this node. You can change it in the <i><b>node's settings</b></i>.</p>")
+          (mode,"override")
         case (Always,None) =>
-          val expl = """<p>This mode is the globally defined default. You can change it in <i><b>settings</b></i>.</p><p>You can also override it on this node in the <i><b>node's settings</b></i>.</p>"""
-          (globalPolicyMode.mode, expl)
+          (globalPolicyMode.mode, "default")
         case (Unoverridable,_) =>
-          (globalPolicyMode.mode, "<p>This mode is the globally defined default. You can change it in <i><b>Settings</b></i>.</p>")
+          (globalPolicyMode.mode, "none")
       }
     (  ("name" -> nodeInfo.hostname)
       ~  ("policyServerId" -> nodeInfo.policyServerId.value)
       ~  ("policyMode" -> policyMode.name)
-      ~  ("explanation" -> explanation)
+      ~  ("globalModeOverride" -> explanation)
       ~  ("kernel" -> nodeInfo.osDetails.kernelVersion.value)
       ~  ("agentVersion" -> nodeInfo.agentsName.headOption.flatMap(_.version.map(_.value)))
       ~  ("id" -> nodeInfo.id.value)
