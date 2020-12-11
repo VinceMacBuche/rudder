@@ -1,0 +1,20 @@
+<lift:surround with="common-layout" at="content">
+<div  >
+  <head>
+    <title>Rudder - Technique Editor</title>
+    <link type="text/css" rel="stylesheet" data-lift="with-cached-resource" href="/style/rudder/rudder-technique-editor.css"/>
+    <script data-lift="with-cached-resource" src="/javascript/rudder/elm/rudder-editor.js"></script>
+
+  </head>
+
+  <div id="technique-editor">
+  <script>
+  var main = document.getElementById("technique-editor")
+  var initValues = {
+    contextPath : contextPath
+  };
+  var app  = Elm.Editor.init({node: main, flags: initValues});
+</script>
+  </div>
+</div>
+</lift:surround>
