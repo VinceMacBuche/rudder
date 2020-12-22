@@ -1,6 +1,7 @@
 module DataTypes exposing (..)
 
 import Http exposing (Error)
+import Dict exposing (Dict)
 
 type alias TechniqueId = {value : String}
 
@@ -9,6 +10,37 @@ type alias MethodId = {value : String}
 type alias CallId = {value : String}
 
 type alias ParameterId = {value : String}
+
+type Constraint =
+    AllowEmpty Bool
+  | AllowWhiteSpace Bool
+  | MaxLength Int
+  | MinLength Int
+  | MatchRegex String
+  | NotMatchRegexp String
+  | Select (List String)
+
+type alias MethodParameter =
+  { name : ParameterId
+  , description : String
+  , type_ : String
+  , constraints : List Constraint
+  }
+
+type Agent = Cfengine | Dsc
+
+type alias Method =
+  { id : MethodId
+  , name : String
+  , description : String
+  , classPrefix : String
+  , classParameter : ParameterId
+  , agentSupport : List Agent
+  , parameters : List MethodParameter
+  , documentation : Maybe String
+  , deprecated :  Maybe String
+  , rename : Maybe String
+  }
 
 type alias Technique =
   { id : TechniqueId
@@ -41,7 +73,7 @@ type alias TechniqueParameter =
 
 type alias Model =
   { techniques : List Technique
-  , methods    : List String
+  , methods    : Dict String Method
   , mode       : Mode
   , contextPath : String
   }
@@ -52,12 +84,24 @@ type alias Resource =
   { name : String
   , state : ResourceState
   }
+
+
+type MethodCallTab = CallParameters | Conditions | Result
+type MethodCallMode = Opened  | Closed
+
 type Tab =  General |  Parameters | Resources | None
 
-type Mode = Introduction | TechniqueDetails Technique Tab
+type Mode = Introduction | TechniqueDetails Technique Tab (Dict String (MethodCallMode, MethodCallTab))
 
 type Msg =
     SelectTechnique Technique
   | GetTechniques  (Result Error (List Technique))
+  | GetMethods  (Result Error (Dict String Method))
+  | OpenMethod String
+  | CloseMethod String
+  | RemoveMethod String
+  | CloneMethod MethodCall String
+  | GenerateId (String -> Msg)
+  | SwitchTabMethod String MethodCallTab
   | CallApi  (Model -> Cmd Msg)
   | SwitchTab Tab

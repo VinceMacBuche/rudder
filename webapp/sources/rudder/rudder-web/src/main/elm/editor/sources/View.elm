@@ -7,11 +7,12 @@ import Html.Events exposing (..)
 import Tabs exposing (..)
 import TechniqueList exposing (..)
 import MethodCall exposing (..)
+import Dict exposing (Dict)
 
 
 
-showTechnique : Model -> Technique -> Tab -> Bool -> Html Msg
-showTechnique model technique activeTab creation =
+showTechnique : Model -> Technique -> Tab -> Bool -> Dict String (MethodCallMode, MethodCallTab) -> Html Msg
+showTechnique model technique activeTab creation callTabs =
   let
     activeTabClass = (\tab -> "ui-tabs-tab " ++ (if activeTab == tab then "active" else ""))
     topButtons =  List.append [ li [] [
@@ -110,19 +111,24 @@ showTechnique model technique activeTab creation =
             text "Add "
           , i [ class "fa fa-plus-circle" ] []
           ]
-        , div [ class "row"] [
-            ul [ id "methods", class "list-unstyled" ] --  dnd-list="selectedTechnique.method_calls" dnd-drop="dropCallback(item, index, type);" >
-              (if List.isEmpty technique.calls then
-                [ li [ id "no-methods" ] [ -- ng-click="toggleDisplay(false)">
-                    text "Drag and drop generic methods here from the list on the right to build target configuration for this technique."
-                  ]
-                ]
-              else
-                List.map (showMethodCall model technique) technique.calls
-              )
-
-          ]
         ]
+     ,  div [ class "row"] [
+          ul [ id "methods", class "list-unstyled" ] --  dnd-list="selectedTechnique.method_calls" dnd-drop="dropCallback(item, index, type);" >
+            (if List.isEmpty technique.calls then
+              [ li [ id "no-methods" ] [ -- ng-click="toggleDisplay(false)">
+                  text "Drag and drop generic methods here from the list on the right to build target configuration for this technique."
+                ]
+              ]
+            else
+              List.map (\call ->
+                let
+                  (state, tab) = Maybe.withDefault (Closed,CallParameters) (Dict.get call.id callTabs)
+                in
+                  showMethodCall model state tab call
+              ) technique.calls
+            )
+        ]
+
 
           {-
             <div class="row">
@@ -152,11 +158,11 @@ view model =
                       ]
                     ]
 
-                TechniqueDetails technique tab ->
-                  showTechnique model technique tab False
+                TechniqueDetails technique tab callTabs ->
+                  showTechnique model technique tab False callTabs
 
   in
-    div [ class "rudder-template"] [
+    div [ id "technique-editor", class "rudder-template"] [
       techniqueList model.techniques
     , div [ class "template-main" ] [central]
     ]

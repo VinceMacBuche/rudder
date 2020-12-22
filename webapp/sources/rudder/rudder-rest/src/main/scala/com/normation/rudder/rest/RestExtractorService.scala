@@ -1158,14 +1158,14 @@ final case class RestExtractorService (
 
   def extractId[T] (req : Req)(fun : String => Full[T])  = extractString("id")(req)(fun)
 
-  def extractNcfTechnique (json : JValue, methods: Map[BundleName, GenericMethod], creation : Boolean) : Box[NcfTechnique] = {
+  def extractNcfTechnique (json : JValue, methods: Map[BundleName, GenericMethod], creation : Boolean, supportMissingId : Boolean) : Box[NcfTechnique] = {
     for {
       bundleName  <- CompleteJson.extractJsonString(json, "bundle_name", s => Full(BundleName(s)))
       version     <- CompleteJson.extractJsonString(json, "version")
       category    <- OptionnalJson.extractJsonString(json, "category").map(_.filter(_.nonEmpty).getOrElse("ncf_techniques"))
       description <- CompleteJson.extractJsonString(json, "description")
       name        <- CompleteJson.extractJsonString(json, "name")
-      calls       <- CompleteJson.extractJsonArray(json , "method_calls")(extractMethodCall(_, methods))
+      calls       <- CompleteJson.extractJsonArray(json , "method_calls")(extractMethodCall(_, methods, supportMissingId))
       parameters  <- CompleteJson.extractJsonArray(json , "parameter")(extractTechniqueParameter(creation))
       files       <- OptionnalJson.extractJsonArray(json , "resources")(extractResourceFile).map(_.getOrElse(Nil))
     } yield {
@@ -1182,10 +1182,11 @@ final case class RestExtractorService (
     }
   }
 
-  def extractMethodCall (json : JValue, methods: Map[BundleName, GenericMethod]) : Box[MethodCall] = {
+  def extractMethodCall (json : JValue, methods: Map[BundleName, GenericMethod], supportMissingId : Boolean) : Box[MethodCall] = {
 
     for {
       methodId        <- CompleteJson.extractJsonString(json, "method_name", s => Full(BundleName(s)))
+      id        <-  if (supportMissingId) {OptionnalJson.extractJsonString(json,"id").map(_.getOrElse(uuidGenerator.newUuid))} else { CompleteJson.extractJsonString(json, "id") }
       condition       <- CompleteJson.extractJsonString(json, "class_context")
       component       <- OptionnalJson.extractJsonString(json, "component").map(_.getOrElse(methods.get(methodId).map(_.name).getOrElse(methodId.value)))
       // Args was removed in 6.1.0 and replaced by parameters. keept it when we are reading old format techniques, ie when migrating from 6.1
@@ -1205,7 +1206,7 @@ final case class RestExtractorService (
                                    }
                     }
     } yield {
-      MethodCall(methodId, parameters, condition, component)
+      MethodCall(methodId, id, parameters, condition, component)
     }
   }
 

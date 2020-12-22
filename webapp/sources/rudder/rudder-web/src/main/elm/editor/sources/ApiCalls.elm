@@ -27,3 +27,21 @@ getTechniques  model =
         }
   in
     req
+
+
+
+getMethods : Model -> Cmd Msg
+getMethods  model =
+  let
+    req =
+      request
+        { method  = "GET"
+        , headers = []
+        , url     = getUrl model "internal/methods"
+        , body    = emptyBody
+        , expect  = expectJson GetMethods ( Json.Decode.at ["data", "methods" ] ( Json.Decode.map (Dict.fromList) (Json.Decode.keyValuePairs decodeMethod) ))
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+  in
+    req

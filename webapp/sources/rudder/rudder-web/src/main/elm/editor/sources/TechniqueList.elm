@@ -57,8 +57,8 @@ techniqueItem technique =
     activeClass = """ng-class="{'active': isSelected(technique)}">"""
   in
     li [ ] [ --  ng-class="{'active': isSelected(technique)}"
-      div [ class "item",  onClick (SelectTechnique technique) ]
-        [ span [] [ text technique.name ]
+      div [ class "item",  onClick (SelectTechnique technique) ] [
+        span [] [ text technique.name ]
         --, <span class="cursor-help popover-bs"  ng-if="hasDeprecatedMethod(technique)" data-toggle="popover"
         --  data-trigger="hover" data-container="body" data-placement="right" data-title="{{technique.name}}"
         --  data-content="<div>This technique uses <b>deprecated</b> generic methods.</div>"
@@ -66,6 +66,8 @@ techniqueItem technique =
          --   <i class="glyphicon glyphicon-info-sign deprecated-icon"></i>
          --     </span>
            --                       </div>
-        , div [ class "col-auto align-self-center" ,  onClick (SelectTechnique technique) ]--ng-click="checkSelect(technique,selectTechnique);toggleDisplay(false); $event.stopPropagation();">
-               [ i [ class "ion ion-edit" ] []]
-             ]  ]
+      ]
+    , div [ class "col-auto align-self-center" ,  onClick (SelectTechnique technique) ] [--ng-click="checkSelect(technique,selectTechnique);toggleDisplay(false); $event.stopPropagation();">
+        i [ class "ion ion-edit" ] []
+      ]
+    ]
