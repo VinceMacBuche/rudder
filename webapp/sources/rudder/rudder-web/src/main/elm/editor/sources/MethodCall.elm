@@ -194,16 +194,9 @@ showMethodCall model mode tab call =
 
       , div [ class "method-info"] [ -- dnd-nodrag>
           div [ class "btn-holder" ] [
-            button [ class "text-success method-action tooltip-bs", title "Clone this method" ] [ {-
-                        ng-click="cloneMethod($index);$event.stopPropagation();"
-                        data-toggle="tooltip"
-                        data-trigger="hover"
-                        data-container="body"
-                        data-placement="left"
-                        data-title="Clone this method"
-                        data-html="true"
-                        data-delay='{"show":"400", "hide":"100"}'
-                        > -}
+            button [ class "text-success method-action tooltip-bs", title "Clone this method", attribute "data-toogle" "tooltip"
+                   , attribute "data-trigger" "hover", attribute "data-container" "body", attribute "data-placement" "left"
+                   , attribute "data-html" "true", attribute "data-delay" """'{"show":"400", "hide":"100"}'""" ] [
               i [ class "fa fa-clone"] []
             ]
 
@@ -214,29 +207,22 @@ showMethodCall model mode tab call =
         , div [ class "flex-column" ] [
             div [ class "method-condition flex-form" ] [ -- ng-if="method_call.class_context !== 'any'">
               label [] [ text "Condition:" ]
-            , textarea [ class "form-control popover-bs", rows 1, readonly True, value call.condition, title call.condition ] [ ] {-
-                          msd-elastic
-                          ng-click="$event.stopPropagation();"
-                          data-toggle="popover"
-                          data-trigger="hover"
-                          data-placement="top"
-                          data-title="{{method_call.class_context}}"
-                          data-content="<small>Click <span class='text-info'>3</span> times to copy the whole condition below</small>"
-                          data-template='<div class="popover condition" role="tooltip"><div class="arrow"></div><h3 class="popover-header"></h3><div class="popover-body"></div></div>'
-                          data-html="true"> -}
+            , textarea [ class "form-control popover-bs", rows 1, readonly True, value call.condition, title call.condition
+                          --msd-elastic
+                          --ng-click="$event.stopPropagation();"
+                       , attribute "data-toggle" "popover", attribute "data-trigger" "hover", attribute "data-placement" "top"
+                       , attribute "data-title" call.condition, attribute "data-content" "<small>Click <span class='text-info'>3</span> times to copy the whole condition below</small>"
+                       , attribute "data-template" """<div class="popover condition" role="tooltip"><div class="arrow"></div><h3 class="popover-header"></h3><div class="popover-body"></div></div>"""
+                       , attribute "data-html" "true" ] []
             ]
           , div [ class "method-name" ] [
               text (if (String.isEmpty call.component) then method.name else call.component)
             , span [ class "cursor-help" ] [
-                i [ class "fa fa-info-circle tooltip-icon popover-bs" ] [] {-
-                            ng-class="{'deprecated-icon':(method_call.deprecated || isDeprecated(method_call.method_name))}"
-                            data-toggle="popover"
-                            data-trigger="hover"
-                            data-container="body"
-                            data-placement="auto"
-                            data-title="{{getMethodName(method_call)}}"
-                            data-content="{{getTooltipContent(method_call)}}"
-                            data-html="true"></i> -}
+                i [ class "fa fa-info-circle tooltip-icon popover-bs"
+                            --ng-class="{'deprecated-icon':(method_call.deprecated || isDeprecated(method_call.method_name))}"
+                  , attribute "data-toggle" "popover", attribute "data-trigger" "hover", attribute "data-container" "body"
+                  , attribute "data-placement" "auto", attribute "data-title" method.name, attribute "data-content" "{{getTooltipContent(method_call)}}"
+                  , attribute "data-html" "true" ]  []
               ]
             ]
           , div [ class "method-content"] [

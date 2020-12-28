@@ -8,6 +8,7 @@ import Tabs exposing (..)
 import TechniqueList exposing (..)
 import MethodCall exposing (..)
 import Dict exposing (Dict)
+import MethodsList exposing (..)
 
 
 
@@ -158,11 +159,14 @@ view model =
                       ]
                     ]
 
-                TechniqueDetails technique tab callTabs ->
+                TechniqueDetails technique tab callTabs (Just _) ->
                   showTechnique model technique tab False callTabs
+                TechniqueDetails technique tab callTabs Nothing ->
+                  showTechnique model technique tab True callTabs
 
   in
     div [ id "technique-editor", class "rudder-template"] [
-      techniqueList model.techniques
+      techniqueList model model.techniques
     , div [ class "template-main" ] [central]
+    , methodsList model
     ]

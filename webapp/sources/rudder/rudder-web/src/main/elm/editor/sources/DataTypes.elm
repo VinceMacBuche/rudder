@@ -76,6 +76,7 @@ type alias Model =
   , methods    : Dict String Method
   , mode       : Mode
   , contextPath : String
+  , techniqueFilter : String
   }
 
 type ResourceState = New | Unchanged | Deleted | Modified
@@ -91,7 +92,7 @@ type MethodCallMode = Opened  | Closed
 
 type Tab =  General |  Parameters | Resources | None
 
-type Mode = Introduction | TechniqueDetails Technique Tab (Dict String (MethodCallMode, MethodCallTab))
+type Mode = Introduction | TechniqueDetails Technique Tab (Dict String (MethodCallMode, MethodCallTab)) (Maybe Technique)
 
 type Msg =
     SelectTechnique Technique
@@ -105,3 +106,5 @@ type Msg =
   | SwitchTabMethod String MethodCallTab
   | CallApi  (Model -> Cmd Msg)
   | SwitchTab Tab
+  | UpdateTechniqueFilter String
+  | NewTechnique

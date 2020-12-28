@@ -6,18 +6,23 @@ import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 
 
-techniqueList : List Technique -> Html Msg
-techniqueList techniques =
+techniqueList : Model -> List Technique -> Html Msg
+techniqueList model techniques =
 
                   --    <div class="empty" ng-if="listTechniques.length<=0 && techniques.length>0">
                     --                  No technique matches the search filter.
                       --              </div>
 
   let
-    html = case techniques of
-        [] -> [ div [ class "empty"] [text "The techniques list is empty."] ]
-        --  filter ->  [ div [ class "empty"] [text "No technique matches the search filter."] ]
-        list -> (List.map techniqueItem list)
+
+    filteredTechniques = List.filter (\t -> String.contains model.techniqueFilter t.name) techniques
+    html =
+      if List.isEmpty techniques then
+        [ div [ class "empty"] [text "The techniques list is empty."] ]
+      else
+        case filteredTechniques of
+          []   ->  [ div [ class "empty"] [text "No technique matches the search filter."] ]
+          list -> (List.map (techniqueItem model) list)
   in
   div [ class "template-sidebar sidebar-left col-techniques" ] [ -- ng-click="toggleDisplay(true)"
     div [ class "sidebar-header"] [
@@ -27,17 +32,17 @@ techniqueList techniques =
           label [class "btn btn-sm btn-primary", for "btn-import"] [ --ng-click="toggleDisplay(true)"
             text "Import "
           , i [ class "fa fa-upload" ] []
-          , input [ id "btn-import",  type_ "file", class "hidden" ] []--onchange="angular.element(this).scope().onImportFileChange(this)" >
+          , input [ id "btn-import",  type_ "file", class "hidden"] []--onchange="angular.element(this).scope().onImportFileChange(this)" >
 
           ]
-        , button [ class "btn btn-sm btn-success" ] [-- ng-click="newTechnique();$event.stopPropagation();"
+        , button [ class "btn btn-sm btn-success", onClick NewTechnique ] [
             text "Create "
           , i [ class "fa fa-plus-circle"] []
           ]
         ]
       ]
     , div [ class "header-filter" ] [
-        input [ class "form-control",  type_ "text",  placeholder "Filter" ]  []--ng-model="searchText.name">
+        input [ class "form-control",  type_ "text",  placeholder "Filter", onInput UpdateTechniqueFilter  ]  []
       ]
     ]
   , div [ class "sidebar-body" ] [
@@ -51,12 +56,18 @@ techniqueList techniques =
 
 
 
-techniqueItem: Technique -> Html Msg
-techniqueItem technique =
+techniqueItem: Model -> Technique -> Html Msg
+techniqueItem model technique =
   let
-    activeClass = """ng-class="{'active': isSelected(technique)}">"""
+    activeClass = case model.mode of
+                    TechniqueDetails t _ _ _ ->
+                      if t.id == technique.id then
+                        [ class "active"]
+                      else
+                        [ ]
+                    _ -> []
   in
-    li [ ] [ --  ng-class="{'active': isSelected(technique)}"
+    li activeClass [
       div [ class "item",  onClick (SelectTechnique technique) ] [
         span [] [ text technique.name ]
         --, <span class="cursor-help popover-bs"  ng-if="hasDeprecatedMethod(technique)" data-toggle="popover"
