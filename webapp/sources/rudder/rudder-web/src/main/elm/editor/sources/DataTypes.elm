@@ -77,6 +77,7 @@ type alias Model =
   , mode       : Mode
   , contextPath : String
   , techniqueFilter : String
+  , methodFilter : MethodFilter
   }
 
 type ResourceState = New | Unchanged | Deleted | Modified
@@ -86,7 +87,11 @@ type alias Resource =
   , state : ResourceState
   }
 
-
+type alias MethodFilter =
+  { name : String
+  , showDeprecated : Bool
+  , agent : Maybe Agent
+  }
 type MethodCallTab = CallParameters | Conditions | Result
 type MethodCallMode = Opened  | Closed
 
@@ -107,4 +112,5 @@ type Msg =
   | CallApi  (Model -> Cmd Msg)
   | SwitchTab Tab
   | UpdateTechniqueFilter String
+  | UpdateMethodFilter MethodFilter
   | NewTechnique

@@ -58,6 +58,8 @@ methodsList: Model -> Html Msg
 methodsList model =
   let
     methodByCategories = Dict.Extra.groupBy (\m -> Maybe.withDefault m.id.value (List.head (String.split "_" m.id.value))) (Dict.values model.methods)
+    filter = model.methodFilter
+    dscIcon = if filter.agent == Just Dsc then "dsc-icon-white.svg" else "dsc-icon.svg"
   in
     div [ class "template-sidebar sidebar-right col-methods" ] [ -- ng-click="toggleDisplay(false)" ng-show="selectedTechnique">
     div [ class "sidebar-header" ] [
@@ -70,7 +72,7 @@ methodsList model =
 
     , div [ class "header-filter" ] [
         div [ class "input-group" ] [
-          input [ class "form-control",  type_ "text",  placeholder "Filter" ] [] --ng-model="filter.text">
+          input [ class "form-control",  type_ "text",  placeholder "Filter", value model.methodFilter.name, onInput (\s -> UpdateMethodFilter { filter | name = s  }) ] [] --ng-model="filter.text">
         , div [ class "input-group-btn" ] [
             button [ class "btn btn-outline-secondary btn-toggle-filters" ] [ --ng-click="ui.showMethodsFilter=!ui.showMethodsFilter">
               i [ class "ion ion-android-options"] []
@@ -84,16 +86,16 @@ methodsList model =
         text "Agent type:"
       ]
     , div [ class "btn-group" ] [
-        button [ class "btn btn-default" ] [text "All"] --ng-class="{active:filter.compatibility == 'all'}" ng-click="filter.compatibility='all'">
-      , button [ class "btn btn-default" ] [text "Classic"] -- ng-class="{active:filter.compatibility == 'classic'}" ng-click="filter.compatibility='classic'">
-      , button [ class "btn btn-default btn-dsc"] [ -- ng-class="{active:filter.compatibility == 'dsc'}" ng-click="filter.compatibility='dsc'">
+        button [ class ("btn btn-default" ++ (if filter.agent == Nothing then " active" else "")), onClick (UpdateMethodFilter {filter | agent = Nothing })  ] [text "All"]
+      , button [ class ("btn btn-default" ++ (if filter.agent == Just Cfengine then " active" else "")), onClick (UpdateMethodFilter {filter | agent = Just Cfengine }) ] [text "Classic"]
+      , button [ class ("btn btn-default" ++ (if filter.agent == Just Dsc then " active" else "")), onClick (UpdateMethodFilter {filter | agent = Just Dsc }) ] [
           text "DSC "
-        , img [] [] --ng-src="{{filter.compatibility == 'dsc' ? '../../techeditor/css/dsc-icon-white.svg' : '../../techeditor/css/dsc-icon.svg'}}" class="dsc-icon"/>
+        , img [ src ("../../techeditor/css/" ++ dscIcon),  class "dsc-icon" ] []
         ]
       ]
     , div [ class "input-group" ] [
         label [ for "showDeprecated", class "input-group-addon" ] [
-          input [ id "showDeprecated",  type_ "checkbox" ]  [] -- ng-model="filter.showDeprecated"/>
+          input [ id "showDeprecated",  type_ "checkbox", checked filter.showDeprecated, onCheck (\b -> UpdateMethodFilter { filter | showDeprecated = b}) ]  [] 
         ]
       , label [ for "showDeprecated",  class "form-control label-checkbox" ][
           text "Show deprecated generic methods"

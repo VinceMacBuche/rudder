@@ -52,7 +52,7 @@ showTechnique model technique activeTab creation callTabs =
             ]
           , ul [ class "dropdown-menu" ] topButtons
           ]
-        , button [ class "btn btn-primary" ] [ --ng-disabled="isUnchanged(selectedTechnique)"  ng-click="resetTechnique()">
+        , button [ class "btn btn-primary", disabled creation ] [ --ng-disabled="isUnchanged(selectedTechnique)"  ng-click="resetTechnique()">
             text "Reset "
           , i [ class "fa fa-undo"] []
           ]

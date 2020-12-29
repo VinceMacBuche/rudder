@@ -13,7 +13,7 @@ import List.Extra
 mainInit : {  } -> ( Model, Cmd Msg )
 mainInit initValues =
   let
-    model =  Model [] Dict.empty Introduction "rudder" ""
+    model =  Model [] Dict.empty Introduction "rudder" "" (MethodFilter "" False Nothing)
   in
     (model, Cmd.batch (  getMethods model :: []) )
 
@@ -121,3 +121,6 @@ update msg model =
 
     UpdateTechniqueFilter newFilter->
       ( { model | techniqueFilter = newFilter } , Cmd.none)
+
+    UpdateMethodFilter newFilter->
+      ( { model | methodFilter = newFilter } , Cmd.none)
