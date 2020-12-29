@@ -21,21 +21,23 @@ showMethod method =
       (div [ class "cursorMove" ] [
         b [] [ text ":::" ]
       ] ::
-      div [ class "method-name col" ] [-- ng-click="addMethod(method)">
-        text method.name
-        {-, span class="cursor-help" ng-if="method.deprecated">
-                          <i
-                            class="fa fa-info-circle tooltip-icon deprecated-icon popover-bs"
-                            data-toggle="popover"
-                            data-trigger="hover" data-container="body"
-                            data-placement="top"
-                            data-title="{{method.name}}"
-                            data-content="{{getTooltipContent(method)}}"
-                            data-html="true"
-                          ></i>
-                        </span>-}
-         --<img src="../../techeditor/css/dsc-icon.svg" class="dsc-icon" ng-if="checkAgentSupport(method,'dsc')">
-      ] ::
+      div [ class "method-name col" ] -- ng-click="addMethod(method)">
+        ( text method.name ::
+          ( case method.deprecated of
+            Nothing -> text ""
+            Just deprecationMessage ->
+              span [ class "cursor-help" ] [
+                i [ class "fa fa-info-circle tooltip-icon deprecated-icon popover-bs"
+                  , attribute "data-toggle" "popover", attribute "data-trigger" "hover"
+                  , attribute "data-container" "body", attribute "data-placement" "top"
+                  , attribute "data-title" method.name, attribute "data-content" "{{getTooltipContent(method)}}"
+                  , attribute "data-html" "true"
+                ] []
+              ]
+          ) ::
+          if (List.member Dsc method.agentSupport) then  [ img [ src "../../techeditor/css/dsc-icon.svg",  class "dsc-icon" ] [] ] else []
+        )
+       ::
       case method.documentation of
        Just doc ->
          [ div [ class "show-doc" ] [-- ng-click="$event.stopPropagation(); method.showDoc = !method.showDoc">
@@ -50,15 +52,28 @@ showMethod method =
     )
 showMethodsCategories : Model -> (String, List Method) -> Html Msg
 showMethodsCategories model (category, methods) =
-  ul [ class "list-unstyled" ]  -- ng-if="checkFilterCategory(methods)">
+  ul [ class "list-unstyled" ]
     (h5 [ id category ] [ text category ]
     :: (List.map showMethod methods) )
+
+filterMethod: MethodFilter -> Method -> Bool
+filterMethod filter method =
+  (String.contains filter.name method.name) &&
+    ( case filter.agent of
+      Nothing -> True
+      Just ag -> List.member ag method.agentSupport
+    ) && (filter.showDeprecated ||
+           case method.deprecated of
+             Nothing -> True
+             _ -> False
+         )
 
 methodsList: Model -> Html Msg
 methodsList model =
   let
-    methodByCategories = Dict.Extra.groupBy (\m -> Maybe.withDefault m.id.value (List.head (String.split "_" m.id.value))) (Dict.values model.methods)
     filter = model.methodFilter
+    filterMethods = List.filter (filterMethod filter) (Dict.values model.methods)
+    methodByCategories = Dict.Extra.groupBy (\m -> Maybe.withDefault m.id.value (List.head (String.split "_" m.id.value))) (filterMethods)
     dscIcon = if filter.agent == Just Dsc then "dsc-icon-white.svg" else "dsc-icon.svg"
   in
     div [ class "template-sidebar sidebar-right col-methods" ] [ -- ng-click="toggleDisplay(false)" ng-show="selectedTechnique">
@@ -72,7 +87,7 @@ methodsList model =
 
     , div [ class "header-filter" ] [
         div [ class "input-group" ] [
-          input [ class "form-control",  type_ "text",  placeholder "Filter", value model.methodFilter.name, onInput (\s -> UpdateMethodFilter { filter | name = s  }) ] [] --ng-model="filter.text">
+          input [ class "form-control",  type_ "text",  placeholder "Filter", value model.methodFilter.name, onInput (\s -> UpdateMethodFilter { filter | name = s  }) ] [] 
         , div [ class "input-group-btn" ] [
             button [ class "btn btn-outline-secondary btn-toggle-filters" ] [ --ng-click="ui.showMethodsFilter=!ui.showMethodsFilter">
               i [ class "ion ion-android-options"] []
@@ -95,7 +110,7 @@ methodsList model =
       ]
     , div [ class "input-group" ] [
         label [ for "showDeprecated", class "input-group-addon" ] [
-          input [ id "showDeprecated",  type_ "checkbox", checked filter.showDeprecated, onCheck (\b -> UpdateMethodFilter { filter | showDeprecated = b}) ]  [] 
+          input [ id "showDeprecated",  type_ "checkbox", checked filter.showDeprecated, onCheck (\b -> UpdateMethodFilter { filter | showDeprecated = b}) ]  []
         ]
       , label [ for "showDeprecated",  class "form-control label-checkbox" ][
           text "Show deprecated generic methods"
