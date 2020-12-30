@@ -77,7 +77,8 @@ type alias Model =
   , mode       : Mode
   , contextPath : String
   , techniqueFilter : String
-  , methodFilter : MethodFilter
+  , methodsUI : MethodListUI
+  , genericMethodsOpen : Bool
   }
 
 type ResourceState = New | Unchanged | Deleted | Modified
@@ -85,6 +86,11 @@ type ResourceState = New | Unchanged | Deleted | Modified
 type alias Resource =
   { name : String
   , state : ResourceState
+  }
+
+type alias MethodListUI =
+  { filter : MethodFilter
+  , docsOpen : List MethodId
   }
 
 type alias MethodFilter =
@@ -113,4 +119,9 @@ type Msg =
   | SwitchTab Tab
   | UpdateTechniqueFilter String
   | UpdateMethodFilter MethodFilter
+  | ToggleDoc MethodId
+  | OpenMethods
+  | OpenTechniques
   | NewTechnique
+  | Ignore
+  | AddMethod Method String

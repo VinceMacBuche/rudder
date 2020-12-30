@@ -24,12 +24,12 @@ techniqueList model techniques =
           []   ->  [ div [ class "empty"] [text "No technique matches the search filter."] ]
           list -> (List.map (techniqueItem model) list)
   in
-  div [ class "template-sidebar sidebar-left col-techniques" ] [ -- ng-click="toggleDisplay(true)"
+  div [ class "template-sidebar sidebar-left col-techniques", onClick OpenTechniques ] [
     div [ class "sidebar-header"] [
       div [ class "header-title" ] [
         h1 [] [ text "Techniques"]
       , div [ class "header-buttons"] [ -- Need to add technique-write rights
-          label [class "btn btn-sm btn-primary", for "btn-import"] [ --ng-click="toggleDisplay(true)"
+          label [class "btn btn-sm btn-primary", for "btn-import"] [
             text "Import "
           , i [ class "fa fa-upload" ] []
           , input [ id "btn-import",  type_ "file", class "hidden"] []--onchange="angular.element(this).scope().onImportFileChange(this)" >

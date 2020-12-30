@@ -13,7 +13,7 @@ import List.Extra
 mainInit : {  } -> ( Model, Cmd Msg )
 mainInit initValues =
   let
-    model =  Model [] Dict.empty Introduction "rudder" "" (MethodFilter "" False Nothing)
+    model =  Model [] Dict.empty Introduction "rudder" "" (MethodListUI (MethodFilter "" False Nothing) []) False
   in
     (model, Cmd.batch (  getMethods model :: []) )
 
@@ -22,7 +22,7 @@ main =
     { init = mainInit
     , update = update
     , view = view
-    , subscriptions = \m -> Sub.none
+    , subscriptions = always Sub.none
     }
 
 
@@ -34,7 +34,8 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
   case msg of
     SelectTechnique technique ->
-      ({ model | mode = TechniqueDetails technique General (Dict.fromList (List.map (\c -> (c.id, (Closed, CallParameters))) technique.calls)) (Just technique) }, Cmd.none )
+      ({ model | mode = TechniqueDetails technique General (Dict.fromList (List.map (\c -> (c.id, (Closed, CallParameters))) technique.calls)) (Just technique) } )
+        |> update OpenMethods
 
     NewTechnique ->
       ({ model | mode = TechniqueDetails (Technique (TechniqueId "") "1.0" "" "" "ncf_techniques" [] [] ) General Dict.empty Nothing }, Cmd.none )
@@ -123,4 +124,33 @@ update msg model =
       ( { model | techniqueFilter = newFilter } , Cmd.none)
 
     UpdateMethodFilter newFilter->
-      ( { model | methodFilter = newFilter } , Cmd.none)
+      let
+        ui = model.methodsUI
+      in
+        ( { model | methodsUI = { ui | filter = newFilter } } , Cmd.none )
+
+    ToggleDoc methodId ->
+      let
+        ui = model.methodsUI
+        newDocs = if List.member methodId ui.docsOpen then List.Extra.remove methodId ui.docsOpen else methodId :: ui.docsOpen
+      in
+        ( { model | methodsUI = { ui | docsOpen = newDocs } } , Cmd.none )
+
+    OpenMethods ->
+      ( { model | genericMethodsOpen = True } , Cmd.none )
+
+    OpenTechniques ->
+      ( { model | genericMethodsOpen = False } , Cmd.none )
+
+    AddMethod method newId ->
+      let
+        newCall = MethodCall newId method.id (List.map (\p -> CallParameter p.name "") method.parameters) "" ""
+        newMode =
+          case model.mode of
+            TechniqueDetails t m map o  -> TechniqueDetails { t | calls = newCall :: t.calls } m (Dict.update newId (always (Just (Closed, CallParameters)) ) map) o
+            m -> m
+      in
+        ( { model | mode = newMode } , Cmd.none )
+
+    Ignore->
+      ( model , Cmd.none)

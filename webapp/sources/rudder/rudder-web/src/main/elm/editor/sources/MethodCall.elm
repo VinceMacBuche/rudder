@@ -7,7 +7,7 @@ import Html.Events exposing (..)
 import Dict
 import List.Extra
 import String.Extra
-import Random
+import Regex
 import UUID
 
 
@@ -27,6 +27,9 @@ getClassParameter method =
     Just p -> p
     Nothing -> MethodParameter method.classParameter "" "" []
 
+canonify: String -> String
+canonify value =
+   Regex.replace ((Regex.fromString >> Maybe.withDefault Regex.never) "[!_a-zA-Z\\d]") (always "_") value
 
 findClassParameter: Method -> Maybe MethodParameter
 findClassParameter method =
@@ -108,50 +111,51 @@ showMethodTab method call tab =
                         </div>
 
                           -}
-    Result     ->   text ""
-       {-
-
-                        <div class="tab-result" ng-if="ui.methodTabs[method_call['$$hashKey']]=='result'">
-                          <label>
-                            <small>Result conditions defined by this method</small>
-                          </label>
-                          <form class="form-horizontal editForm result-class">
-                            <div class="input-group result-success">
-                              <div class="input-group-addon">
-                                Success
-                              </div>
-                              <input ng-readonly="true" type="text" id="techniqueName" class="form-control" value="{{getClassKind(method_call,'kept')}}">
-                              <span class="input-group-btn">
-                                <button class="btn btn-outline-secondary clipboard" type="button" data-clipboard-text="{{getClassKind(method_call,'kept')}}" title="Copy to clipboard">
-                                  <i class="ion ion-clipboard"></i>
-                                </button>
-                              </span>
-                            </div>
-                            <div class="input-group result-repaired">
-                              <div class="input-group-addon">
-                                <span class="input-group-text">Repaired</span>
-                              </div>
-                              <input ng-readonly="true" type="text" id="techniqueName" class="form-control" value="{{getClassKind(method_call,'repaired')}}">
-                              <span class="input-group-btn">
-                                <button class="btn btn-outline-secondary clipboard" type="button" data-clipboard-text="{{getClassKind(method_call,'repaired')}}" title="Copy to clipboard">
-                                  <i class="ion ion-clipboard"></i>
-                                </button>
-                              </span>
-                            </div>
-                            <div class="input-group result-error">
-                              <div class="input-group-addon">
-                                <span class="input-group-text">Error</span>
-                              </div>
-                              <input ng-readonly="true" type="text" id="techniqueName" class="form-control" value="{{getClassKind(method_call,'error')}}">
-                              <span class="input-group-btn">
-                                <button class="btn btn-default clipboard" type="button" data-clipboard-text="{{getClassKind(method_call,'error')}}" title="Copy to clipboard">
-                                  <i class="ion ion-clipboard"></i>
-                                </button>
-                              </span>
-                            </div>
-                          </form>
-                        </div>
-       -}
+    Result     ->
+      let
+        classParameter = getClassParameter method
+        paramValue = call.parameters |> List.Extra.find (\c -> c.id == classParameter.name) |> Maybe.map (.value)  |> Maybe.withDefault ""
+      in
+      div [ class "tab-result" ] [
+        label [] [
+          small [] [ text "Result conditions defined by this method" ]
+        ]
+      , div [ class "form-horizontal editForm result-class" ] [
+          div [ class "input-group result-success" ] [
+            div [ class "input-group-addon" ] [
+              text "Success"
+            ]
+          , input [ readonly True, type_ "text", class "form-control",  value (classParameter.name.value ++ "_" ++ (canonify paramValue) ++ "_kept") ] []
+          , span [ class "input-group-btn" ] [
+              button [ class "btn btn-outline-secondary clipboard", title "Copy to clipboard" ] [ --data-clipboard-text="{{getClassKind(method_call,'kept')}}" title="Copy to clipboard">
+                i [ class "ion ion-clipboard" ] []
+              ]
+            ]
+          ]
+        , div [ class "input-group result-repaired" ] [
+            div [ class "input-group-addon" ] [
+              text "Repaired"
+            ]
+          , input [ readonly True, type_ "text", class "form-control",  value (classParameter.name.value ++ "_" ++ (canonify paramValue) ++ "_repaired") ] []
+          , span [ class "input-group-btn" ] [
+              button [ class "btn btn-outline-secondary clipboard", title "Copy to clipboard" ] [ --data-clipboard-text="{{getClassKind(method_call,'kept')}}" title="Copy to clipboard">
+                i [ class "ion ion-clipboard" ] []
+              ]
+            ]
+          ]
+        , div [ class "input-group result-error" ] [
+            div [ class "input-group-addon" ] [
+              text "Error"
+            ]
+          , input [ readonly True, type_ "text", class "form-control",  value (classParameter.name.value ++ "_" ++ (canonify paramValue) ++ "_error") ] []
+          , span [ class "input-group-btn" ] [
+              button [ class "btn btn-outline-secondary clipboard", title "Copy to clipboard" ] [ --data-clipboard-text="{{getClassKind(method_call,'kept')}}" title="Copy to clipboard">
+                i [ class "ion ion-clipboard" ] []
+              ]
+            ]
+          ]
+        ]
+      ]
 
 methodDetail: Method -> MethodCall -> MethodCallTab -> Html Msg
 methodDetail method call currentTab =
@@ -182,7 +186,6 @@ showMethodCall model mode tab call =
     method = case Dict.get call.methodName.value model.methods of
                Just m -> m
                Nothing -> Method call.methodName call.methodName.value "" "" (Maybe.withDefault (ParameterId "") (Maybe.map .id (List.head call.parameters))) [] [] Nothing Nothing Nothing
-    t = Debug.log (Debug.toString method)
   in
     li [] [ --     ng-class="{'active': methodIsSelected(method_call), 'missingParameters': checkMissingParameters(method_call.parameters, method.parameter).length > 0, 'errorParameters': checkErrorParameters(method_call.parameters).length > 0, 'is-edited' : canResetMethod(method_call)}"
       div [ class "method"] [ {-

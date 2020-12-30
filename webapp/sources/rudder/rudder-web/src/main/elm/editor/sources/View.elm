@@ -29,7 +29,7 @@ showTechnique model technique activeTab creation callTabs =
                      ]
                    ]
                  ] ( if creation then [] else [ li [] [
-                                                  a [ class "action-danger" ] [ --ng-disabled="isNotSaved()"  ng-click=""exportTechnique(selectedTechnique)ng-click="confirmPopup('Delete','Technique', deleteTechnique, selectedTechnique, selectedTechnique.name)"
+                                                  a [ class "action-danger" ] [ --ng-disabled="isNotSaved()"  ng-click="confirmPopup('Delete','Technique', deleteTechnique, selectedTechnique, selectedTechnique.name)"
                                                     text "Delete "
                                                   , i [ class "fa fa-times-circle"] []
                                                   ]
@@ -52,13 +52,13 @@ showTechnique model technique activeTab creation callTabs =
             ]
           , ul [ class "dropdown-menu" ] topButtons
           ]
-        , button [ class "btn btn-primary", disabled creation ] [ --ng-disabled="isUnchanged(selectedTechnique)"  ng-click="resetTechnique()">
+        , button [ class "btn btn-primary" ] [ --ng-disabled="isUnchanged(selectedTechnique)"  ng-click="resetTechnique()">
             text "Reset "
           , i [ class "fa fa-undo"] []
           ]
         , button [ class "btn btn-success btn-save"] [ --ng-disabled="ui.editForm.$pending || ui.editForm.$invalid || CForm.form.$invalid || checkSelectedTechnique() || saving"  ng-click="saveTechnique()">
             text "Save "
-          , i [] [] --ng-class="{'glyphicon glyphicon-cog fa-spin':saving, 'fa fa-download':!saving}"></i>
+          , i [ class "fa fa-download"] [] --ng-class="{'glyphicon glyphicon-cog fa-spin':saving}"></i>
           ]
         ]
       ]
@@ -108,10 +108,11 @@ showTechnique model technique activeTab creation callTabs =
         , span [ class "badge badge-secondary" ] [
             text (String.fromInt (List.length technique.calls ) )
           ]
-        , button [class "btn-sm btn btn-success" ] [ --  ng-click="toggleDisplay(false)" ng-class="{'invisible':!ui.showTechniques}"
-            text "Add "
-          , i [ class "fa fa-plus-circle" ] []
-          ]
+        , if model.genericMethodsOpen then text "" else
+              button [class "btn-sm btn btn-success" , onClick OpenMethods] [ --  ng-click="toggleDisplay(false)" ng-class="{'invisible':!ui.showTechniques}"
+                text "Add "
+              , i [ class "fa fa-plus-circle" ] []
+              ]
         ]
      ,  div [ class "row"] [
           ul [ id "methods", class "list-unstyled" ] --  dnd-list="selectedTechnique.method_calls" dnd-drop="dropCallback(item, index, type);" >
@@ -152,7 +153,7 @@ view model =
                         h1 [] [ text "Technique editor" ]
                       , p [] [ text "Create a new technique or edit one from the list on the left."]
                       , p [] [ text "Define target configuration using the generic methods from the list on the right as building blocks."]
-                      , button [ class "btn btn-success btn-lg" ] [-- ng-click="newTechnique()" role="button"></button>
+                      , button [ class "btn btn-success btn-lg" , onClick NewTechnique] [
                           text "Create Technique "
                         , i [ class "fa fa-plus-circle" ] []
                         ]
@@ -163,9 +164,11 @@ view model =
                   showTechnique model technique tab False callTabs
                 TechniqueDetails technique tab callTabs Nothing ->
                   showTechnique model technique tab True callTabs
+    classes = "rudder-template " ++ if model.genericMethodsOpen then "show-methods" else "show-techniques"
+
 
   in
-    div [ id "technique-editor", class "rudder-template"] [
+    div [ id "technique-editor", class classes] [
       techniqueList model model.techniques
     , div [ class "template-main" ] [central]
     , methodsList model
