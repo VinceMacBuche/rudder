@@ -122,23 +122,14 @@ showTechnique model technique activeTab creation callTabs =
                 ]
               ]
             else
-              List.map (\call ->
+              List.indexedMap (\ index call ->
                 let
                   (state, tab) = Maybe.withDefault (Closed,CallParameters) (Dict.get call.id callTabs)
                 in
-                  showMethodCall model state tab call
+                  showMethodCall model state tab model.dnd index call
               ) technique.calls
             )
         ]
-
-
-          {-
-            <div class="row">
-              <ul id="methods" class="list-unstyled" dnd-list="selectedTechnique.method_calls" dnd-drop="dropCallback(item, index, type);" >
-
-
-              </ul>
-            </div> -}
       ]
     ]
   ]

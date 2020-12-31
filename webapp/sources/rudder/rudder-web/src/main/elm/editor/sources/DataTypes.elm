@@ -2,6 +2,20 @@ module DataTypes exposing (..)
 
 import Http exposing (Error)
 import Dict exposing (Dict)
+import DnDList
+
+config : DnDList.Config MethodCall
+config =
+    { beforeUpdate = \_ _ list -> list
+    , movement = DnDList.Free
+    , listen = DnDList.OnDrag
+    , operation = DnDList.Rotate
+    }
+
+
+dndSystem : DnDList.System MethodCall Msg
+dndSystem =
+    DnDList.create config DndEvent
 
 type alias TechniqueId = {value : String}
 
@@ -79,6 +93,7 @@ type alias Model =
   , techniqueFilter : String
   , methodsUI : MethodListUI
   , genericMethodsOpen : Bool
+  , dnd : DnDList.Model
   }
 
 type ResourceState = New | Unchanged | Deleted | Modified
@@ -125,3 +140,4 @@ type Msg =
   | NewTechnique
   | Ignore
   | AddMethod Method String
+  | DndEvent DnDList.Msg

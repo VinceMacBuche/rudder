@@ -8,7 +8,7 @@ import Dict
 import List.Extra
 import String.Extra
 import Regex
-import UUID
+import DnDList
 
 
 
@@ -177,8 +177,8 @@ methodDetail method call currentTab =
     ]
   ]
 
-showMethodCall: Model -> MethodCallMode -> MethodCallTab -> MethodCall -> Html Msg
-showMethodCall model mode tab call =
+showMethodCall: Model -> MethodCallMode -> MethodCallTab -> DnDList.Model -> Int -> MethodCall -> Html Msg
+showMethodCall model mode tab dnd index call =
   let
     editAction = case mode of
                    Opened -> CloseMethod call.id
@@ -186,9 +186,43 @@ showMethodCall model mode tab call =
     method = case Dict.get call.methodName.value model.methods of
                Just m -> m
                Nothing -> Method call.methodName call.methodName.value "" "" (Maybe.withDefault (ParameterId "") (Maybe.map .id (List.head call.parameters))) [] [] Nothing Nothing Nothing
+    dragAttributes =
+       class "method" :: id call.id ::
+       case dndSystem.info dnd of
+         Just { dragIndex } ->
+           if dragIndex /= index then
+              dndSystem.dropEvents index call.id
+           else
+             []
+
+         Nothing ->
+           dndSystem.dragEvents index call.id
   in
+  {-
+      let
+          itemId : String
+          itemId =
+              "id-" ++ item
+      in
+      case system.info dnd of
+          Just { dragIndex } ->
+              if dragIndex /= index then
+                  Html.p
+                      (Html.Attributes.id itemId :: system.dropEvents index itemId)
+                      [ Html.text item ]
+
+              else
+                  Html.p
+                      [ Html.Attributes.id itemId ]
+                      [ Html.text "[---------]" ]
+
+          Nothing ->
+              Html.p
+                  (Html.Attributes.id itemId :: system.dragEvents index itemId)
+                  [ Html.text item ]
+  -}
     li [] [ --     ng-class="{'active': methodIsSelected(method_call), 'missingParameters': checkMissingParameters(method_call.parameters, method.parameter).length > 0, 'errorParameters': checkErrorParameters(method_call.parameters).length > 0, 'is-edited' : canResetMethod(method_call)}"
-      div [ class "method"] [ {-
+      div dragAttributes [ {-
                     dnd-draggable="method_call"
                     dnd-effect-allowed="move"
                     dnd-moved="selectedTechnique.method_calls.splice($index,1)">

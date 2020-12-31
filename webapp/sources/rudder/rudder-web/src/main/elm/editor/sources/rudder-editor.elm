@@ -13,7 +13,7 @@ import List.Extra
 mainInit : {  } -> ( Model, Cmd Msg )
 mainInit initValues =
   let
-    model =  Model [] Dict.empty Introduction "rudder" "" (MethodListUI (MethodFilter "" False Nothing) []) False
+    model =  Model [] Dict.empty Introduction "rudder" "" (MethodListUI (MethodFilter "" False Nothing) []) False dndSystem.model
   in
     (model, Cmd.batch (  getMethods model :: []) )
 
@@ -22,9 +22,14 @@ main =
     { init = mainInit
     , update = update
     , view = view
-    , subscriptions = always Sub.none
+    , subscriptions = subscriptions
     }
 
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    Sub.batch
+        [ dndSystem.subscriptions model.dnd  ]
 
 
 generator : Random.Generator String
@@ -151,6 +156,24 @@ update msg model =
             m -> m
       in
         ( { model | mode = newMode } , Cmd.none )
+
+    DndEvent dndMsg ->
+            let
+
+              ( dnd, newMode ) =
+                case model.mode of
+                   TechniqueDetails t m map o  ->
+
+                    let
+                      (d, calls ) = dndSystem.update dndMsg model.dnd t.calls
+                    in
+                    (d, TechniqueDetails { t | calls = calls } m  map o )
+                   m -> (model.dnd, m)
+
+            in
+            ( { model | dnd = dnd, mode = newMode }
+            , dndSystem.commands model.dnd
+            )
 
     Ignore->
       ( model , Cmd.none)
