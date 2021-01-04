@@ -127,7 +127,7 @@ showMethodTab method call tab =
             ]
           , input [ readonly True, type_ "text", class "form-control",  value (classParameter.name.value ++ "_" ++ (canonify paramValue) ++ "_kept") ] []
           , span [ class "input-group-btn" ] [
-              button [ class "btn btn-outline-secondary clipboard", title "Copy to clipboard" ] [ --data-clipboard-text="{{getClassKind(method_call,'kept')}}" title="Copy to clipboard">
+              button [ class "btn btn-outline-secondary clipboard", type_ "button", title "Copy to clipboard" ] [ --data-clipboard-text="{{getClassKind(method_call,'kept')}}" title="Copy to clipboard">
                 i [ class "ion ion-clipboard" ] []
               ]
             ]
@@ -138,7 +138,7 @@ showMethodTab method call tab =
             ]
           , input [ readonly True, type_ "text", class "form-control",  value (classParameter.name.value ++ "_" ++ (canonify paramValue) ++ "_repaired") ] []
           , span [ class "input-group-btn" ] [
-              button [ class "btn btn-outline-secondary clipboard", title "Copy to clipboard" ] [ --data-clipboard-text="{{getClassKind(method_call,'kept')}}" title="Copy to clipboard">
+              button [ class "btn btn-outline-secondary clipboard", type_ "button" , title "Copy to clipboard" ] [ --data-clipboard-text="{{getClassKind(method_call,'kept')}}" title="Copy to clipboard">
                 i [ class "ion ion-clipboard" ] []
               ]
             ]
@@ -149,7 +149,7 @@ showMethodTab method call tab =
             ]
           , input [ readonly True, type_ "text", class "form-control",  value (classParameter.name.value ++ "_" ++ (canonify paramValue) ++ "_error") ] []
           , span [ class "input-group-btn" ] [
-              button [ class "btn btn-outline-secondary clipboard", title "Copy to clipboard" ] [ --data-clipboard-text="{{getClassKind(method_call,'kept')}}" title="Copy to clipboard">
+              button [ class "btn btn-outline-secondary clipboard", type_ "button", title "Copy to clipboard" ] [ --data-clipboard-text="{{getClassKind(method_call,'kept')}}" title="Copy to clipboard">
                 i [ class "ion ion-clipboard" ] []
               ]
             ]
@@ -194,69 +194,52 @@ showMethodCall model mode tab dnd index call =
               dndSystem.dropEvents index call.id
            else
              []
-
          Nothing ->
            dndSystem.dragEvents index call.id
+    deprecatedClass = "fa fa-info-circle tooltip-icon popover-bs" ++
+                        case method.deprecated of
+                          Just _ -> " deprecated-icon"
+                          Nothing -> ""
+
+    classParameter = getClassParameter method
+    paramValue = call.parameters |> List.Extra.find (\c -> c.id == classParameter.name) |> Maybe.map (.value)  |> Maybe.withDefault ""
+
   in
-  {-
-      let
-          itemId : String
-          itemId =
-              "id-" ++ item
-      in
-      case system.info dnd of
-          Just { dragIndex } ->
-              if dragIndex /= index then
-                  Html.p
-                      (Html.Attributes.id itemId :: system.dropEvents index itemId)
-                      [ Html.text item ]
-
-              else
-                  Html.p
-                      [ Html.Attributes.id itemId ]
-                      [ Html.text "[---------]" ]
-
-          Nothing ->
-              Html.p
-                  (Html.Attributes.id itemId :: system.dragEvents index itemId)
-                  [ Html.text item ]
-  -}
-    li [] [ --     ng-class="{'active': methodIsSelected(method_call), 'missingParameters': checkMissingParameters(method_call.parameters, method.parameter).length > 0, 'errorParameters': checkErrorParameters(method_call.parameters).length > 0, 'is-edited' : canResetMethod(method_call)}"
-      div dragAttributes [ {-
-                    dnd-draggable="method_call"
-                    dnd-effect-allowed="move"
-                    dnd-moved="selectedTechnique.method_calls.splice($index,1)">
-                    -}
+    li [ class (if (mode == Opened) then "active" else "") ] [ --     ng-class="{'active': methodIsSelected(method_call), 'missingParameters': checkMissingParameters(method_call.parameters, method.parameter).length > 0, 'errorParameters': checkErrorParameters(method_call.parameters).length > 0, 'is-edited' : canResetMethod(method_call)}"
+      div dragAttributes [
         div [ class "cursorMove"] [ p [] [ text ":::"]]
 
-      , div [ class "method-info"] [ -- dnd-nodrag>
+      , div [ class "method-info"] [
           div [ class "btn-holder" ] [
-            button [ class "text-success method-action tooltip-bs", title "Clone this method", attribute "data-toogle" "tooltip"
+            button [ class "text-success method-action tooltip-bs", onClick (GenerateId (CloneMethod call) ), type_ "button"
+                   , title "Clone this method", attribute "data-toogle" "tooltip"
                    , attribute "data-trigger" "hover", attribute "data-container" "body", attribute "data-placement" "left"
                    , attribute "data-html" "true", attribute "data-delay" """'{"show":"400", "hide":"100"}'""" ] [
               i [ class "fa fa-clone"] []
             ]
 
-            , button [  class "text-danger method-action", onClick (GenerateId (CloneMethod call) ) ] [ --  ng-click="removeMethod($index);$event.stopPropagation();"
+            , button [ class "text-danger method-action", type_ "button", onClick (RemoveMethod call.id) ] [ --  ng-click="removeMethod($index);$event.stopPropagation();"
               i [ class "fa fa-times-circle" ] []
             ]
           ]
         , div [ class "flex-column" ] [
-            div [ class "method-condition flex-form" ] [ -- ng-if="method_call.class_context !== 'any'">
-              label [] [ text "Condition:" ]
-            , textarea [ class "form-control popover-bs", rows 1, readonly True, value call.condition, title call.condition
+            if (call.condition == "any") then
+              text ""
+            else
+              div [ class "method-condition flex-form" ] [
+                label [] [ text "Condition:" ]
+              , textarea [ class "form-control popover-bs", rows 1, readonly True, value call.condition, title call.condition
                           --msd-elastic
                           --ng-click="$event.stopPropagation();"
-                       , attribute "data-toggle" "popover", attribute "data-trigger" "hover", attribute "data-placement" "top"
-                       , attribute "data-title" call.condition, attribute "data-content" "<small>Click <span class='text-info'>3</span> times to copy the whole condition below</small>"
-                       , attribute "data-template" """<div class="popover condition" role="tooltip"><div class="arrow"></div><h3 class="popover-header"></h3><div class="popover-body"></div></div>"""
-                       , attribute "data-html" "true" ] []
-            ]
+                         , attribute "data-toggle" "popover", attribute "data-trigger" "hover", attribute "data-placement" "top"
+                         , attribute "data-title" call.condition, attribute "data-content" "<small>Click <span class='text-info'>3</span> times to copy the whole condition below</small>"
+                         , attribute "data-template" """<div class="popover condition" role="tooltip"><div class="arrow"></div><h3 class="popover-header"></h3><div class="popover-body"></div></div>"""
+                         , attribute "data-html" "true" ] []
+              ]
           , div [ class "method-name" ] [
               text (if (String.isEmpty call.component) then method.name else call.component)
             , span [ class "cursor-help" ] [
-                i [ class "fa fa-info-circle tooltip-icon popover-bs"
-                            --ng-class="{'deprecated-icon':(method_call.deprecated || isDeprecated(method_call.method_name))}"
+                i [ class deprecatedClass
                   , attribute "data-toggle" "popover", attribute "data-trigger" "hover", attribute "data-container" "body"
                   , attribute "data-placement" "auto", attribute "data-title" method.name, attribute "data-content" "{{getTooltipContent(method_call)}}"
                   , attribute "data-html" "true" ]  []
@@ -264,8 +247,8 @@ showMethodCall model mode tab dnd index call =
             ]
           , div [ class "method-content"] [
               div [ class "method-param flex-form" ] [ --  ng-if="getClassParameter(method_call).value && checkMissingParameters(method_call.parameters, method.parameter).length<=0 && checkErrorParameters(method_call.parameters).length<=0"
-                label [] [ text ((parameterName (getClassParameter method))++":")]
-              , textarea [ class "form-control", rows 1, readonly True ] [] -- msd elastic ng-model="getClassParameter(method_call).value"  ng-click="$event.stopPropagation();"
+                label [] [ text ((parameterName classParameter)++":")]
+              , textarea [ class "form-control", rows 1, readonly True, value paramValue ] [] -- msd elastic  ng-click="$event.stopPropagation();"
               ]
             -- here used to be one entry for each for each param but we can be smart with elm
 
@@ -300,37 +283,31 @@ showMethodCall model mode tab dnd index call =
             ]
           ]
         ]
-      , div [ class "edit-method popover-bs", onClick editAction ] [
-      {-
-                    ng-click="selectMethod(method_call)"
-                    dnd-nodrag
-                    data-toggle="popover"
-                    data-trigger="hover"
-                    data-container="body"
-                    data-placement="left"
-                    data-content="{{getStatusTooltipMessage(method_call)}}"
-                    data-html="true"
-                    data-delay='{"show":"400", "hide":"100" -}
-
+      , div [ class "edit-method popover-bs", onClick editAction
+            , attribute "data-toggle" "popover", attribute "data-trigger" "hover", attribute "data-placement" "left"
+            , attribute "data-template" "{{getStatusTooltipMessage(method_call)}}", attribute "data-container" "body"
+            , attribute "data-html" "true", attribute "data-delay" """'{"show":"400", "hide":"100"}'""" ] [
           i [ class "ion ion-edit"] []
         ]
       ]
     , case mode of
-       Opened -> div [ class "method-details"] [ methodDetail method call tab ]
+       Opened -> div [ class "method-details" ] [ methodDetail method call tab ]
        Closed -> div [] []
     , div [ class "method-details-footer"] [
-        button [ class "btn btn-outline-secondary btn-sm" , disabled True] [ -- ng-disabled="!canResetMethod(method_call)" ng-click="resetMethod(method_call)"
+        button [ class "btn btn-outline-secondary btn-sm" , disabled True, type_ "button"] [ -- ng-disabled="!canResetMethod(method_call)" ng-click="resetMethod(method_call)"
           text "Reset "
         , i [ class "fa fa-undo-all"] []
         ]
       , case method.documentation of
-          Just doc -> button [ class "btn btn-sm btn-primary show-doc"] [
-                    {-              ng-class="{ 'doc-opened' : generic_methods[method_call.method_name].showDoc}"
-                                  ng-click="showMethodDocumentation($event,method_call.method_name)">
-                      -}
-                        text "Show docs"
-                      , i [ class "fa fa-book"] []
-                      ]
+          Just _ ->
+            let
+              classes = "btn btn-sm btn-primary show-doc " ++
+                        if List.member method.id model.methodsUI.docsOpen then "doc-opened" else ""
+            in
+              button [ class classes, type_ "button", onClick (ToggleDoc call.methodName) ] [
+                text "Show docs "
+              , i [ class "fa fa-book"] []
+              ]
           Nothing -> text ""
       ]
     ]

@@ -114,7 +114,7 @@ type alias MethodFilter =
   , agent : Maybe Agent
   }
 type MethodCallTab = CallParameters | Conditions | Result
-type MethodCallMode = Opened  | Closed
+type MethodCallMode = Opened | Closed
 
 type Tab =  General |  Parameters | Resources | None
 

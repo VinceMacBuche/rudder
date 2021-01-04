@@ -60,7 +60,6 @@ update msg model =
           case model.mode of
            TechniqueDetails t m map o -> TechniqueDetails t m (Dict.update (Debug.log callId callId) (Maybe.map (\(_,tab) -> (Opened,tab))) map) o
            m -> m
-
       in
         ({ model | mode = newMode}, Cmd.none )
 

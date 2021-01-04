@@ -109,7 +109,7 @@ showTechnique model technique activeTab creation callTabs =
             text (String.fromInt (List.length technique.calls ) )
           ]
         , if model.genericMethodsOpen then text "" else
-              button [class "btn-sm btn btn-success" , onClick OpenMethods] [ --  ng-click="toggleDisplay(false)" ng-class="{'invisible':!ui.showTechniques}"
+              button [class "btn-sm btn btn-success", type_ "button", onClick OpenMethods] [ --  ng-click="toggleDisplay(false)" ng-class="{'invisible':!ui.showTechniques}"
                 text "Add "
               , i [ class "fa fa-plus-circle" ] []
               ]
