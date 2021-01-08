@@ -9,6 +9,7 @@ import TechniqueList exposing (..)
 import MethodCall exposing (..)
 import Dict exposing (Dict)
 import MethodsList exposing (..)
+import Either exposing (Either)
 
 
 
@@ -99,7 +100,7 @@ showTechnique model technique activeTab creation callTabs =
     ]
   , div [ class "main-details", id "details"] [
       Html.form [ class "editForm",  name "ui.editForm" ] [ -- novalidate >
-       {- div [ class "alert alert-info" ] [ -- ng-if="!conflictFlag && suppressFlag">
+       {- div [ class "alert alert-info" ] <[ -- ng-if="!conflictFlag && suppressFlag">
           text "This Technique has been deleted while you were away. Saving it will recreate it."
         ]
       , -} techniqueTab model technique activeTab creation
@@ -116,19 +117,25 @@ showTechnique model technique activeTab creation callTabs =
         ]
      ,  div [ class "row"] [
           ul [ id "methods", class "list-unstyled" ] --  dnd-list="selectedTechnique.method_calls" dnd-drop="dropCallback(item, index, type);" >
-            (if List.isEmpty technique.calls then
-              [ li [ id "no-methods" ] [ -- ng-click="toggleDisplay(false)">
-                  text "Drag and drop generic methods here from the list on the right to build target configuration for this technique."
-                ]
-              ]
-            else
-              List.indexedMap (\ index call ->
-                let
-                  (state, tab) = Maybe.withDefault (Closed,CallParameters) (Dict.get call.id callTabs)
-                in
-                  showMethodCall model state tab model.dnd index call
-              ) technique.calls
-            )
+            (( case maybeDragCard model technique.calls of
+                              Just c ->
+                                callBody model Closed c  ( id "ghost" :: class "method" :: ((Debug.log "style" (dndSystem.ghostStyles model.dnd))))
+                              _ ->
+                                 callBody model Closed (Maybe.withDefault (MethodCall "" (MethodId "command_execution") [] "" "") (List.head technique.calls))  ( id "ghost" :: class "method" :: dndSystem.ghostStyles model.dnd)
+                      ) :: ( if List.isEmpty technique.calls then
+                  [ li [ id "no-methods" ] [ -- ng-click="toggleDisplay(false)">
+                      text "Drag and drop generic methods here from the list on the right to build target configuration for this technique."
+                    ]
+                  ]
+              else
+                  List.indexedMap (\ index call ->
+                    let
+                      (state, tab) = Maybe.withDefault (Closed,CallParameters) (Dict.get call.id callTabs)
+                    in
+                      showMethodCall model state tab model.dnd (index) call
+                 ) technique.calls
+            ))
+
         ]
       ]
     ]
@@ -164,3 +171,9 @@ view model =
     , div [ class "template-main" ] [central]
     , methodsList model
     ]
+
+
+maybeDragCard : Model -> List MethodCall -> Maybe MethodCall
+maybeDragCard model methods =
+   dndSystem.info model.dnd
+        |> Maybe.andThen (\{ dragIndex } -> methods |> List.drop dragIndex |> List.head)

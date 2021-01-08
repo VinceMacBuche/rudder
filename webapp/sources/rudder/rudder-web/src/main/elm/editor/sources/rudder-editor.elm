@@ -9,6 +9,8 @@ import Dict
 import Random
 import UUID
 import List.Extra
+import Either exposing (Either(..))
+
 
 mainInit : {  } -> ( Model, Cmd Msg )
 mainInit initValues =
@@ -159,20 +161,31 @@ update msg model =
     DndEvent dndMsg ->
             let
 
-              ( dnd, newMode ) =
+
+              ( newModel, c ) =
                 case model.mode of
                    TechniqueDetails t m map o  ->
-
                     let
-                      (d, calls ) = dndSystem.update dndMsg model.dnd t.calls
+                      (d, calls ) = dndSystem.update dndMsg model.dnd (List.append (List.map (Right) t.calls) (Dict.values model.methods |> List.map (Left)))
+                      newMode = TechniqueDetails { t | calls = Either.rights calls } m  map o
                     in
-                    (d, TechniqueDetails { t | calls = calls } m  map o )
-                   m -> (model.dnd, m)
-
+                      if (List.any (\call -> call.id == "") t.calls) then
+                        update (GenerateId SetCallId) { model | dnd = d, mode = newMode }
+                      else
+                        ( { model | dnd = d, mode = newMode }, Cmd.none)
+                   m -> (model, Cmd.none)
             in
-            ( { model | dnd = dnd, mode = newMode }
-            , dndSystem.commands model.dnd
-            )
+               (newModel , Cmd.batch [  dndSystem.commands newModel.dnd, c ] )
 
+
+    SetCallId newId ->
+      let
+        newMode =
+          case model.mode of
+            TechniqueDetails t m map o  ->
+              TechniqueDetails { t | calls = List.Extra.updateIf (\c -> c.id == "") (\c -> { c | id = newId } ) t.calls } m  (Dict.insert newId (Closed,CallParameters) map) o
+            m -> m
+      in
+        ( { model | mode = newMode } , Cmd.none )
     Ignore->
       ( model , Cmd.none)

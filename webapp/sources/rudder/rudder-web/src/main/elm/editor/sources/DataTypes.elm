@@ -2,20 +2,9 @@ module DataTypes exposing (..)
 
 import Http exposing (Error)
 import Dict exposing (Dict)
-import DnDList
-
-config : DnDList.Config MethodCall
-config =
-    { beforeUpdate = \_ _ list -> list
-    , movement = DnDList.Free
-    , listen = DnDList.OnDrag
-    , operation = DnDList.Rotate
-    }
-
-
-dndSystem : DnDList.System MethodCall Msg
-dndSystem =
-    DnDList.create config DndEvent
+import DnDList.Groups
+import Either exposing (Either(..))
+import Html.Attributes exposing (..)
 
 type alias TechniqueId = {value : String}
 
@@ -85,6 +74,43 @@ type alias TechniqueParameter =
   , description : String
   }
 
+
+
+config : DnDList.Groups.Config (Either Method MethodCall)
+config =
+    { beforeUpdate = \_ _ list -> list
+    , listen = DnDList.Groups.OnDrag
+    , operation = DnDList.Groups.Swap
+    , groups =
+                { listen = DnDList.Groups.OnDrag
+                , operation = DnDList.Groups.InsertAfter
+                , comparator =
+                   (\drag drop ->
+
+                     Debug.log "comp" (
+                       case (drag,drop) of
+                         (Left  _ , Left _ ) -> True
+                         (Right _  , Right _ ) -> True
+                         _ -> False
+                     )
+                  )
+                , setter =
+                   (\drag drop ->
+                     Debug.log "setter" (
+                       case (drag,drop) of
+                         (  Right _, Left method ) ->
+
+                           Debug.log "lol" (Right (MethodCall "" method.id (List.map (\p -> CallParameter p.name "") method.parameters) "any" ""))
+                         _-> drop
+                     )
+                  )
+                }
+    }
+
+dndSystem : DnDList.Groups.System (Either Method MethodCall) Msg
+dndSystem =
+  DnDList.Groups.create config DndEvent
+ 
 type alias Model =
   { techniques : List Technique
   , methods    : Dict String Method
@@ -93,7 +119,7 @@ type alias Model =
   , techniqueFilter : String
   , methodsUI : MethodListUI
   , genericMethodsOpen : Bool
-  , dnd : DnDList.Model
+  , dnd : DnDList.Groups.Model
   }
 
 type ResourceState = New | Unchanged | Deleted | Modified
@@ -140,4 +166,5 @@ type Msg =
   | NewTechnique
   | Ignore
   | AddMethod Method String
-  | DndEvent DnDList.Msg
+  | DndEvent DnDList.Groups.Msg
+  | SetCallId String

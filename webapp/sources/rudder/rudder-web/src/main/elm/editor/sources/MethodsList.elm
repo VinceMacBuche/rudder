@@ -11,6 +11,7 @@ import Markdown.Render
 import Markdown.Option exposing (..)
 import String.Extra
 import Json.Decode
+import DnDList.Groups
 
 getTooltipContent: Method -> String
 getTooltipContent method =
@@ -25,16 +26,14 @@ getTooltipContent method =
   in
     "<div>" ++ description ++ deprecation ++ "</div>"
 
-showMethod: MethodListUI -> Method -> Html Msg
-showMethod ui method =
+showMethod: MethodListUI -> Method -> Int -> Html Msg
+showMethod ui method index =
   let
     docOpen = List.member method.id ui.docsOpen
+    attributes = class ("method " ++ (if docOpen then "doc-opened" else ""))::  id method.id.value :: dndSystem.dragEvents index method.id.value
   in
   li []
-    ( div [ class ("method " ++ (if docOpen then "doc-opened" else "")), id method.id.value ]  --ng-class="{'used':isUsed(method)
-        --              dnd-draggable="method"
-        --              dnd-effect-allowed="move"
-        --              dnd-type="'bundle'"
+    ( div  attributes   --ng-class="{'used':isUsed(method)
       (div [ class "cursorMove" ] [
         b [] [ text ":::" ]
       ] ::
@@ -70,11 +69,16 @@ showMethod ui method =
           []
       Nothing -> []
     )
-showMethodsCategories : Model -> (String, List Method) -> Html Msg
+showMethodsCategories : Model -> (String, (List  (Int, Method))) -> Html Msg
 showMethodsCategories model (category, methods) =
+  let
+    addIndex = case model.mode of
+      TechniqueDetails t _ _ _ -> List.length t.calls
+      _ -> 0
+  in
   ul [ class "list-unstyled" ]
     (h5 [ id category ] [ text category ]
-    :: (List.map (showMethod model.methodsUI) methods) )
+    :: (List.map (\(index,m)  -> showMethod model.methodsUI m (index+addIndex)) methods) )
 
 filterMethod: MethodFilter -> Method -> Bool
 filterMethod filter method =
@@ -96,8 +100,8 @@ methodsList model =
     _ ->
       let
         filter = model.methodsUI.filter
-        filterMethods = List.filter (filterMethod filter) (Dict.values model.methods)
-        methodByCategories = Dict.Extra.groupBy (\m -> Maybe.withDefault m.id.value (List.head (String.split "_" m.id.value)) |> String.Extra.toTitleCase) (filterMethods)
+        filterMethods = List.filter (\(_,m) -> filterMethod filter m ) (List.indexedMap (Tuple.pair) (Dict.values model.methods))
+        methodByCategories = Dict.Extra.groupBy (\(_,m) -> Maybe.withDefault m.id.value (List.head (String.split "_" m.id.value)) |> String.Extra.toTitleCase) (filterMethods)
         dscIcon = if filter.agent == Just Dsc then "dsc-icon-white.svg" else "dsc-icon.svg"
       in
         div [ class "template-sidebar sidebar-right col-methods", onClick OpenMethods ] [
@@ -152,7 +156,7 @@ methodsList model =
                div [ id "methods-list-container" ] (List.map (showMethodsCategories model) (Dict.toList methodByCategories) )
            , ul [ id "categories-list" ]
                ( h4 [ id "categories" ] [ text "Categories" ] ::
-                 List.map (\(c,b) -> showCategory c b ) (Dict.toList (Dict.map( \k methods -> List.all (\m -> Maybe.Extra.isJust m.deprecated) methods) methodByCategories))
+                 List.map (\(c,b) -> showCategory c b ) (Dict.toList (Dict.map( \k methods -> List.all (\(_,m) -> Maybe.Extra.isJust m.deprecated) methods) methodByCategories))
                )
 
            ]
