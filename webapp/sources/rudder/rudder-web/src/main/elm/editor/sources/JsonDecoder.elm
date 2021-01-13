@@ -21,7 +21,7 @@ decodeCallParameter =
 decodeMethodCall : Decoder MethodCall
 decodeMethodCall =
   succeed MethodCall
-    |> required "id" string
+    |> required "id" (map CallId string)
     |> required "method_name" (map MethodId string)
     |> required "parameters"  (list decodeCallParameter )
     |> required "class_context"  string
@@ -76,7 +76,7 @@ decodeConstraint =
             Err e-> fail (errorToString e)
         ("not_regex", value) ->
           case decodeValue string value of
-            Ok b -> andThen (\t -> succeed (NotMatchRegexp b :: t) ) acc
+            Ok b -> andThen (\t -> succeed (NotMatchRegex b :: t) ) acc
             Err e-> fail (errorToString e)
         ("select", value) ->
           case decodeValue (list string) value of

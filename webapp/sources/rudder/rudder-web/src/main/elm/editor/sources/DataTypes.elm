@@ -4,7 +4,6 @@ import Http exposing (Error)
 import Dict exposing (Dict)
 import DnDList.Groups
 import Either exposing (Either(..))
-import Html.Attributes exposing (..)
 
 type alias TechniqueId = {value : String}
 
@@ -20,7 +19,7 @@ type Constraint =
   | MaxLength Int
   | MinLength Int
   | MatchRegex String
-  | NotMatchRegexp String
+  | NotMatchRegex String
   | Select (List String)
 
 type alias MethodParameter =
@@ -56,7 +55,7 @@ type alias Technique =
   }
 
 type alias MethodCall =
-  { id : String
+  { id : CallId
   , methodName : MethodId
   , parameters : List CallParameter
   , condition : String
@@ -99,8 +98,7 @@ config =
                      Debug.log "setter" (
                        case (drag,drop) of
                          (  Right _, Left method ) ->
-
-                           Debug.log "lol" (Right (MethodCall "" method.id (List.map (\p -> CallParameter p.name "") method.parameters) "any" ""))
+                           Right (MethodCall (CallId "") method.id (List.map (\p -> CallParameter p.name "") method.parameters) "any" "")
                          _-> drop
                      )
                   )
@@ -150,12 +148,13 @@ type Msg =
     SelectTechnique Technique
   | GetTechniques  (Result Error (List Technique))
   | GetMethods  (Result Error (Dict String Method))
-  | OpenMethod String
-  | CloseMethod String
-  | RemoveMethod String
-  | CloneMethod MethodCall String
+  | OpenMethod CallId
+  | CloseMethod CallId
+  | RemoveMethod CallId
+  | CloneMethod MethodCall CallId
+  | MethodCallParameterModified CallId ParameterId String
   | GenerateId (String -> Msg)
-  | SwitchTabMethod String MethodCallTab
+  | SwitchTabMethod CallId MethodCallTab
   | CallApi  (Model -> Cmd Msg)
   | SwitchTab Tab
   | UpdateTechniqueFilter String
@@ -165,6 +164,6 @@ type Msg =
   | OpenTechniques
   | NewTechnique
   | Ignore
-  | AddMethod Method String
+  | AddMethod Method CallId
   | DndEvent DnDList.Groups.Msg
-  | SetCallId String
+  | SetCallId CallId

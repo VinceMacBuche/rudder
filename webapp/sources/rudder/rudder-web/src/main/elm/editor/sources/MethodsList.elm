@@ -37,7 +37,7 @@ showMethod ui method index =
       (div [ class "cursorMove" ] [
         b [] [ text ":::" ]
       ] ::
-      div [ class "method-name col",  onClick (GenerateId (AddMethod method)) ]
+      div [ class "method-name col",  onClick (GenerateId (\s -> AddMethod method (CallId s))) ]
         ( text method.name ::
           ( case method.deprecated of
             Nothing -> text ""

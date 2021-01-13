@@ -9,33 +9,38 @@ import TechniqueList exposing (..)
 import MethodCall exposing (..)
 import Dict exposing (Dict)
 import MethodsList exposing (..)
-import Either exposing (Either)
 
 
 
-showTechnique : Model -> Technique -> Tab -> Bool -> Dict String (MethodCallMode, MethodCallTab) -> Html Msg
-showTechnique model technique activeTab creation callTabs =
+showTechnique : Model -> Technique -> Tab -> Maybe Technique -> Dict String (MethodCallMode, MethodCallTab) -> Html Msg
+showTechnique model technique activeTab origin callTabs =
   let
     activeTabClass = (\tab -> "ui-tabs-tab " ++ (if activeTab == tab then "active" else ""))
-    topButtons =  List.append [ li [] [
-                     a [ class "action-success" ] [ --ng-disabled="isNotSaved()"  ng-click="checkSelect(selectedTechnique,clonePopup )"
-                       text "Clone "
-                     , i [ class "fa fa-clone"] []
-                     ]
-                   ]
-                 , li [] [
-                     a [ class "action-primary" ] [ --ng-disabled="isNotSaved()"  ng-click=""exportTechnique(selectedTechnique)
-                       text "Export "
-                     , i [ class "fa fa-download"] []
-                     ]
-                   ]
-                 ] ( if creation then [] else [ li [] [
-                                                  a [ class "action-danger" ] [ --ng-disabled="isNotSaved()"  ng-click="confirmPopup('Delete','Technique', deleteTechnique, selectedTechnique, selectedTechnique.name)"
-                                                    text "Delete "
-                                                  , i [ class "fa fa-times-circle"] []
-                                                  ]
-                                                ]
-                                              ] )
+    creation = case origin of
+                 Just _ -> True
+                 Nothing -> False
+    isUnchanged = case origin of
+                    Just t -> t == technique
+                    Nothing -> False
+    topButtons =  [ li [] [
+                      a [ class "action-success", disabled creation ] [ --ng-disabled="isNotSaved()"  ng-click="checkSelect(selectedTechnique,clonePopup )"
+                        text "Clone "
+                      , i [ class "fa fa-clone"] []
+                      ]
+                    ]
+                  , li [] [
+                      a [ class "action-primary" ] [ --ng-disabled="isNotSaved()"  ng-click=""exportTechnique(selectedTechnique)
+                        text "Export "
+                      , i [ class "fa fa-download"] []
+                      ]
+                    ]
+                  , li [] [
+                      a [ class "action-danger", disabled creation ] [ --ng-disabled="isNotSaved()"  ng-click="confirmPopup('Delete','Technique', deleteTechnique, selectedTechnique, selectedTechnique.name)"
+                        text "Delete "
+                      , i [ class "fa fa-times-circle"] []
+                      ]
+                    ]
+                  ]
     title = if creation then
               [ i [] [ text "New Technique" ] ]
             else
@@ -53,11 +58,11 @@ showTechnique model technique activeTab creation callTabs =
             ]
           , ul [ class "dropdown-menu" ] topButtons
           ]
-        , button [ class "btn btn-primary" ] [ --ng-disabled="isUnchanged(selectedTechnique)"  ng-click="resetTechnique()">
+        , button [ class "btn btn-primary", disabled isUnchanged ] [ --ng-disabled="isUnchanged(selectedTechnique)"  ng-click="resetTechnique()">
             text "Reset "
           , i [ class "fa fa-undo"] []
           ]
-        , button [ class "btn btn-success btn-save"] [ --ng-disabled="ui.editForm.$pending || ui.editForm.$invalid || CForm.form.$invalid || checkSelectedTechnique() || saving"  ng-click="saveTechnique()">
+        , button [ class "btn btn-success btn-save", disabled isUnchanged ] [ --ng-disabled="ui.editForm.$pending || ui.editForm.$invalid || CForm.form.$invalid || checkSelectedTechnique() || saving"  ng-click="saveTechnique()">
             text "Save "
           , i [ class "fa fa-download"] [] --ng-class="{'glyphicon glyphicon-cog fa-spin':saving}"></i>
           ]
@@ -117,12 +122,7 @@ showTechnique model technique activeTab creation callTabs =
         ]
      ,  div [ class "row"] [
           ul [ id "methods", class "list-unstyled" ] --  dnd-list="selectedTechnique.method_calls" dnd-drop="dropCallback(item, index, type);" >
-            (( case maybeDragCard model technique.calls of
-                              Just c ->
-                                callBody model Closed c  ( id "ghost" :: class "method" :: ((Debug.log "style" (dndSystem.ghostStyles model.dnd))))
-                              _ ->
-                                 callBody model Closed (Maybe.withDefault (MethodCall "" (MethodId "command_execution") [] "" "") (List.head technique.calls))  ( id "ghost" :: class "method" :: dndSystem.ghostStyles model.dnd)
-                      ) :: ( if List.isEmpty technique.calls then
+            ( ( if List.isEmpty technique.calls then
                   [ li [ id "no-methods" ] [ -- ng-click="toggleDisplay(false)">
                       text "Drag and drop generic methods here from the list on the right to build target configuration for this technique."
                     ]
@@ -130,15 +130,21 @@ showTechnique model technique activeTab creation callTabs =
               else
                   List.indexedMap (\ index call ->
                     let
-                      (state, tab) = Maybe.withDefault (Closed,CallParameters) (Dict.get call.id callTabs)
+                      method = case Dict.get call.methodName.value model.methods of
+                                     Just m -> m
+                                     Nothing -> Method call.methodName call.methodName.value "" "" (Maybe.withDefault (ParameterId "") (Maybe.map .id (List.head call.parameters))) [] [] Nothing Nothing Nothing
+                      errors = List.map2 (\m c -> List.map (checkConstraint c) m.constraints) method.parameters call.parameters
+                      (state, tab) = Maybe.withDefault (Closed,CallParameters) (Dict.get call.id.value callTabs)
                     in
-                      showMethodCall model state tab model.dnd (index) call
+                      showMethodCall model state errors tab model.dnd (index) call
                  ) technique.calls
             ))
 
         ]
       ]
     ]
+
+
   ]
 
 view : Model -> Html Msg
@@ -158,10 +164,8 @@ view model =
                       ]
                     ]
 
-                TechniqueDetails technique tab callTabs (Just _) ->
-                  showTechnique model technique tab False callTabs
-                TechniqueDetails technique tab callTabs Nothing ->
-                  showTechnique model technique tab True callTabs
+                TechniqueDetails technique tab callTabs t ->
+                  showTechnique model technique tab t callTabs
     classes = "rudder-template " ++ if model.genericMethodsOpen then "show-methods" else "show-techniques"
 
 
@@ -170,6 +174,15 @@ view model =
       techniqueList model model.techniques
     , div [ class "template-main" ] [central]
     , methodsList model
+    , ( case model.mode of
+         TechniqueDetails technique _ _ _ ->
+           case maybeDragCard model technique.calls of
+             Just c ->
+               callBody model Closed c [] ( List.reverse (class "method" :: [] )) True
+             _ ->
+               text ""
+         _ -> text ""
+       )
     ]
 
 

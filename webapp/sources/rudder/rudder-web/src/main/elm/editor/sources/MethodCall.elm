@@ -39,8 +39,8 @@ parameterName: MethodParameter -> String
 parameterName param =
   String.replace "_" " " (String.Extra.toSentenceCase param.name.value)
 
-showParam: MethodParameter -> CallParameter -> Html Msg
-showParam methodParam param =
+showParam: CallId -> MethodParameter -> CallParameter -> List (Maybe String) -> Html Msg
+showParam callId methodParam param errors =
   div [class "form-group method-parameter"] [
     label [ for "param-index" ] [
       span [] [
@@ -49,17 +49,49 @@ showParam methodParam param =
       ]
     , small [] [ text methodParam.description ]
     ]
-  , textarea  [ name "param", class "form-control", rows  1 , id "param-{{$index}}" , value param.value ] [] --msd-elastic     ng-trim="{{trimParameter(parameterInfo)}}" ng-model="parameter.value"></textarea>
+  , textarea  [ name "param", class "form-control", rows  1 , value param.value , onInput (MethodCallParameterModified callId param.id)] [] --msd-elastic     ng-trim="{{trimParameter(parameterInfo)}}" ng-model="parameter.value"></textarea>
   , ul [ class "list-unstyled" ]
-      (List.map (\e -> li [ class "text-danger" ] [ text e ]) [])
+      (List.filterMap  (Maybe.map (\e -> li [ class "text-danger" ] [ text e ])) errors)
   ]
 
+checkConstraint: CallParameter -> Constraint -> Maybe String
+checkConstraint call constraint =
+  case constraint of
+    AllowEmpty True -> Nothing
+    AllowEmpty False -> if (String.isEmpty call.value) then Just ("Parameter '"++call.id.value++"' is empty") else Nothing
+    AllowWhiteSpace True -> Nothing
+    AllowWhiteSpace False -> case Regex.fromString "(^\\s)|(\\s$)" of
+                               Nothing -> Nothing
+                               Just r -> if Regex.contains r call.value then Just ("Parameter '"++call.id.value++"' start or end with whitespace characters") else Nothing
+    MaxLength max -> if String.length call.value >= max then Just ("Parameter '"++call.id.value++"' should be at most " ++ (String.fromInt max) ++ " long") else Nothing
+    MinLength min -> if String.length call.value <= min then Just ("Parameter '"++call.id.value++"' should be at least " ++ (String.fromInt min) ++ " long") else Nothing
+    MatchRegex r -> case Regex.fromString r of
+                      Nothing ->  Nothing
+                      Just regex -> if Regex.contains regex call.value then
+                                      Nothing
+                                    else
+                                      Just ("Parameter '" ++ call.id.value ++"' should match the following regexp: " ++ r )
+    NotMatchRegex r -> case Regex.fromString r of
+                      Nothing ->  Nothing
+                      Just regex -> if Regex.contains regex call.value then
+                                      Just ("Parameter '" ++ call.id.value ++"' should not match the following regexp: " ++ r )
+                                    else
+                                      Nothing
+    Select list -> if List.any ( (==) call.value ) list then
+                     Nothing
+                   else
+                     Just ("Parameter '" ++ call.id.value ++ "'  should be one of the value from the following list: " ++ (String.join ", " list))
 
-showMethodTab: Method -> MethodCall -> MethodCallTab -> Html Msg
-showMethodTab method call tab =
+
+checkParam: MethodParameter -> CallParameter -> Bool
+checkParam methodParam param =
+  False
+
+showMethodTab: Method -> MethodCall -> List (List (Maybe String)) -> MethodCallTab -> Html Msg
+showMethodTab method call errors tab=
   case tab of
     CallParameters ->
-      div [ class "tab-paramerers"] (List.map2 showParam method.parameters call.parameters)
+      div [ class "tab-parameters"] (List.map3 (showParam call.id)  method.parameters call.parameters errors)
     Conditions -> text ""
     {-
                         <div class="tab-conditions" ng-if="ui.methodTabs[method_call['$$hashKey']]=='conditions'">
@@ -157,8 +189,8 @@ showMethodTab method call tab =
         ]
       ]
 
-methodDetail: Method -> MethodCall -> MethodCallTab -> Html Msg
-methodDetail method call currentTab =
+methodDetail: Method -> MethodCall -> List( List (Maybe String) ) -> MethodCallTab -> Model -> Html Msg
+methodDetail method call errors currentTab model =
   let
     activeClass = (\c -> if c == currentTab then "active" else "" )
   in
@@ -173,36 +205,8 @@ methodDetail method call currentTab =
       , li [ class (activeClass Conditions), onClick (SwitchTabMethod call.id Conditions) ] [text "Conditions"]
       , li [class (activeClass Result), onClick (SwitchTabMethod call.id Result) ] [text "Result conditions"]
       ]
-    , div [ class "tabs" ] [ (showMethodTab method call CallParameters) ]
-    ]
-  ]
-
-showMethodCall: Model -> MethodCallMode -> MethodCallTab -> DnDList.Groups.Model -> Int -> MethodCall -> Html Msg
-showMethodCall model mode tab dnd index call =
-  let
-    method = case Dict.get call.methodName.value model.methods of
-               Just m -> m
-               Nothing -> Method call.methodName call.methodName.value "" "" (Maybe.withDefault (ParameterId "") (Maybe.map .id (List.head call.parameters))) [] [] Nothing Nothing Nothing
-    dragAttributes =
-       case dndSystem.info dnd of
-         Just { dragIndex } ->
-           if dragIndex /= index then
-             dndSystem.dropEvents index call.id
-           else
-             [ ]
-         Nothing ->
-            dndSystem.dragEvents index call.id
-
-  in
-    if (List.isEmpty dragAttributes) then
-      li [ class "dndPlaceholder"] [ ]
-    else
-      li [ class (if (mode == Opened) then "active" else "") ] [ --     ng-class="{'active': methodIsSelected(method_call), 'missingParameters': checkMissingParameters(method_call.parameters, method.parameter).length > 0, 'errorParameters': checkErrorParameters(method_call.parameters).length > 0, 'is-edited' : canResetMethod(method_call)}"
-        callBody model mode call dragAttributes
-      , case mode of
-         Opened -> div [ class "method-details" ] [ methodDetail method call tab ]
-         Closed -> div [] []
-      , div [ class "method-details-footer"] [
+    , div [ class "tabs" ] [ (showMethodTab method call errors CallParameters) ]
+    , div [ class "method-details-footer"] [
           button [ class "btn btn-outline-secondary btn-sm" , disabled True, type_ "button"] [ -- ng-disabled="!canResetMethod(method_call)" ng-click="resetMethod(method_call)"
             text "Reset "
           , i [ class "fa fa-undo-all"] []
@@ -219,10 +223,37 @@ showMethodCall model mode tab dnd index call =
                 ]
             Nothing -> text ""
         ]
+    ]
+  ]
+
+showMethodCall: Model -> MethodCallMode -> List (List (Maybe String) ) -> MethodCallTab -> DnDList.Groups.Model -> Int -> MethodCall -> Html Msg
+showMethodCall model mode errors tab dnd index call =
+  let
+    method = case Dict.get call.methodName.value model.methods of
+               Just m -> m
+               Nothing -> Method call.methodName call.methodName.value "" "" (Maybe.withDefault (ParameterId "") (Maybe.map .id (List.head call.parameters))) [] [] Nothing Nothing Nothing
+    dragAttributes =
+       case dndSystem.info dnd of
+         Just { dragIndex } ->
+           if dragIndex /= index then
+             dndSystem.dropEvents index call.id.value
+           else
+             [ ]
+         Nothing ->
+            dndSystem.dragEvents index call.id.value
+  in
+    if (List.isEmpty dragAttributes) then
+      li [ class "dndPlaceholder"] [ ]
+    else
+      li [ class (if (mode == Opened) then "active" else "") ] [ --     ng-class="{'active': methodIsSelected(method_call), 'missingParameters': checkMissingParameters(method_call.parameters, method.parameter).length > 0, 'errorParameters': checkErrorParameters(method_call.parameters).length > 0, 'is-edited' : canResetMethod(method_call)}"
+        callBody model mode call errors dragAttributes False
+      , case mode of
+         Opened -> div [ class "method-details" ] [ methodDetail method call errors tab model ]
+         Closed -> div [] []
       ]
 
-callBody : Model -> MethodCallMode ->  MethodCall -> List (Attribute Msg) -> Html Msg
-callBody model mode call dragAttributes =
+callBody : Model -> MethodCallMode ->  MethodCall -> List ( List (Maybe String)) -> List (Attribute Msg) -> Bool -> Html Msg
+callBody model mode call errors dragAttributes isGhost =
   let
     method = case Dict.get call.methodName.value model.methods of
                    Just m -> m
@@ -237,18 +268,20 @@ callBody model mode call dragAttributes =
     editAction = case mode of
                    Opened -> CloseMethod call.id
                    Closed -> OpenMethod  call.id
+
+    nbErrors = List.length (List.filter ( List.any ( (/=) Nothing) ) errors)
   in
-  div [class "method", id call.id ] [
+  div ( class "method" :: id call.id.value :: if isGhost then List.reverse ( style  "z-index" "1" :: style "pointer-events" "all" :: id "ghost" :: style "opacity" "0.7" :: style "background-color" "white" :: dndSystem.ghostStyles model.dnd) else []) [
     div  (class "cursorMove" :: dragAttributes) [ p [] [ text ":::"] ]
   , div [ class "method-info"] [
       div [ class "btn-holder" ] [
-        button [ class "text-success method-action tooltip-bs", onClick (GenerateId (CloneMethod call) ), type_ "button"
+        button [ class "text-success method-action tooltip-bs", onClick ( GenerateId (\s -> CloneMethod call (CallId s)) ), type_ "button"
                , title "Clone this method", attribute "data-toggle" "tooltip"
                , attribute "data-trigger" "hover", attribute "data-container" "body", attribute "data-placement" "left"
                , attribute "data-html" "true", attribute "data-delay" """'{"show":"400", "hide":"100"}'""" ] [
           i [ class "fa fa-clone"] []
         ]
-      , button [ class "text-danger method-action", type_ "button", onClick (RemoveMethod call.id) ] [ --  ng-click="removeMethod($index);$event.stopPropagation();"
+      , button [  class "text-danger method-action", type_ "button", onClick (RemoveMethod call.id) ] [ --  ng-click="removeMethod($index);$event.stopPropagation();"
           i [ class "fa fa-times-circle" ] []
         ]
       ]
@@ -277,8 +310,31 @@ callBody model mode call dragAttributes =
           ]
         , div [ class "method-content"] [
             div [ class "method-param flex-form" ] [ --  ng-if="getClassParameter(method_call).value && checkMissingParameters(method_call.parameters, method.parameter).length<=0 && checkErrorParameters(method_call.parameters).length<=0"
-              label [] [ text ((parameterName classParameter)++":")]
+              label [] [ text ((parameterName classParameter)++ (String.fromInt nbErrors)  ++":")]
             , textarea [ class "form-control", rows 1, readonly True, value paramValue ] [] -- msd elastic  ng-click="$event.stopPropagation();"
+            ]
+          , div [class "warns" ] [
+             ( if nbErrors > 0 then
+                 span [ class "warn-param error popover-bs", hidden (nbErrors == 0) ] [
+                   b [] [ text (String.fromInt nbErrors) ]
+                 , text (" invalid " ++ (if nbErrors == 1 then "parameter" else "parameters") )
+                 ]
+               else
+                 text ""
+             )
+              {-
+                                  ng-click="selectMethod(method_call)"
+                                  data-toggle="popover"
+                                  data-trigger="hover"
+                                  data-container="body"
+                                   data-placement="top"
+                                  data-title="<b>{{checkErrorParameters(method_call.parameters).length}}</b> invalid parameter{{checkErrorParameters(method_call.parameters).length > 1 ? 's' : ''}}"
+                                  data-content="{{getErrorTooltipMessage(checkErrorParameters(method_call.parameters))}}"
+                                  data-html="true"
+                                  >
+                                  <b>{{checkErrorParameters(method_call.parameters).length}}</b> invalid parameter{{checkErrorParameters(method_call.parameters).length > 1 ? "s" : ""}}
+                                </span>
+                              </div> -}
             ]
               -- here used to be one entry for each for each param but we can be smart with elm
 
@@ -296,29 +352,17 @@ callBody model mode call dragAttributes =
                                   >
                                   <b>{{checkMissingParameters(method_call.parameters, method.parameter).length}}</b> required parameter{{checkMissingParameters(method_call.parameters, method.parameter).length > 1 ? 's' : ''}} missing
                                 </span>
-                                <span
-                                  class="warn-param error popover-bs"
-                                  ng-click="selectMethod(method_call)"
-                                  data-toggle="popover"
-                                  data-trigger="hover"
-                                  data-container="body"
-                                  data-placement="top"
-                                  data-title="<b>{{checkErrorParameters(method_call.parameters).length}}</b> invalid parameter{{checkErrorParameters(method_call.parameters).length > 1 ? 's' : ''}}"
-                                  data-content="{{getErrorTooltipMessage(checkErrorParameters(method_call.parameters))}}"
-                                  data-html="true"
-                                  >
-                                  <b>{{checkErrorParameters(method_call.parameters).length}}</b> invalid parameter{{checkErrorParameters(method_call.parameters).length > 1 ? "s" : ""}}
-                                </span>
-                              </div> -}
-            ]
+                                <span -}
           ]
         ]
-
-    , div [ class "edit-method popover-bs", onClick editAction
-            , attribute "data-toggle" "popover", attribute "data-trigger" "hover", attribute "data-placement" "left"
-            , attribute "data-template" "{{getStatusTooltipMessage(method_call)}}", attribute "data-container" "body"
-            , attribute "data-html" "true", attribute "data-delay" """'{"show":"400", "hide":"100"}'""" ] [
-        i [ class "ion ion-edit"] []
       ]
+
+
+  , div [ class "edit-method popover-bs", onClick editAction
+          , attribute "data-toggle" "popover", attribute "data-trigger" "hover", attribute "data-placement" "left"
+          , attribute "data-template" "{{getStatusTooltipMessage(method_call)}}", attribute "data-container" "body"
+          , attribute "data-html" "true", attribute "data-delay" """'{"show":"400", "hide":"100"}'""" ] [
+      i [ class "ion ion-edit"] []
     ]
+  ]
 
