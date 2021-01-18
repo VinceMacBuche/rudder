@@ -9,16 +9,17 @@ import TechniqueList exposing (..)
 import MethodCall exposing (..)
 import Dict exposing (Dict)
 import MethodsList exposing (..)
+import ApiCalls exposing (..)
 
 
 
-showTechnique : Model -> Technique -> Tab -> Maybe Technique -> Dict String (MethodCallMode, MethodCallTab) -> Html Msg
-showTechnique model technique activeTab origin callTabs =
+showTechnique : Model -> Technique -> Tab -> Maybe Technique -> Dict String (MethodCallMode, MethodCallTab) -> Bool -> Html Msg
+showTechnique model technique activeTab origin callTabs saving =
   let
     activeTabClass = (\tab -> "ui-tabs-tab " ++ (if activeTab == tab then "active" else ""))
     creation = case origin of
-                 Just _ -> True
-                 Nothing -> False
+                 Just _ -> False
+                 Nothing -> True
     isUnchanged = case origin of
                     Just t -> t == technique
                     Nothing -> False
@@ -58,13 +59,13 @@ showTechnique model technique activeTab origin callTabs =
             ]
           , ul [ class "dropdown-menu" ] topButtons
           ]
-        , button [ class "btn btn-primary", disabled isUnchanged ] [ --ng-disabled="isUnchanged(selectedTechnique)"  ng-click="resetTechnique()">
+        , button [ class "btn btn-primary", disabled (isUnchanged && creation)  ] [ --ng-disabled="isUnchanged(selectedTechnique)"  ng-click="resetTechnique()">
             text "Reset "
           , i [ class "fa fa-undo"] []
           ]
-        , button [ class "btn btn-success btn-save", disabled isUnchanged ] [ --ng-disabled="ui.editForm.$pending || ui.editForm.$invalid || CForm.form.$invalid || checkSelectedTechnique() || saving"  ng-click="saveTechnique()">
+        , button [ class "btn btn-success btn-save", disabled (isUnchanged && saving), onClick (CallApi (saveTechnique technique creation)) ] [ --ng-disabled="ui.editForm.$pending || ui.editForm.$invalid || CForm.form.$invalid || checkSelectedTechnique() || saving"  ng-click="saveTechnique()">
             text "Save "
-          , i [ class "fa fa-download"] [] --ng-class="{'glyphicon glyphicon-cog fa-spin':saving}"></i>
+          , i [ class ("fa fa-download " ++ (if saving then "glyphicon glyphicon-cog fa-spin" else "")) ] []
           ]
         ]
       ]
@@ -164,8 +165,8 @@ view model =
                       ]
                     ]
 
-                TechniqueDetails technique tab callTabs t ->
-                  showTechnique model technique tab t callTabs
+                TechniqueDetails technique tab callTabs t saving ->
+                  showTechnique model technique tab t callTabs saving
     classes = "rudder-template " ++ if model.genericMethodsOpen then "show-methods" else "show-techniques"
 
 
@@ -175,7 +176,7 @@ view model =
     , div [ class "template-main" ] [central]
     , methodsList model
     , ( case model.mode of
-         TechniqueDetails technique _ _ _ ->
+         TechniqueDetails technique _ _ _ _->
            case maybeDragCard model technique.calls of
              Just c ->
                callBody model Closed c [] ( List.reverse (class "method" :: [] )) True

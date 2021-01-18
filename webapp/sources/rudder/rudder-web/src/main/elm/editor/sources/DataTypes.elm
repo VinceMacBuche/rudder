@@ -4,6 +4,7 @@ import Http exposing (Error)
 import Dict exposing (Dict)
 import DnDList.Groups
 import Either exposing (Either(..))
+import Regex
 
 type alias TechniqueId = {value : String}
 
@@ -12,6 +13,12 @@ type alias MethodId = {value : String}
 type alias CallId = {value : String}
 
 type alias ParameterId = {value : String}
+
+
+canonify: String -> String
+canonify value =
+   Regex.replace ((Regex.fromString >> Maybe.withDefault Regex.never) "[!_a-zA-Z\\d]") (always "_") value
+
 
 type Constraint =
     AllowEmpty Bool
@@ -108,7 +115,8 @@ config =
 dndSystem : DnDList.Groups.System (Either Method MethodCall) Msg
 dndSystem =
   DnDList.Groups.create config DndEvent
- 
+
+
 type alias Model =
   { techniques : List Technique
   , methods    : Dict String Method
@@ -142,16 +150,18 @@ type MethodCallMode = Opened | Closed
 
 type Tab =  General |  Parameters | Resources | None
 
-type Mode = Introduction | TechniqueDetails Technique Tab (Dict String (MethodCallMode, MethodCallTab)) (Maybe Technique)
+type Mode = Introduction | TechniqueDetails Technique Tab (Dict String (MethodCallMode, MethodCallTab)) (Maybe Technique) Bool
 
 type Msg =
     SelectTechnique Technique
   | GetTechniques  (Result Error (List Technique))
+  | SaveTechnique  (Result Error Technique)
   | GetMethods  (Result Error (Dict String Method))
   | OpenMethod CallId
   | CloseMethod CallId
   | RemoveMethod CallId
   | CloneMethod MethodCall CallId
+  | UpdateTechnique Technique
   | MethodCallParameterModified CallId ParameterId String
   | GenerateId (String -> Msg)
   | SwitchTabMethod CallId MethodCallTab
@@ -167,3 +177,4 @@ type Msg =
   | AddMethod Method CallId
   | DndEvent DnDList.Groups.Msg
   | SetCallId CallId
+  | StartSaving

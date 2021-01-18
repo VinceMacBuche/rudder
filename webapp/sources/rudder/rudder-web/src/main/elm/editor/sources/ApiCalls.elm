@@ -3,7 +3,7 @@ module  ApiCalls exposing (..)
 import DataTypes exposing (..)
 import Http exposing (..)
 import JsonDecoder exposing (..)
-import Json.Encode as Encode
+import JsonEncoder exposing (..)
 import Json.Decode
 import Dict
 
@@ -40,6 +40,25 @@ getMethods  model =
         , url     = getUrl model "internal/methods"
         , body    = emptyBody
         , expect  = expectJson GetMethods ( Json.Decode.at ["data", "methods" ] ( Json.Decode.map (Dict.fromList) (Json.Decode.keyValuePairs decodeMethod) ))
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+  in
+    req
+
+
+
+
+saveTechnique : Technique -> Bool -> Model ->  Cmd Msg
+saveTechnique  technique creation model =
+  let
+    req =
+      request
+        { method  = if creation then "PUT" else "POST"
+        , headers = []
+        , url     = getUrl model "internal/techniques"
+        , body    = encodeTechnique technique |> jsonBody
+        , expect  = expectJson SaveTechnique ( Json.Decode.at ["data", "techniques", "technique" ] ( decodeTechnique ))
         , timeout = Nothing
         , tracker = Nothing
         }

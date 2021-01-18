@@ -73,7 +73,7 @@ showMethodsCategories : Model -> (String, (List  (Int, Method))) -> Html Msg
 showMethodsCategories model (category, methods) =
   let
     addIndex = case model.mode of
-      TechniqueDetails t _ _ _ -> List.length t.calls
+      TechniqueDetails t _ _ _ _ -> List.length t.calls
       _ -> 0
   in
   ul [ class "list-unstyled" ]

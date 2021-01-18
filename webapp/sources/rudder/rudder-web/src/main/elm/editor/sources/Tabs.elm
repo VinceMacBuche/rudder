@@ -3,6 +3,7 @@ module Tabs exposing (..)
 import DataTypes exposing (..)
 import Html exposing (..)
 import Html.Attributes exposing (..)
+import Html.Events exposing (..)
 
 
 
@@ -86,13 +87,15 @@ techniqueTab model technique activeTab creation =
                        ,-} div [ class "row form-group" ] [--ng-class="{'has-error':ui.editForm.name.$dirty && (ui.editForm.name.$error.required || ui.editForm.name.$error.techniqueName)}">
                            label [ for "techniqueName", class "col-xs-12 control-label" ] [ text "Name" ]
                          , div  [ class "col-sm-8" ] [
-                             input [type_ "text" , id "techniqueName",  name "name",  class "form-control" , placeholder "Technique Name", value technique.name ] []-- techniquename ng-model="selectedTechnique.name"  required ng-change="updateBundleName()" focus-on="focusTechniqueName"]
+                             input [type_ "text" , id "techniqueName",  name "name",  class "form-control" , placeholder "Technique Name", value technique.name
+                              , onInput (\newName -> UpdateTechnique {technique | name = newName, id = TechniqueId(if creation then canonify newName else technique.id.value) })
+                              ] []-- techniquename required focus-on="focusTechniqueName"]
                            ]
                          -- <span class="text-danger col-sm-8" ng-show="ui.editForm.name.$error.techniqueName">Technique name must be unique</span>
                          -- <span class="text-danger col-sm-8" ng-show="ui.editForm.name.$error.required && ui.editForm.name.$dirty">Technique name is required</span>
                          ]
                        , div [ class "row form-group" ] [
-                           label [ for "techniueDescription", class "col-xs-12 control-label" ] [
+                           label [ for "techniqueDescription", class "col-xs-12 control-label" ] [
                              span [ class "text-fit" ] [ text "Documentation" ]
                            , img  [ class "markdown-icon tooltip-icon popover-bs",  src "../../techeditor/css/markdown-mark-solid.svg" ] []
                                      --data-toggle="popover"
@@ -103,7 +106,9 @@ techniqueTab model technique activeTab creation =
                                    --  data-html="true"
                            ]
                          , div [ class "col-sm-8" ] [
-                             textarea [ name "description",  class "form-control technique-description", id "techniqueDescription", rows  4, value technique.description, placeholder "documentation"] []--msd-elastic
+                             textarea [ name "description",  class "form-control technique-description", id "techniqueDescription", rows  4, value technique.description, placeholder "documentation"
+                             , onInput (\desc -> UpdateTechnique {technique | description = desc })
+                             ] []--msd-elastic
                            ]
                          ]
                        , div [ class "row form-group" ] [ -- show-errors>

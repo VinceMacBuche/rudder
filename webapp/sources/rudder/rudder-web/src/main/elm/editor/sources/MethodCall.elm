@@ -27,10 +27,6 @@ getClassParameter method =
     Just p -> p
     Nothing -> MethodParameter method.classParameter "" "" []
 
-canonify: String -> String
-canonify value =
-   Regex.replace ((Regex.fromString >> Maybe.withDefault Regex.never) "[!_a-zA-Z\\d]") (always "_") value
-
 findClassParameter: Method -> Maybe MethodParameter
 findClassParameter method =
   List.Extra.find (\p -> p.name == method.classParameter) method.parameters

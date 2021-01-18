@@ -10,7 +10,7 @@ import Random
 import UUID
 import List.Extra
 import Either exposing (Either(..))
-
+import Maybe.Extra
 
 mainInit : {  } -> ( Model, Cmd Msg )
 mainInit initValues =
@@ -41,17 +41,17 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
   case msg of
     SelectTechnique technique ->
-      ({ model | mode = TechniqueDetails technique General (Dict.fromList (List.map (\c -> (c.id.value, (Closed, CallParameters))) technique.calls)) (Just technique) } )
+      ({ model | mode = TechniqueDetails technique General (Dict.fromList (List.map (\c -> (c.id.value, (Closed, CallParameters))) technique.calls)) (Just technique) False } )
         |> update OpenMethods
 
     NewTechnique ->
-      ({ model | mode = TechniqueDetails (Technique (TechniqueId "") "1.0" "" "" "ncf_techniques" [] [] ) General Dict.empty Nothing }, Cmd.none )
+      ({ model | mode = TechniqueDetails (Technique (TechniqueId "") "1.0" "" "" "ncf_techniques" [] [] ) General Dict.empty Nothing False}, Cmd.none )
 
     SwitchTab tab ->
       let
         newMode =
           case model.mode of
-           TechniqueDetails technique _ map o -> TechniqueDetails technique tab map o
+           TechniqueDetails technique _ map o s-> TechniqueDetails technique tab map o s
            m -> m
       in
         ({ model | mode = newMode}, Cmd.none )
@@ -60,7 +60,7 @@ update msg model =
       let
         newMode =
           case model.mode of
-           TechniqueDetails t m map o -> TechniqueDetails t m (Dict.update  callId.value (Maybe.map (\(_,tab) -> (Opened,tab))) map) o
+           TechniqueDetails t m map o s-> TechniqueDetails t m (Dict.update  callId.value (Maybe.map (\(_,tab) -> (Opened,tab))) map) o s
            m -> m
       in
         ({ model | mode = newMode}, Cmd.none )
@@ -69,7 +69,7 @@ update msg model =
       let
         newMode =
           case model.mode of
-           TechniqueDetails t m map o -> TechniqueDetails t m (Dict.update callId.value (Maybe.map (\(_,tab) -> (Closed,tab))) map) o
+           TechniqueDetails t m map o s-> TechniqueDetails t m (Dict.update callId.value (Maybe.map (\(_,tab) -> (Closed,tab))) map) o s
            m -> m
       in
         ({ model | mode = newMode}, Cmd.none )
@@ -78,7 +78,7 @@ update msg model =
       let
         newMode =
           case model.mode of
-           TechniqueDetails t m map o -> TechniqueDetails { t |  calls = List.filter (\c -> c.id /= callId ) t.calls } m  (Dict.remove callId.value  map) o
+           TechniqueDetails t m map o s-> TechniqueDetails { t |  calls = List.filter (\c -> c.id /= callId ) t.calls } m  (Dict.remove callId.value  map) o s
            m -> m
       in
         ({ model | mode = newMode}, Cmd.none )
@@ -91,7 +91,7 @@ update msg model =
         clone = {call | id = newId }
         newMode =
           case model.mode of
-           TechniqueDetails t m map o ->
+           TechniqueDetails t m map o s ->
              let
                newMethods =
                  let
@@ -99,7 +99,7 @@ update msg model =
                  in
                    List.reverse (List.append end (clone :: beginning))
              in
-               TechniqueDetails { t |  calls = newMethods} m  (Dict.update newId.value (\_ -> Just (Closed,CallParameters)) map ) o
+               TechniqueDetails { t |  calls = newMethods} m  (Dict.update newId.value (\_ -> Just (Closed,CallParameters)) map ) o s
            m -> m
       in
         ({ model | mode = newMode }, Cmd.none)
@@ -108,14 +108,39 @@ update msg model =
       let
         newMode =
           case model.mode of
-            TechniqueDetails t m map o  -> TechniqueDetails t m (Dict.update callId.value (Maybe.map (\(s,_) -> (s,newTab))) map) o
+            TechniqueDetails t m map o s -> TechniqueDetails t m (Dict.update callId.value (Maybe.map (\(state,_) -> (state,newTab))) map) o s
             m -> m
       in
         ({ model | mode = newMode}, Cmd.none )
 
+    UpdateTechnique technique ->
+      let
+        newMode =
+          case model.mode of
+            TechniqueDetails _ m map o s ->
+              TechniqueDetails technique m map o s
+            m -> m
+      in
+        ({ model | mode = newMode}, Cmd.none )
+
+
     GetTechniques (Ok  techniques) ->
       ({ model | techniques = techniques}, Cmd.none )
     GetTechniques (Err e) ->
+      Debug.log (Debug.toString e) ( model , Cmd.none )
+
+    SaveTechnique (Ok  technique) ->
+      let
+        techniques = if (List.any (.id >> (==) technique.id) model.techniques) then
+           List.Extra.updateIf (.id >> (==) technique.id ) (always technique) model.techniques
+         else
+           technique :: model.techniques
+        newMode = case model.mode of
+                    TechniqueDetails t m map _ _ -> TechniqueDetails t m map (Just technique) False
+                    m -> m
+      in
+        ({ model | techniques = techniques, mode = newMode}, Cmd.none )
+    SaveTechnique (Err e) ->
       Debug.log (Debug.toString e) ( model , Cmd.none )
 
     GetMethods (Ok  methods) ->
@@ -125,6 +150,13 @@ update msg model =
 
     CallApi apiCall ->
       ( model , apiCall model)
+
+
+    StartSaving ->
+     case model.mode of
+          TechniqueDetails t m map o _ ->
+            update (CallApi (saveTechnique t (Maybe.Extra.isNothing o ))) { model | mode = TechniqueDetails t m map o True }
+          _ -> (model, Cmd.none)
 
     UpdateTechniqueFilter newFilter->
       ( { model | techniqueFilter = newFilter } , Cmd.none)
@@ -153,7 +185,7 @@ update msg model =
         newCall = MethodCall newId method.id (List.map (\p -> CallParameter p.name "") method.parameters) "" ""
         newMode =
           case model.mode of
-            TechniqueDetails t m map o  -> TechniqueDetails { t | calls = newCall :: t.calls } m (Dict.update newId.value (always (Just (Closed, CallParameters)) ) map) o
+            TechniqueDetails t m map o s -> TechniqueDetails { t | calls = newCall :: t.calls } m (Dict.update newId.value (always (Just (Closed, CallParameters)) ) map) o s
             m -> m
       in
         ( { model | mode = newMode } , Cmd.none )
@@ -164,16 +196,16 @@ update msg model =
 
               ( newModel, c ) =
                 case model.mode of
-                   TechniqueDetails t m map o  ->
+                   TechniqueDetails t m map o s ->
                     let
                       (d, calls ) = dndSystem.update dndMsg model.dnd (List.append (List.map (Right) t.calls) (Dict.values model.methods |> List.map (Left)))
-                      newMode = TechniqueDetails { t | calls = Either.rights calls } m  map o
+                      newMode = TechniqueDetails { t | calls = Either.rights calls } m  map o s
                     in
                       if (List.any (\call -> call.id.value == "") t.calls) then
-                        update (GenerateId (\s -> SetCallId (CallId s))) { model | dnd = d, mode = newMode }
+                        update (GenerateId (\id -> SetCallId (CallId id))) { model | dnd = d, mode = newMode }
                       else
                         ( { model | dnd = d, mode = newMode }, Cmd.none)
-                   m -> (model, Cmd.none)
+                   _ -> (model, Cmd.none)
             in
                (newModel , Cmd.batch [  dndSystem.commands newModel.dnd, c ] )
 
@@ -181,11 +213,11 @@ update msg model =
       let
         newMode =
           case model.mode of
-            TechniqueDetails t m map o ->
+            TechniqueDetails t m map o s->
               let
                 calls = List.Extra.updateIf (\c -> callId == c.id )  (\c -> { c | parameters = List.Extra.updateIf (\p -> p.id == paramId) (\p -> {p | value = newValue} ) c.parameters}) t.calls
               in
-                TechniqueDetails { t | calls = calls } m map o
+                TechniqueDetails { t | calls = calls } m map o s
             _ -> model.mode
      in
        ({ model | mode = newMode}, Cmd.none )
@@ -194,8 +226,8 @@ update msg model =
       let
         newMode =
           case model.mode of
-            TechniqueDetails t m map o  ->
-              TechniqueDetails { t | calls = List.Extra.updateIf (\c -> c.id.value == "") (\c -> { c | id = newId } ) t.calls } m  (Dict.insert newId.value (Closed,CallParameters) map) o
+            TechniqueDetails t m map o s->
+              TechniqueDetails { t | calls = List.Extra.updateIf (\c -> c.id.value == "") (\c -> { c | id = newId } ) t.calls } m  (Dict.insert newId.value (Closed,CallParameters) map) o s
             m -> m
       in
         ( { model | mode = newMode } , Cmd.none )

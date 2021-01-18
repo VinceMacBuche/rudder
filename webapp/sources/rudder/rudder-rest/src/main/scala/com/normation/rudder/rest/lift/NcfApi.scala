@@ -181,9 +181,8 @@ class NcfApi(
       val response =
         for {
           json      <- req.json ?~! "No JSON data sent"
-          methods   <- restExtractor.extractGenericMethod(json \ "methods")
-          methodMap =  methods.map(m => (m.id,m)).toMap
-          technique <- restExtractor.extractNcfTechnique(json \ "technique", methodMap, false, false)
+          methodMap <- techniqueReader.readMethodsMetadataFile.toBox
+          technique <- restExtractor.extractNcfTechnique(json, methodMap, false, false)
           updatedTechnique <- techniqueWriter.writeTechniqueAndUpdateLib(technique, methodMap, modId, authzToken.actor ).toBox
         } yield {
           JObject(JField("technique", techniqueSerializer.serializeTechniqueMetadata(updatedTechnique)))
@@ -345,10 +344,9 @@ class NcfApi(
       val response =
         for {
           json      <- req.json ?~! "No JSON data sent"
-          methods   <- restExtractor.extractGenericMethod(json \ "methods")
-          methodMap = methods.map(m => (m.id,m)).toMap
-          technique <- restExtractor.extractNcfTechnique(json \ "technique", methodMap, true, false)
-          internalId <- OptionnalJson.extractJsonString(json \ "technique", "internalId")
+          methodMap <- techniqueReader.readMethodsMetadataFile.toBox
+          technique <- restExtractor.extractNcfTechnique(json, methodMap, true, false)
+          internalId <- OptionnalJson.extractJsonString(json, "internalId")
           isNameTaken = isTechniqueNameExist(technique.bundleName)
           _ <- if(isNameTaken) Failure(s"Technique name and ID must be unique. '${technique.name}' already used") else Full(())
           // If no internalId (used to manage temporary folder for resources), ignore resources, this can happen when importing techniques through the api
