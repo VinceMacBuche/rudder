@@ -306,10 +306,11 @@ callBody model mode call errors dragAttributes isGhost =
           ]
         , div [ class "method-content"] [
             div [ class "method-param flex-form" ] [ --  ng-if="getClassParameter(method_call).value && checkMissingParameters(method_call.parameters, method.parameter).length<=0 && checkErrorParameters(method_call.parameters).length<=0"
-              label [] [ text ((parameterName classParameter)++ (String.fromInt nbErrors)  ++":")]
+              label [] [ text ((parameterName classParameter) ++ ":")]
             , textarea [ class "form-control", rows 1, readonly True, value paramValue ] [] -- msd elastic  ng-click="$event.stopPropagation();"
             ]
-          , div [class "warns" ] [
+          ]
+        , div [class "warns" ] [
              ( if nbErrors > 0 then
                  span [ class "warn-param error popover-bs", hidden (nbErrors == 0) ] [
                    b [] [ text (String.fromInt nbErrors) ]
@@ -349,9 +350,9 @@ callBody model mode call errors dragAttributes isGhost =
                                   <b>{{checkMissingParameters(method_call.parameters, method.parameter).length}}</b> required parameter{{checkMissingParameters(method_call.parameters, method.parameter).length > 1 ? 's' : ''}} missing
                                 </span>
                                 <span -}
-          ]
         ]
       ]
+
 
 
   , div [ class "edit-method popover-bs", onClick editAction
