@@ -30,8 +30,8 @@ techniqueResource technique resource =
     ]
 
 
-techniqueParameter :  Technique -> TechniqueParameter -> Html Msg
-techniqueParameter technique param =
+techniqueParameter :  Technique -> TechniqueParameter -> Bool -> Html Msg
+techniqueParameter technique param opened =
   let
     param_name =
       if (String.isEmpty param.name) then
@@ -39,10 +39,10 @@ techniqueParameter technique param =
 
       else
         [ div [ class "use-with" ] [
-            span [] [ text ("${"++param.name{-getBundleName(param.name)-}++"}") ]
+            span [] [ text ("${"++(canonify param.name)++"}") ]
           ]
         , div [ class "full-name" ] [
-            span [] [ text (technique.id.value ++"." ++ param.name) {-getBundleName(param.name)-}]
+            span [] [ text (technique.id.value ++"." ++ (canonify param.name))]
           ]
 
         ]
@@ -51,28 +51,29 @@ techniqueParameter technique param =
       span [ class "border" ] []
     , div [ class "param" ] [
         div [ class "input-group" ] [
-          input [ type_ "text",  class "form-control", value param.name, placeholder "Parameter name", required True] []
+          input [ type_ "text",  class "form-control", value param.name, placeholder "Parameter name", onInput (\s -> TechniqueParameterModified param.id {param | name = s }), required True] []
         , div [ class "input-group-btn" ] [
-            button [ class "btn btn-outline-secondary clipboard", title "Copy to clipboard" ] [-- type="button" data-clipboard-text="{{'${'+getBundleName(param.name)+'}'}}">
+            button [ class "btn btn-outline-secondary clipboard", title "Copy to clipboard" , onClick (Copy param.name) ] [-- type="button" data-clipboard-text="{{'${'+getBundleName(param.name)+'}'}}">
               i [ class "ion ion-clipboard" ] []
             ]
           ]
         ]
       , div [] param_name
-      , button [ class "btn btn-sm btn-outline-primary",  style "margin-top" "5px" ] [ -- ng-click="toggleParameterDescription(param)">
+      , button [ class "btn btn-sm btn-outline-primary",  style "margin-top" "5px" , onClick (TechniqueParameterToggle param.id)] [
           text "Description "
-        , i [ class "fa" ] [] -- ng-class="parameterDescriptionOpened(param) ? 'fa-times' : 'ion ion-edit'" ></i></button>
+        , i [ class (if opened then "fa fa-times" else "ion ion-edit") ] []
         ]
-      , textarea [ style "margin-top" "10px",  class "form-control",  rows 1,  value param.description ] []-- msd-elastic  ng-show="parameterDescriptionOpened(param)"> </textarea>
+      , if opened then textarea [ style "margin-top" "10px",  class "form-control",  rows 1,  value param.description, onInput (\s -> TechniqueParameterModified param.id {param | description = s })] [] else text "" -- msd-elastic
       ]
-    , div [ class "remove-item" ] [ -- ng-click="selectedTechnique.parameter.splice($index,1)">
+    , div [ class "remove-item", onClick (TechniqueParameterRemoved param.id) ] [
         i [ class "fa fa-times"] []
       ]
     ]
-techniqueTab : Model -> Technique -> Tab -> Bool -> Html Msg
-techniqueTab model technique activeTab creation =
-  case activeTab of
-    General -> div [ class "tab tab-general" ] [ -- ng-show="ui.activeTab == 'general'">
+
+techniqueTab : Model -> Technique -> Bool -> TechniqueUIInfo -> Html Msg
+techniqueTab model technique creation ui =
+  case ui.tab of
+    General -> div [ class "tab tab-general" ] [
                          {-div [ class "col-xs-12" ] [
                            div [ class "alert alert-warning" ] [ -- ng-if="conflictFlag">
                              text """Your changes have been kept. If you save this Technique, your version will replace the current one.
@@ -150,13 +151,13 @@ techniqueTab model technique activeTab creation =
               ]
             ]
           else
-            List.map (techniqueParameter technique) technique.parameters
+            List.map (\p -> techniqueParameter technique p (List.member p.id ui.openedParameters ) ) technique.parameters
       in
         div [ class "tab tab-parameters" ] [
           ul [ class "files-list parameters" ]
             paramList
         , div [ class "text-center btn-manage" ] [
-            div [ class "btn btn-success btn-outline" ] [ -- ng-click="addParameter()"
+            div [ class "btn btn-success btn-outline", onClick (GenerateId (\s -> TechniqueParameterAdded (ParameterId s)))] [
               text "Add parameter "
             , i [ class  "fa fa-plus-circle"] []
             ]

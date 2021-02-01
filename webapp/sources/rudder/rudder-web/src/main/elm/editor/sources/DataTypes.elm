@@ -17,7 +17,7 @@ type alias ParameterId = {value : String}
 
 canonify: String -> String
 canonify value =
-   Regex.replace ((Regex.fromString >> Maybe.withDefault Regex.never) "[!_a-zA-Z\\d]") (always "_") value
+   Regex.replace ((Regex.fromString >> Maybe.withDefault Regex.never) "[^_a-zA-Z\\d]") (always "_") value
 
 
 type Constraint =
@@ -145,12 +145,19 @@ type alias MethodFilter =
   , showDeprecated : Bool
   , agent : Maybe Agent
   }
+
+type alias TechniqueUIInfo =
+  { tab : Tab
+  , callsUI : Dict String (MethodCallMode, MethodCallTab)
+  , openedParameters : List ParameterId
+  , saving : Bool
+  }
 type MethodCallTab = CallParameters | Conditions | Result
 type MethodCallMode = Opened | Closed
 
 type Tab =  General |  Parameters | Resources | None
 
-type Mode = Introduction | TechniqueDetails Technique Tab (Dict String (MethodCallMode, MethodCallTab)) (Maybe Technique) Bool
+type Mode = Introduction | TechniqueDetails Technique (Maybe Technique) TechniqueUIInfo
 
 type Msg =
     SelectTechnique Technique
@@ -163,6 +170,10 @@ type Msg =
   | CloneMethod MethodCall CallId
   | UpdateTechnique Technique
   | MethodCallParameterModified CallId ParameterId String
+  | TechniqueParameterModified ParameterId TechniqueParameter
+  | TechniqueParameterRemoved ParameterId
+  | TechniqueParameterAdded ParameterId
+  | TechniqueParameterToggle ParameterId
   | GenerateId (String -> Msg)
   | SwitchTabMethod CallId MethodCallTab
   | CallApi  (Model -> Cmd Msg)
@@ -178,3 +189,4 @@ type Msg =
   | DndEvent DnDList.Groups.Msg
   | SetCallId CallId
   | StartSaving
+  | Copy String

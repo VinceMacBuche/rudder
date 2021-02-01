@@ -60,7 +60,7 @@ techniqueItem: Model -> Technique -> Html Msg
 techniqueItem model technique =
   let
     activeClass = case model.mode of
-                    TechniqueDetails t _ _ _ _ ->
+                    TechniqueDetails t _ _ ->
                       if t.id == technique.id then
                         [ class "active"]
                       else

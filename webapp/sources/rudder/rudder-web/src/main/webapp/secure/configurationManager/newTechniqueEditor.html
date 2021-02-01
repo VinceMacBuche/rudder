@@ -14,6 +14,14 @@
     contextPath : contextPath
   };
   var app  = Elm.Editor.init({node: main, flags: initValues});
+  app.ports.copy.subscribe(function(value) {
+     navigator.clipboard.writeText(value).then(function(){  console.log('Async: Copying to clipboard was successful!');}, function() {})()
+  });
+
+    $(document).on('mouseover','.popover-bs',function(){
+      $(this).bsPopover('show');
+    });
+    $('.tooltip-bs').bsTooltip();
 </script>
   </div>
 </div>

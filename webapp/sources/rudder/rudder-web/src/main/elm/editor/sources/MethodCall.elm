@@ -201,7 +201,7 @@ methodDetail method call errors currentTab model =
       , li [ class (activeClass Conditions), onClick (SwitchTabMethod call.id Conditions) ] [text "Conditions"]
       , li [class (activeClass Result), onClick (SwitchTabMethod call.id Result) ] [text "Result conditions"]
       ]
-    , div [ class "tabs" ] [ (showMethodTab method call errors CallParameters) ]
+    , div [ class "tabs" ] [ (showMethodTab method call errors currentTab) ]
     , div [ class "method-details-footer"] [
           button [ class "btn btn-outline-secondary btn-sm" , disabled True, type_ "button"] [ -- ng-disabled="!canResetMethod(method_call)" ng-click="resetMethod(method_call)"
             text "Reset "

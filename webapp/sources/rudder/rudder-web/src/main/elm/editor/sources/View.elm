@@ -13,10 +13,10 @@ import ApiCalls exposing (..)
 
 
 
-showTechnique : Model -> Technique -> Tab -> Maybe Technique -> Dict String (MethodCallMode, MethodCallTab) -> Bool -> Html Msg
-showTechnique model technique activeTab origin callTabs saving =
+showTechnique : Model -> Technique ->  Maybe Technique -> TechniqueUIInfo -> Html Msg
+showTechnique model technique origin ui =
   let
-    activeTabClass = (\tab -> "ui-tabs-tab " ++ (if activeTab == tab then "active" else ""))
+    activeTabClass = (\tab -> "ui-tabs-tab " ++ (if ui.tab == tab then "active" else ""))
     creation = case origin of
                  Just _ -> False
                  Nothing -> True
@@ -63,9 +63,9 @@ showTechnique model technique activeTab origin callTabs saving =
             text "Reset "
           , i [ class "fa fa-undo"] []
           ]
-        , button [ class "btn btn-success btn-save", disabled (isUnchanged && saving), onClick (CallApi (saveTechnique technique creation)) ] [ --ng-disabled="ui.editForm.$pending || ui.editForm.$invalid || CForm.form.$invalid || checkSelectedTechnique() || saving"  ng-click="saveTechnique()">
+        , button [ class "btn btn-success btn-save", disabled (isUnchanged && ui.saving), onClick (CallApi (saveTechnique technique creation)) ] [ --ng-disabled="ui.editForm.$pending || ui.editForm.$invalid || CForm.form.$invalid || checkSelectedTechnique() || saving"  ng-click="saveTechnique()">
             text "Save "
-          , i [ class ("fa fa-download " ++ (if saving then "glyphicon glyphicon-cog fa-spin" else "")) ] []
+          , i [ class ("fa fa-download " ++ (if ui.saving then "glyphicon glyphicon-cog fa-spin" else "")) ] []
           ]
         ]
       ]
@@ -105,15 +105,15 @@ showTechnique model technique activeTab origin callTabs saving =
       ]
     ]
   , div [ class "main-details", id "details"] [
-      Html.form [ class "editForm",  name "ui.editForm" ] [ -- novalidate >
+      div [ class "editForm",  name "ui.editForm" ] [ -- novalidate >
        {- div [ class "alert alert-info" ] <[ -- ng-if="!conflictFlag && suppressFlag">
           text "This Technique has been deleted while you were away. Saving it will recreate it."
         ]
-      , -} techniqueTab model technique activeTab creation
+      , -} techniqueTab model technique creation ui
       , h5 [] [
           text "Generic Methods"
         , span [ class "badge badge-secondary" ] [
-            text (String.fromInt (List.length technique.calls ) )
+            span [] [ text (String.fromInt (List.length technique.calls ) ) ]
           ]
         , if model.genericMethodsOpen then text "" else
               button [class "btn-sm btn btn-success", type_ "button", onClick OpenMethods] [ --  ng-click="toggleDisplay(false)" ng-class="{'invisible':!ui.showTechniques}"
@@ -135,7 +135,7 @@ showTechnique model technique activeTab origin callTabs saving =
                                      Just m -> m
                                      Nothing -> Method call.methodName call.methodName.value "" "" (Maybe.withDefault (ParameterId "") (Maybe.map .id (List.head call.parameters))) [] [] Nothing Nothing Nothing
                       errors = List.map2 (\m c -> List.map (checkConstraint c) m.constraints) method.parameters call.parameters
-                      (state, tab) = Maybe.withDefault (Closed,CallParameters) (Dict.get call.id.value callTabs)
+                      (state, tab) = Maybe.withDefault (Closed,CallParameters) (Dict.get call.id.value ui.callsUI)
                     in
                       showMethodCall model state errors tab model.dnd (index) call
                  ) technique.calls
@@ -165,8 +165,8 @@ view model =
                       ]
                     ]
 
-                TechniqueDetails technique tab callTabs t saving ->
-                  showTechnique model technique tab t callTabs saving
+                TechniqueDetails technique originalTechnique uiInfo ->
+                  showTechnique model technique originalTechnique uiInfo
     classes = "rudder-template " ++ if model.genericMethodsOpen then "show-methods" else "show-techniques"
 
 
@@ -176,7 +176,7 @@ view model =
     , div [ class "template-main" ] [central]
     , methodsList model
     , ( case model.mode of
-         TechniqueDetails technique _ _ _ _->
+         TechniqueDetails technique _ _->
            case maybeDragCard model technique.calls of
              Just c ->
                callBody model Closed c [] ( List.reverse (class "method" :: [] )) True
