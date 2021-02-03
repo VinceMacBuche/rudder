@@ -18,6 +18,25 @@
      navigator.clipboard.writeText(value).then(function(){  console.log('Async: Copying to clipboard was successful!');}, function() {})()
   });
 
+
+  var port = app.ports.response
+  app.ports.store.subscribe(function(kv) {
+  console.log(kv);
+
+          var key = kv[0];
+          var json = kv[1];
+     localStorage.setItem(key, JSON.stringify(json));
+  });
+
+  app.ports.get.subscribe(function(key) {
+    var val = undefined;
+          try {
+            val = JSON.parse(localStorage.getItem(key))
+          } catch (e) {}
+          port.send(val)
+
+  });
+
     $(document).on('mouseover','.popover-bs',function(){
       $(this).bsPopover('show');
     });

@@ -5,22 +5,40 @@ import ApiCalls exposing (..)
 import View exposing (view)
 import Browser
 import Debug
-import Dict
+import Dict exposing (Dict)
 import Random
 import UUID
 import List.Extra
 import Either exposing (Either(..))
 import Maybe.Extra
-
+import  Json.Decode exposing (Value)
+import JsonEncoder exposing ( encodeTechnique)
+import JsonDecoder exposing ( decodeTechnique)
 
 port copy : String -> Cmd msg
+
+port store : (String , Value) -> Cmd msg
+port get : String -> Cmd msg
+port response: (Value -> msg) -> Sub msg
+
+parseResponse: Value -> Msg
+parseResponse json =
+  case Json.Decode.decodeValue decodeTechnique json of
+    Ok tech -> GetFromStore tech
+    Err _ -> Ignore
 
 mainInit : {  } -> ( Model, Cmd Msg )
 mainInit initValues =
   let
     model =  Model [] Dict.empty Introduction "rudder" "" (MethodListUI (MethodFilter "" False Nothing) []) False dndSystem.model
   in
-    (model, Cmd.batch (  getMethods model :: []) )
+    (model, Cmd.batch (  getMethods model :: get "storedTechnique" :: []) )
+
+updatedStoreTechnique: Model -> Cmd msg
+updatedStoreTechnique model =
+  case model.mode of
+    TechniqueDetails t _ _ -> store ("storedTechnique", encodeTechnique t)
+    _ -> Cmd.none
 
 main =
   Browser.element
@@ -34,7 +52,9 @@ main =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
-        [ dndSystem.subscriptions model.dnd  ]
+        [ dndSystem.subscriptions model.dnd
+        , response parseResponse
+        ]
 
 
 generator : Random.Generator String
@@ -49,13 +69,16 @@ update msg model =
       in
         ({ model | mode = TechniqueDetails technique  (Just technique) ui } )
           |> update OpenMethods
+          |> Tuple.first
+          |> update (Store "storedTechnique" (encodeTechnique technique))
 
     NewTechnique ->
       let
         ui = TechniqueUIInfo General Dict.empty [] False
         t = Technique (TechniqueId "") "1.0" "" "" "ncf_techniques" [] []
+        newModel =  { model | mode = TechniqueDetails t Nothing ui}
       in
-        ({ model | mode = TechniqueDetails t Nothing ui}, Cmd.none )
+        (newModel, updatedStoreTechnique newModel )
 
     SwitchTab tab ->
       let
@@ -103,8 +126,9 @@ update msg model =
             in
             TechniqueDetails technique o newUi
            m -> m
+        newModel = { model | mode = newMode}
       in
-        ({ model | mode = newMode}, Cmd.none )
+        (newModel, updatedStoreTechnique newModel )
 
     GenerateId nextMsg ->
       (model, Random.generate nextMsg generator)
@@ -112,7 +136,7 @@ update msg model =
     CloneMethod call newId ->
       let
         clone = {call | id = newId }
-        newMode =
+        newModel =
           case model.mode of
            TechniqueDetails t o ui ->
              let
@@ -124,10 +148,10 @@ update msg model =
                technique = { t |  calls = newMethods}
                newUi =  { ui | callsUI = Dict.update newId.value (\_ -> Just (Closed,CallParameters)) ui.callsUI }
              in
-               TechniqueDetails technique o newUi
-           m -> m
+               { model | mode = TechniqueDetails technique o newUi }
+           m -> model
       in
-        ({ model | mode = newMode }, Cmd.none)
+        (newModel, updatedStoreTechnique newModel )
 
     SwitchTabMethod callId newTab ->
       let
@@ -137,20 +161,20 @@ update msg model =
               let
                 newUi = { ui | callsUI = Dict.update callId.value (Maybe.map (\(state,_) -> (state,newTab))) ui.callsUI }
               in
-                TechniqueDetails t o (Debug.log "lol" newUi)
+                TechniqueDetails t o newUi
             m -> m
       in
         ({ model | mode = newMode}, Cmd.none )
 
     UpdateTechnique technique ->
       let
-        newMode =
+        newModel =
           case model.mode of
             TechniqueDetails _ o ui ->
-              TechniqueDetails technique o ui
-            m -> m
+              { model | mode = TechniqueDetails technique o ui }
+            m -> model
       in
-        ({ model | mode = newMode}, Cmd.none )
+        (newModel, updatedStoreTechnique newModel )
 
 
     GetTechniques (Ok  techniques) ->
@@ -212,17 +236,17 @@ update msg model =
     AddMethod method newId ->
       let
         newCall = MethodCall newId method.id (List.map (\p -> CallParameter p.name "") method.parameters) "" ""
-        newMode =
+        newModel =
           case model.mode of
             TechniqueDetails t o ui ->
               let
                 technique =  { t | calls = newCall :: t.calls }
                 newUi = { ui | callsUI = Dict.update newId.value (always (Just (Closed, CallParameters)) ) ui.callsUI }
               in
-                TechniqueDetails technique o newUi
-            m -> m
+              { model | mode = TechniqueDetails technique o newUi }
+            _ -> model
       in
-        ( { model | mode = newMode } , Cmd.none )
+        (  newModel , updatedStoreTechnique newModel )
 
     DndEvent dndMsg ->
             let
@@ -245,44 +269,47 @@ update msg model =
 
     MethodCallParameterModified callId paramId newValue ->
       let
-        newMode =
+        newModel =
           case model.mode of
             TechniqueDetails t o ui->
               let
                 calls = List.Extra.updateIf (\c -> callId == c.id )  (\c -> { c | parameters = List.Extra.updateIf (\p -> p.id == paramId) (\p -> {p | value = newValue} ) c.parameters}) t.calls
+                technique = { t | calls = calls }
               in
-                TechniqueDetails { t | calls = calls } o ui
-            _ -> model.mode
+                { model | mode = TechniqueDetails technique o ui }
+            _ -> model
      in
-       ({ model | mode = newMode}, Cmd.none )
+       ( newModel , updatedStoreTechnique newModel  )
 
 
     TechniqueParameterModified paramId newValue ->
       let
-        newMode =
+        newModel =
           case model.mode of
             TechniqueDetails t o ui->
               let
                 parameters = List.Extra.updateIf (\c -> paramId == c.id ) (always newValue)  t.parameters
+                technique = { t | parameters = parameters }
               in
-                TechniqueDetails { t | parameters = parameters } o ui
-            _ -> model.mode
+                { model | mode = TechniqueDetails technique o ui }
+            _ -> model
       in
-       ({ model | mode = newMode}, Cmd.none )
+       (newModel , updatedStoreTechnique newModel )
 
     TechniqueParameterRemoved paramId ->
       let
-        newMode =
+        newModel =
           case model.mode of
             TechniqueDetails t o ui->
               let
                 parameters = List.Extra.filterNot (\c -> paramId == c.id ) t.parameters
                 newUI = {ui | openedParameters = List.Extra.remove paramId ui.openedParameters }
+                technique = { t | parameters = parameters }
               in
-                TechniqueDetails { t | parameters = parameters } o newUI
-            _ -> model.mode
+                { model | mode = TechniqueDetails technique o newUI }
+            _ -> model
       in
-        ({ model | mode = newMode}, Cmd.none )
+        ( newModel , updatedStoreTechnique newModel )
 
     TechniqueParameterAdded paramId ->
       let
@@ -328,3 +355,11 @@ update msg model =
 
     Copy value ->
       (model, copy value)
+    Store key value ->
+      (model, store (key ,value) )
+    GetFromStore technique ->
+            let
+              ui = TechniqueUIInfo General (Dict.fromList (List.map (\c -> (c.id.value, (Closed, CallParameters))) technique.calls)) [] False
+            in
+              ({ model | mode = TechniqueDetails technique  (Just technique) ui } )
+                |> update OpenMethods

@@ -4,18 +4,14 @@ import DataTypes exposing (..)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
-
+import Maybe.Extra
+import Dict
 
 techniqueList : Model -> List Technique -> Html Msg
 techniqueList model techniques =
-
-                  --    <div class="empty" ng-if="listTechniques.length<=0 && techniques.length>0">
-                    --                  No technique matches the search filter.
-                      --              </div>
-
   let
 
-    filteredTechniques = List.filter (\t -> String.contains model.techniqueFilter t.name) techniques
+    filteredTechniques = List.sortBy .name (List.filter (\t -> (String.contains model.techniqueFilter t.name) || (String.contains model.techniqueFilter t.id.value) ) techniques)
     html =
       if List.isEmpty techniques then
         [ div [ class "empty"] [text "The techniques list is empty."] ]
@@ -53,9 +49,6 @@ techniqueList model techniques =
     ]
   ]
 
-
-
-
 techniqueItem: Model -> Technique -> Html Msg
 techniqueItem model technique =
   let
@@ -66,17 +59,18 @@ techniqueItem model technique =
                       else
                         [ ]
                     _ -> []
+    hasDeprecatedMethod = List.any (\m -> True )(List.concatMap (\c -> Maybe.Extra.toList (Dict.get c.methodName.value model.methods)) technique.calls)
   in
     li activeClass [
       div [ class "item",  onClick (SelectTechnique technique) ] [
         span [] [ text technique.name ]
-        --, <span class="cursor-help popover-bs"  ng-if="hasDeprecatedMethod(technique)" data-toggle="popover"
-        --  data-trigger="hover" data-container="body" data-placement="right" data-title="{{technique.name}}"
-        --  data-content="<div>This technique uses <b>deprecated</b> generic methods.</div>"
-        --  data-html="true">
-         --   <i class="glyphicon glyphicon-info-sign deprecated-icon"></i>
-         --     </span>
-           --                       </div>
+      , if hasDeprecatedMethod  then
+          span [ class "cursor-help popover-bs", attribute "data-toggle"  "popover", attribute "data-trigger" "hover"
+               , attribute "data-container" "body", attribute  "data-placement" "right", attribute "data-title" technique.name
+               , attribute "data-content" "<div>This technique uses <b>deprecated</b> generic methods.</div>"
+               , attribute "data-html" "true" ] [ i [ class "glyphicon glyphicon-info-sign deprecated-icon" ] [] ]
+        else
+          text ""
       ]
     , div [ class "col-auto align-self-center" ,  onClick (SelectTechnique technique) ] [--ng-click="checkSelect(technique,selectTechnique);toggleDisplay(false); $event.stopPropagation();">
         i [ class "ion ion-edit" ] []

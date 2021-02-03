@@ -4,6 +4,7 @@ import Http exposing (Error)
 import Dict exposing (Dict)
 import DnDList.Groups
 import Either exposing (Either(..))
+import Json.Decode exposing (Value)
 import Regex
 
 type alias TechniqueId = {value : String}
@@ -190,3 +191,5 @@ type Msg =
   | SetCallId CallId
   | StartSaving
   | Copy String
+  | Store String Value
+  | GetFromStore Technique
