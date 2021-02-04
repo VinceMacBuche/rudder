@@ -192,4 +192,4 @@ type Msg =
   | StartSaving
   | Copy String
   | Store String Value
-  | GetFromStore Technique
+  | GetFromStore Technique (Maybe Technique)

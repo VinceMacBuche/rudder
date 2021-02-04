@@ -18,26 +18,46 @@ import JsonDecoder exposing ( decodeTechnique)
 port copy : String -> Cmd msg
 
 port store : (String , Value) -> Cmd msg
-port get : String -> Cmd msg
-port response: (Value -> msg) -> Sub msg
+port clear : String  -> Cmd msg
+port get : () -> Cmd msg
+port response: ((Value, Value) -> msg) -> Sub msg
 
-parseResponse: Value -> Msg
-parseResponse json =
+port successNotification : String -> Cmd msg
+port errorNotification   : String -> Cmd msg
+port warnNotification   : String -> Cmd msg
+port infoNotification    : String -> Cmd msg
+
+parseResponse: (Value, Value) -> Msg
+parseResponse (json, optJson) =
   case Json.Decode.decodeValue decodeTechnique json of
-    Ok tech -> GetFromStore tech
+    Ok tech ->
+      let
+        o =
+          case  (Json.Decode.decodeValue (Json.Decode.nullable  decodeTechnique)) optJson of
+            Ok (m) -> m
+            _ -> Nothing
+      in
+        GetFromStore tech o
     Err _ -> Ignore
 
-mainInit : {  } -> ( Model, Cmd Msg )
+mainInit : { contextPath : String  } -> ( Model, Cmd Msg )
 mainInit initValues =
   let
-    model =  Model [] Dict.empty Introduction "rudder" "" (MethodListUI (MethodFilter "" False Nothing) []) False dndSystem.model
+    model =  Model [] Dict.empty Introduction initValues.contextPath "" (MethodListUI (MethodFilter "" False Nothing) []) False dndSystem.model
   in
-    (model, Cmd.batch (  getMethods model :: get "storedTechnique" :: []) )
+    (model, Cmd.batch ( getMethods model  :: []) )
 
 updatedStoreTechnique: Model -> Cmd msg
 updatedStoreTechnique model =
   case model.mode of
-    TechniqueDetails t _ _ -> store ("storedTechnique", encodeTechnique t)
+    TechniqueDetails t o _ ->
+      let
+        storeOriginTechnique =
+          case o of
+            Just origin -> store ("originTechnique", encodeTechnique origin)
+            Nothing -> clear "originTechnique"
+      in
+        Cmd.batch [ store ("currentTechnique", encodeTechnique t), storeOriginTechnique ]
     _ -> Cmd.none
 
 main =
@@ -178,7 +198,7 @@ update msg model =
 
 
     GetTechniques (Ok  techniques) ->
-      ({ model | techniques = techniques}, Cmd.none )
+      ({ model | techniques = techniques},  get () )
     GetTechniques (Err e) ->
       Debug.log (Debug.toString e) ( model , Cmd.none )
 
@@ -192,9 +212,9 @@ update msg model =
                     TechniqueDetails t _ ui -> TechniqueDetails t (Just technique) ui
                     m -> m
       in
-        ({ model | techniques = techniques, mode = newMode}, Cmd.none )
+        ({ model | techniques = techniques, mode = newMode}, successNotification "Technique saved!" )
     SaveTechnique (Err e) ->
-      Debug.log (Debug.toString e) ( model , Cmd.none )
+      Debug.log (Debug.toString e) ( model , errorNotification (Debug.toString e) )
 
     GetMethods (Ok  methods) ->
       ({ model | methods = methods}, getTechniques model  )
@@ -356,10 +376,16 @@ update msg model =
     Copy value ->
       (model, copy value)
     Store key value ->
-      (model, store (key ,value) )
-    GetFromStore technique ->
+      (model, updatedStoreTechnique model )
+    GetFromStore technique originTechnique ->
             let
               ui = TechniqueUIInfo General (Dict.fromList (List.map (\c -> (c.id.value, (Closed, CallParameters))) technique.calls)) [] False
+              notification = case (List.Extra.find (.id >> (==) technique.id) model.techniques,originTechnique) of
+                (Nothing, Just _) -> warnNotification "Technique reloaded from cache was deleted, Saving will recreate it"
+                (Just _ , Nothing) -> warnNotification "Technique from cache was created, change name/id before saving"
+                (Just t , Just o) -> if t /= o then warnNotification "Technique reloaded from cache since you modified it, saving will overwrite current changes" else infoNotification "Technique reloaded from cache"
+                (Nothing, Nothing) -> infoNotification "Technique reloaded from cache"
             in
-              ({ model | mode = TechniqueDetails technique  (Just technique) ui } )
+              ({ model | mode = TechniqueDetails technique originTechnique ui } )
                 |> update OpenMethods
+                |>  Tuple.mapSecond (\c -> Cmd.batch [c, notification ])

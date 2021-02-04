@@ -9,6 +9,8 @@
 
   <div id="technique-editor">
   <script>
+
+$(document).ready(function(){
   var main = document.getElementById("technique-editor")
   var initValues = {
     contextPath : contextPath
@@ -21,26 +23,45 @@
 
   var port = app.ports.response
   app.ports.store.subscribe(function(kv) {
-  console.log(kv);
-
-          var key = kv[0];
-          var json = kv[1];
-     localStorage.setItem(key, JSON.stringify(json));
+    console.log(kv);
+    var key = kv[0];
+    var json = kv[1];
+    localStorage.setItem(key, JSON.stringify(json));
+  });
+  app.ports.clear.subscribe(function(key) {
+    localStorage.setItem(key, null);
   });
 
-  app.ports.get.subscribe(function(key) {
-    var val = undefined;
-          try {
-            val = JSON.parse(localStorage.getItem(key))
-          } catch (e) {}
-          port.send(val)
+  app.ports.get.subscribe(function() {
+    var current = undefined;
+    var origin = null;
+    try {
+      current = JSON.parse(localStorage.getItem("currentTechnique"))
+      origin = JSON.parse(localStorage.getItem("originTechnique"))
+    } catch (e) {}
+    port.send([current,origin])
 
   });
 
+  console.log(app)
+  console.log(app.ports)
+  app.ports.successNotification.subscribe(function(str) {
+    createSuccessNotification(str)
+  });
+  app.ports.errorNotification.subscribe(function(str) {
+    createErrorNotification(str)
+  });
+  app.ports.infoNotification.subscribe(function(str) {
+    createInfoNotification(str)
+  });
+  app.ports.warnNotification.subscribe(function(str) {
+    createWarningNotification(str)
+  });
     $(document).on('mouseover','.popover-bs',function(){
       $(this).bsPopover('show');
     });
     $('.tooltip-bs').bsTooltip();
+    });
 </script>
   </div>
 </div>

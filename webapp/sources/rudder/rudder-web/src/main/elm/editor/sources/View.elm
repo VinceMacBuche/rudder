@@ -105,7 +105,7 @@ showTechnique model technique origin ui =
       ]
     ]
   , div [ class "main-details", id "details"] [
-      div [ class "editForm",  name "ui.editForm" ] [ -- novalidate >
+      div [ class "editForm",  name "ui.editForm" ] [
        {- div [ class "alert alert-info" ] <[ -- ng-if="!conflictFlag && suppressFlag">
           text "This Technique has been deleted while you were away. Saving it will recreate it."
         ]

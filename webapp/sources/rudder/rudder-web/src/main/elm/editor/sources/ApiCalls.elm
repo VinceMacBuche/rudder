@@ -10,7 +10,7 @@ import Dict
 
 getUrl: Model -> String -> String
 getUrl m url =
-  "/" ++ m.contextPath ++ "/secure/api/" ++ url
+  m.contextPath ++ "/secure/api/" ++ url
 
 getTechniques : Model -> Cmd Msg
 getTechniques  model =
