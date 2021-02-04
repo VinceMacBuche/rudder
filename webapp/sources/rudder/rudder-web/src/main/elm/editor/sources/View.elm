@@ -13,18 +13,20 @@ import ApiCalls exposing (..)
 
 
 
-showTechnique : Model -> Technique ->  Maybe Technique -> TechniqueUIInfo -> Html Msg
+showTechnique : Model -> Technique ->  TechniqueState -> TechniqueUIInfo -> Html Msg
 showTechnique model technique origin ui =
   let
     activeTabClass = (\tab -> "ui-tabs-tab " ++ (if ui.tab == tab then "active" else ""))
     creation = case origin of
-                 Just _ -> False
-                 Nothing -> True
+                 Creation ->True
+                 Clone _ -> True
+                 Edit _ -> False
     isUnchanged = case origin of
-                    Just t -> t == technique
-                    Nothing -> False
+                    Edit t -> t == technique
+                    Creation -> False
+                    Clone t -> t == technique
     topButtons =  [ li [] [
-                      a [ class "action-success", disabled creation ] [ --ng-disabled="isNotSaved()"  ng-click="checkSelect(selectedTechnique,clonePopup )"
+                      a [ class "action-success", disabled creation , onClick (CloneTechnique technique)] [
                         text "Clone "
                       , i [ class "fa fa-clone"] []
                       ]
@@ -59,7 +61,7 @@ showTechnique model technique origin ui =
             ]
           , ul [ class "dropdown-menu" ] topButtons
           ]
-        , button [ class "btn btn-primary", disabled (isUnchanged && creation)  ] [ --ng-disabled="isUnchanged(selectedTechnique)"  ng-click="resetTechnique()">
+        , button [ class "btn btn-primary", disabled (isUnchanged && creation)  ] [ --  ng-click="resetTechnique()">
             text "Reset "
           , i [ class "fa fa-undo"] []
           ]
@@ -75,15 +77,15 @@ showTechnique model technique origin ui =
         li [ class (activeTabClass General) , onClick (SwitchTab General)] [
           a [] [ text "General information" ]
         ]
-      , li [ class (activeTabClass Parameters), onClick (SwitchTab Parameters) ] [ --role="presentation" ng-click="ui.activeTab = 'parameters'" ng-class="{'active': ui.activeTab == 'parameters'}" >
+      , li [ class (activeTabClass Parameters), onClick (SwitchTab Parameters) ] [
           a [] [
             text "Parameters "
-          , span [ class "badge badge-secondary badge-resources" ] [ -- ng-class="{'empty' : selectedTechnique.parameter.length <= 0}">
+          , span [ class ( "badge badge-secondary badge-resources " ++ if List.isEmpty technique.parameters then "empty" else "") ] [
               span [] [ text (String.fromInt (List.length technique.parameters)) ]
             ]
           ]
         ]
-      , li [ class (activeTabClass Resources)  , onClick (SwitchTab Resources)] [-- role="presentation" ng-click="ui.activeTab = 'resources'"  ng-class="{'active': ui.activeTab == 'resources' }" >
+      , li [ class (activeTabClass Resources)  , onClick (SwitchTab Resources)] [
           a [] [
             text "Resources "
           , span [  class "badge badge-secondary badge-resources tooltip-bs" ] [
@@ -106,25 +108,22 @@ showTechnique model technique origin ui =
     ]
   , div [ class "main-details", id "details"] [
       div [ class "editForm",  name "ui.editForm" ] [
-       {- div [ class "alert alert-info" ] <[ -- ng-if="!conflictFlag && suppressFlag">
-          text "This Technique has been deleted while you were away. Saving it will recreate it."
-        ]
-      , -} techniqueTab model technique creation ui
+        techniqueTab model technique creation ui
       , h5 [] [
           text "Generic Methods"
         , span [ class "badge badge-secondary" ] [
             span [] [ text (String.fromInt (List.length technique.calls ) ) ]
           ]
         , if model.genericMethodsOpen then text "" else
-              button [class "btn-sm btn btn-success", type_ "button", onClick OpenMethods] [ --  ng-click="toggleDisplay(false)" ng-class="{'invisible':!ui.showTechniques}"
+              button [class "btn-sm btn btn-success", type_ "button", onClick OpenMethods] [
                 text "Add "
               , i [ class "fa fa-plus-circle" ] []
               ]
         ]
      ,  div [ class "row"] [
-          ul [ id "methods", class "list-unstyled" ] --  dnd-list="selectedTechnique.method_calls" dnd-drop="dropCallback(item, index, type);" >
+          ul [ id "methods", class "list-unstyled" ]
             ( ( if List.isEmpty technique.calls then
-                  [ li [ id "no-methods" ] [ -- ng-click="toggleDisplay(false)">
+                  [ li [ id "no-methods" ] [
                       text "Drag and drop generic methods here from the list on the right to build target configuration for this technique."
                     ]
                   ]
@@ -165,8 +164,8 @@ view model =
                       ]
                     ]
 
-                TechniqueDetails technique originalTechnique uiInfo ->
-                  showTechnique model technique originalTechnique uiInfo
+                TechniqueDetails technique state uiInfo ->
+                  showTechnique model technique state uiInfo
     classes = "rudder-template " ++ if model.genericMethodsOpen then "show-methods" else "show-techniques"
 
 

@@ -28,8 +28,6 @@ getTechniques  model =
   in
     req
 
-
-
 getMethods : Model -> Cmd Msg
 getMethods  model =
   let
@@ -45,9 +43,6 @@ getMethods  model =
         }
   in
     req
-
-
-
 
 saveTechnique : Technique -> Bool -> Model ->  Cmd Msg
 saveTechnique  technique creation model =

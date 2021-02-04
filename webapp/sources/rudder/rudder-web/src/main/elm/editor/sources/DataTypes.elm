@@ -117,6 +117,7 @@ dndSystem : DnDList.Groups.System (Either Method MethodCall) Msg
 dndSystem =
   DnDList.Groups.create config DndEvent
 
+type TechniqueState = Creation | Edit Technique | Clone Technique
 
 type alias Model =
   { techniques : List Technique
@@ -158,7 +159,7 @@ type MethodCallMode = Opened | Closed
 
 type Tab =  General |  Parameters | Resources | None
 
-type Mode = Introduction | TechniqueDetails Technique (Maybe Technique) TechniqueUIInfo
+type Mode = Introduction | TechniqueDetails Technique TechniqueState TechniqueUIInfo
 
 type Msg =
     SelectTechnique Technique
@@ -193,3 +194,4 @@ type Msg =
   | Copy String
   | Store String Value
   | GetFromStore Technique (Maybe Technique)
+  | CloneTechnique Technique

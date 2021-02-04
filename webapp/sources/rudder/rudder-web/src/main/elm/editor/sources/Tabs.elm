@@ -53,7 +53,7 @@ techniqueParameter technique param opened =
         div [ class "input-group" ] [
           input [ type_ "text",  class "form-control", value param.name, placeholder "Parameter name", onInput (\s -> TechniqueParameterModified param.id {param | name = s }), required True] []
         , div [ class "input-group-btn" ] [
-            button [ class "btn btn-outline-secondary clipboard", title "Copy to clipboard" , onClick (Copy param.name) ] [-- type="button" data-clipboard-text="{{'${'+getBundleName(param.name)+'}'}}">
+            button [ class "btn btn-outline-secondary clipboard", title "Copy to clipboard" , onClick (Copy ("${" ++ (canonify param.name) ++ "}")) ] [
               i [ class "ion ion-clipboard" ] []
             ]
           ]

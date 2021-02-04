@@ -72,7 +72,7 @@ techniqueItem model technique =
         else
           text ""
       ]
-    , div [ class "col-auto align-self-center" ,  onClick (SelectTechnique technique) ] [--ng-click="checkSelect(technique,selectTechnique);toggleDisplay(false); $event.stopPropagation();">
+    , div [ class "col-auto align-self-center" ,  onClick (SelectTechnique technique) ] [
         i [ class "ion ion-edit" ] []
       ]
     ]

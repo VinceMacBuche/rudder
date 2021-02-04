@@ -54,8 +54,8 @@ updatedStoreTechnique model =
       let
         storeOriginTechnique =
           case o of
-            Just origin -> store ("originTechnique", encodeTechnique origin)
-            Nothing -> clear "originTechnique"
+            Edit origin -> store ("originTechnique", encodeTechnique origin)
+            _ -> clear "originTechnique"
       in
         Cmd.batch [ store ("currentTechnique", encodeTechnique t), storeOriginTechnique ]
     _ -> Cmd.none
@@ -76,6 +76,16 @@ subscriptions model =
         , response parseResponse
         ]
 
+selectTechnique: Model -> Technique -> (Model, Cmd Msg)
+selectTechnique model technique =
+  let
+    ui = TechniqueUIInfo General (Dict.fromList (List.map (\c -> (c.id.value, (Closed, CallParameters))) technique.calls)) [] False
+  in
+    ({ model | mode = TechniqueDetails technique  (Edit technique) ui } )
+      |> update OpenMethods
+      |> Tuple.first
+      |> update (Store "storedTechnique" (encodeTechnique technique))
+
 
 generator : Random.Generator String
 generator = Random.map (UUID.toString) UUID.generator
@@ -84,10 +94,20 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
   case msg of
     SelectTechnique technique ->
+      case model.mode of
+        TechniqueDetails t _ _ ->
+          if t.id == technique.id then
+             ( { model | mode = Introduction }, clear "storedTechnique")
+          else
+            selectTechnique model technique
+        _ ->
+          selectTechnique model technique
+
+    CloneTechnique technique ->
       let
         ui = TechniqueUIInfo General (Dict.fromList (List.map (\c -> (c.id.value, (Closed, CallParameters))) technique.calls)) [] False
       in
-        ({ model | mode = TechniqueDetails technique  (Just technique) ui } )
+        ({ model | mode = TechniqueDetails technique  (Clone technique) ui } )
           |> update OpenMethods
           |> Tuple.first
           |> update (Store "storedTechnique" (encodeTechnique technique))
@@ -96,7 +116,7 @@ update msg model =
       let
         ui = TechniqueUIInfo General Dict.empty [] False
         t = Technique (TechniqueId "") "1.0" "" "" "ncf_techniques" [] []
-        newModel =  { model | mode = TechniqueDetails t Nothing ui}
+        newModel =  { model | mode = TechniqueDetails t Creation ui}
       in
         (newModel, updatedStoreTechnique newModel )
 
@@ -209,7 +229,7 @@ update msg model =
          else
            technique :: model.techniques
         newMode = case model.mode of
-                    TechniqueDetails t _ ui -> TechniqueDetails t (Just technique) ui
+                    TechniqueDetails t _ ui -> TechniqueDetails t (Edit technique) ui
                     m -> m
       in
         ({ model | techniques = techniques, mode = newMode}, successNotification "Technique saved!" )
@@ -228,7 +248,11 @@ update msg model =
     StartSaving ->
      case model.mode of
           TechniqueDetails t o ui ->
-            update (CallApi (saveTechnique t (Maybe.Extra.isNothing o ))) { model | mode = TechniqueDetails t o ui }
+            case o of
+              Edit _ ->
+               update (CallApi (saveTechnique t False)) { model | mode = TechniqueDetails t o ui }
+              _ ->
+               update (CallApi (saveTechnique t True)) { model | mode = TechniqueDetails t o ui }
           _ -> (model, Cmd.none)
 
     UpdateTechniqueFilter newFilter->
@@ -385,7 +409,8 @@ update msg model =
                 (Just _ , Nothing) -> warnNotification "Technique from cache was created, change name/id before saving"
                 (Just t , Just o) -> if t /= o then warnNotification "Technique reloaded from cache since you modified it, saving will overwrite current changes" else infoNotification "Technique reloaded from cache"
                 (Nothing, Nothing) -> infoNotification "Technique reloaded from cache"
+              state = Maybe.withDefault Creation (Maybe.map Edit originTechnique)
             in
-              ({ model | mode = TechniqueDetails technique originTechnique ui } )
+              ({ model | mode = TechniqueDetails technique state ui } )
                 |> update OpenMethods
                 |>  Tuple.mapSecond (\c -> Cmd.batch [c, notification ])

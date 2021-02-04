@@ -277,7 +277,7 @@ callBody model mode call errors dragAttributes isGhost =
                , attribute "data-html" "true", attribute "data-delay" """'{"show":"400", "hide":"100"}'""" ] [
           i [ class "fa fa-clone"] []
         ]
-      , button [  class "text-danger method-action", type_ "button", onClick (RemoveMethod call.id) ] [ --  ng-click="removeMethod($index);$event.stopPropagation();"
+      , button [  class "text-danger method-action", type_ "button", onClick (RemoveMethod call.id) ] [
           i [ class "fa fa-times-circle" ] []
         ]
       ]
