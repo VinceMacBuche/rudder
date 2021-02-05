@@ -90,10 +90,12 @@ techniqueTab model technique creation ui =
                          , div  [ class "col-sm-8" ] [
                              input [type_ "text" , id "techniqueName",  name "name",  class "form-control" , placeholder "Technique Name", value technique.name
                               , onInput (\newName -> UpdateTechnique {technique | name = newName, id = TechniqueId(if creation then canonify newName else technique.id.value) })
-                              ] []-- techniquename required focus-on="focusTechniqueName"]
+                              ] []
                            ]
-                         -- <span class="text-danger col-sm-8" ng-show="ui.editForm.name.$error.techniqueName">Technique name must be unique</span>
-                         -- <span class="text-danger col-sm-8" ng-show="ui.editForm.name.$error.required && ui.editForm.name.$dirty">Technique name is required</span>
+                         , case ui.nameState of
+                             InvalidState AlreadyTakenName -> span [ class "text-danger col-sm-8" ] [ text "Technique name must be unique" ]
+                             InvalidState EmptyName -> span [ class "text-danger col-sm-8" ] [ text "Technique name is required" ]
+                             _ -> text ""
                          ]
                        , div [ class "row form-group" ] [
                            label [ for "techniqueDescription", class "col-xs-12 control-label" ] [
@@ -117,16 +119,16 @@ techniqueTab model technique creation ui =
                          , div [ class "col-sm-8" ] [
                              input [ readonly True,  id "bundleName", name "bundle_name", class "form-control", value technique.id.value ] [] -- bundlename ng-model="selectedTechnique.bundle_name" ng-maxlength="252" ng-pattern="/^[^_].*$/">
                            ]
-                           --span class="text-danger col-sm-8 col-sm-offset-3" ng-show="ui.editForm.bundle_name.$error.maxlength">
-                           --        Technique IDs longer than 255 characters won't work on most filesystems.
-                           --      </span>
-                           --      <span class="text-danger col-sm-8 col-sm-offset-3" ng-show="ui.editForm.bundle_name.$error.bundleName">
-                           --        Technique ID must be unique.
-                           --      </span>
-                           --      <span class="text-danger col-sm-8 col-sm-offset-3" ng-show="ui.editForm.bundle_name.$error.pattern">Technique ID should start with an alphanumeric character.</span>
-                           --      <span class="rudder-text-warning col-sm-8 col-sm-offset-3" ng-show="selectedTechnique.bundle_name.length > 100 && selectedTechnique.bundle_name.length < 253">
-                           --        <b><span class="glyphicon glyphicon-exclamation-sign"></span></b> Technique IDs longer than 100 characters may not work on some filesystems (Windows, in particular).
-                           --      </span>
+                         , case ui.idState of
+                             InvalidState TooLongId -> span [ class "text-danger col-sm-8 col-sm-offset-3" ] [text "Technique IDs longer than 255 characters won't work on most filesystems." ]
+                             InvalidState AlreadyTakenId -> span [ class "text-danger col-sm-8 col-sm-offset-3" ] [ text "Technique ID must be unique." ]
+                             InvalidState InvalidStartId -> span [ class "text-danger col-sm-8 col-sm-offset-3"] [ text "Technique ID should start with an alphanumeric character." ]
+                             _ -> if String.length technique.id.value > 100 then
+                                    span [ class "rudder-text-warning col-sm-8 col-sm-offset-3" ] [
+                                      b [] [ span [ class "glyphicon glyphicon-exclamation-sign" ] [] ]
+                                    , text "Technique IDs longer than 100 characters may not work on some filesystems (Windows, in particular)."
+                                    ]
+                                  else text ""
                          ]
                        , div [ class "row form-group" ] [ -- show-errors>
                            label [ for "category",  class "col-xs-12 control-label"] [ text "Category" ]

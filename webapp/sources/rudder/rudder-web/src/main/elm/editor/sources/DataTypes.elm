@@ -148,11 +148,17 @@ type alias MethodFilter =
   , agent : Maybe Agent
   }
 
+type ValidationState error = Untouched | ValidState | InvalidState error
+type TechniqueNameError = EmptyName | AlreadyTakenName
+type TechniqueIdError = TooLongId | AlreadyTakenId | InvalidStartId
+
 type alias TechniqueUIInfo =
   { tab : Tab
   , callsUI : Dict String (MethodCallMode, MethodCallTab)
   , openedParameters : List ParameterId
   , saving : Bool
+  , nameState : ValidationState TechniqueNameError
+  , idState : ValidationState TechniqueIdError
   }
 type MethodCallTab = CallParameters | Conditions | Result
 type MethodCallMode = Opened | Closed
@@ -195,3 +201,4 @@ type Msg =
   | Store String Value
   | GetFromStore Technique (Maybe Technique)
   | CloneTechnique Technique
+  | ResetTechnique

@@ -13,6 +13,39 @@ import ApiCalls exposing (..)
 
 
 
+checkTechniqueId origin technique model =
+  case origin of
+    Edit _ -> ValidState
+    _ -> if (List.any (.id >> (==) technique.id) model.techniques) then
+           InvalidState AlreadyTakenId
+         else if String.length technique.id.value > 255 then
+           InvalidState TooLongId
+         else if String.startsWith "_" technique.id.value then
+           InvalidState InvalidStartId
+         else
+           ValidState
+
+
+checkTechniqueName technique model =
+  if String.isEmpty technique.name then
+   InvalidState EmptyName
+  else
+   if List.any (.name >> (==) technique.name) (List.filter (.id >> (/=) technique.id ) model.techniques) then
+     InvalidState AlreadyTakenName
+   else
+     ValidState
+
+isValidState state =
+  case state of
+    Untouched -> True
+    ValidState -> True
+    InvalidState _ -> False
+
+
+
+isValid ui = (isValidState ui.idState )  && ( isValidState ui.nameState )
+
+
 showTechnique : Model -> Technique ->  TechniqueState -> TechniqueUIInfo -> Html Msg
 showTechnique model technique origin ui =
   let
@@ -61,11 +94,11 @@ showTechnique model technique origin ui =
             ]
           , ul [ class "dropdown-menu" ] topButtons
           ]
-        , button [ class "btn btn-primary", disabled (isUnchanged && creation)  ] [ --  ng-click="resetTechnique()">
+        , button [ class "btn btn-primary", disabled (isUnchanged && creation) , onClick ResetTechnique ] [
             text "Reset "
           , i [ class "fa fa-undo"] []
           ]
-        , button [ class "btn btn-success btn-save", disabled (isUnchanged && ui.saving), onClick (CallApi (saveTechnique technique creation)) ] [ --ng-disabled="ui.editForm.$pending || ui.editForm.$invalid || CForm.form.$invalid || checkSelectedTechnique() || saving"  ng-click="saveTechnique()">
+        , button [ class "btn btn-success btn-save", disabled (isUnchanged && (not (isValid ui)) && ui.saving), onClick (CallApi (saveTechnique technique creation)) ] [ --ng-disabled="ui.editForm.$pending || ui.editForm.$invalid || CForm.form.$invalid || checkSelectedTechnique() || saving"  ng-click="saveTechnique()">
             text "Save "
           , i [ class ("fa fa-download " ++ (if ui.saving then "glyphicon glyphicon-cog fa-spin" else "")) ] []
           ]
