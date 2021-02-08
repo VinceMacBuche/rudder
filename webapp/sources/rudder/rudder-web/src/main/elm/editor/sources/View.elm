@@ -94,11 +94,11 @@ showTechnique model technique origin ui =
             ]
           , ul [ class "dropdown-menu" ] topButtons
           ]
-        , button [ class "btn btn-primary", disabled (isUnchanged && creation) , onClick ResetTechnique ] [
+        , button [ class "btn btn-primary", disabled (isUnchanged || creation) , onClick ResetTechnique ] [
             text "Reset "
           , i [ class "fa fa-undo"] []
           ]
-        , button [ class "btn btn-success btn-save", disabled (isUnchanged && (not (isValid ui)) && ui.saving), onClick (CallApi (saveTechnique technique creation)) ] [ --ng-disabled="ui.editForm.$pending || ui.editForm.$invalid || CForm.form.$invalid || checkSelectedTechnique() || saving"  ng-click="saveTechnique()">
+        , button [ class "btn btn-success btn-save", disabled (isUnchanged || (not (isValid ui)) || ui.saving), onClick (CallApi (saveTechnique technique creation)) ] [ --ng-disabled="ui.editForm.$pending || ui.editForm.$invalid || CForm.form.$invalid || checkSelectedTechnique() || saving"  ng-click="saveTechnique()">
             text "Save "
           , i [ class ("fa fa-download " ++ (if ui.saving then "glyphicon glyphicon-cog fa-spin" else "")) ] []
           ]
@@ -163,13 +163,9 @@ showTechnique model technique origin ui =
               else
                   List.indexedMap (\ index call ->
                     let
-                      method = case Dict.get call.methodName.value model.methods of
-                                     Just m -> m
-                                     Nothing -> Method call.methodName call.methodName.value "" "" (Maybe.withDefault (ParameterId "") (Maybe.map .id (List.head call.parameters))) [] [] Nothing Nothing Nothing
-                      errors = List.map2 (\m c -> List.map (checkConstraint c) m.constraints) method.parameters call.parameters
-                      (state, tab) = Maybe.withDefault (Closed,CallParameters) (Dict.get call.id.value ui.callsUI)
+                          methodUi = Maybe.withDefault (MethodCallUiInfo Closed CallParameters Dict.empty) (Dict.get call.id.value ui.callsUI)
                     in
-                      showMethodCall model state errors tab model.dnd (index) call
+                      showMethodCall model methodUi model.dnd (index) call
                  ) technique.calls
             ))
 
@@ -211,7 +207,7 @@ view model =
          TechniqueDetails technique _ _->
            case maybeDragCard model technique.calls of
              Just c ->
-               callBody model Closed c [] ( List.reverse (class "method" :: [] )) True
+               callBody model (MethodCallUiInfo Closed CallParameters Dict.empty) c  ( List.reverse (class "method" :: [] )) True
              _ ->
                text ""
          _ -> text ""

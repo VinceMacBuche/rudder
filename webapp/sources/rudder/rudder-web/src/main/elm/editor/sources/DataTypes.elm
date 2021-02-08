@@ -152,9 +152,17 @@ type ValidationState error = Untouched | ValidState | InvalidState error
 type TechniqueNameError = EmptyName | AlreadyTakenName
 type TechniqueIdError = TooLongId | AlreadyTakenId | InvalidStartId
 
+type MethodCallParamError = ConstraintError (List String)
+
+type alias MethodCallUiInfo =
+  { mode : MethodCallMode
+  , tab : MethodCallTab
+  , validation : Dict String  ( ValidationState MethodCallParamError )
+  }
+
 type alias TechniqueUIInfo =
   { tab : Tab
-  , callsUI : Dict String (MethodCallMode, MethodCallTab)
+  , callsUI : Dict String MethodCallUiInfo
   , openedParameters : List ParameterId
   , saving : Bool
   , nameState : ValidationState TechniqueNameError
@@ -177,7 +185,7 @@ type Msg =
   | RemoveMethod CallId
   | CloneMethod MethodCall CallId
   | UpdateTechnique Technique
-  | MethodCallParameterModified CallId ParameterId String
+  | MethodCallParameterModified MethodCall ParameterId String
   | TechniqueParameterModified ParameterId TechniqueParameter
   | TechniqueParameterRemoved ParameterId
   | TechniqueParameterAdded ParameterId
