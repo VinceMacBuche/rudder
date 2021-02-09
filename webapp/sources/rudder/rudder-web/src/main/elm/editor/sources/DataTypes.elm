@@ -82,7 +82,6 @@ type alias TechniqueParameter =
   }
 
 
-
 config : DnDList.Groups.Config (Either Method MethodCall)
 config =
     { beforeUpdate = \_ _ list -> list
@@ -146,7 +145,10 @@ type alias MethodFilter =
   { name : String
   , showDeprecated : Bool
   , agent : Maybe Agent
+  , state : MethodFilterState
   }
+
+type MethodFilterState = FilterOpened | FilterClosed
 
 type ValidationState error = Untouched | ValidState | InvalidState error
 type TechniqueNameError = EmptyName | AlreadyTakenName
@@ -210,3 +212,5 @@ type Msg =
   | GetFromStore Technique (Maybe Technique)
   | CloneTechnique Technique
   | ResetTechnique
+  | ResetMethodCall MethodCall
+  | ToggleFilter

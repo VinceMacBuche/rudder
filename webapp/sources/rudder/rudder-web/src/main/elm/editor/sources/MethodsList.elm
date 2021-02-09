@@ -117,14 +117,15 @@ methodsList model =
              div [ class "input-group" ] [
                input [ class "form-control",  type_ "text",  placeholder "Filter", value filter.name, onInput (\s -> UpdateMethodFilter { filter | name = s  }) ] []
              , div [ class "input-group-btn" ] [
-                 button [ class "btn btn-outline-secondary btn-toggle-filters" ] [ --ng-click="ui.showMethodsFilter=!ui.showMethodsFilter">
+                 button [ class "btn btn-outline-secondary btn-toggle-filters" , onClick ToggleFilter] [ --ng-click="ui.showMethodsFilter=!ui.showMethodsFilter">
                    i [ class "ion ion-android-options"] []
                  ]
                ]
              ]
            ]
          ]
-       , div [ class "filters-container" ] [-- ng-class="{'hidden':!ui.showMethodsFilter}">
+       , if (filter.state == FilterOpened) then
+         div [ class "filters-container" ] [-- ng-class="{'hidden':!ui.showMethodsFilter}">
            label [ class "label-btn-group align-self-center" ] [
              text "Agent type:"
            ]
@@ -146,6 +147,8 @@ methodsList model =
              ]
            ]
          ]
+         else
+         text ""
 
        , div [ class "sidebar-body" ] [
            div [ class "generic-methods-container" ] [

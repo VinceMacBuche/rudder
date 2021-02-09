@@ -36,7 +36,12 @@ parameterName param =
   String.replace "_" " " (String.Extra.toSentenceCase param.name.value)
 
 showParam: MethodCall -> ValidationState MethodCallParamError -> MethodParameter -> CallParameter -> Html Msg
-showParam call  errors methodParam param =
+showParam call state methodParam param =
+  let
+    errors = case state of
+      InvalidState (ConstraintError err) -> err
+      _ -> []
+  in
   div [class "form-group method-parameter"] [
     label [ for "param-index" ] [
       span [] [
@@ -47,17 +52,17 @@ showParam call  errors methodParam param =
     ]
   , textarea  [ name "param", class "form-control", rows  1 , value param.value , onInput  (MethodCallParameterModified call param.id)   ] [] --msd-elastic     ng-trim="{{trimParameter(parameterInfo)}}" ng-model="parameter.value"></textarea>
   , ul [ class "list-unstyled" ]
-      (List.filterMap  (Maybe.map (\e -> li [ class "text-danger" ] [ text e ])) [])
+      (List.map (\e -> li [ class "text-danger" ] [ text e ]) errors)
   ]
 
-accumulateErrorConstraint: CallParameter -> List Constraint -> ValidationState MethodCallParamError ->ValidationState MethodCallParamError
-accumulateErrorConstraint call constraints base =
+accumulateErrorConstraint: CallParameter -> List Constraint -> ValidationState MethodCallParamError
+accumulateErrorConstraint call constraints =
   List.foldl (\c acc -> case (acc,  checkConstraint call c) of
                           (InvalidState (ConstraintError errAcc),InvalidState (ConstraintError err) ) -> InvalidState (ConstraintError (List.concat [ err, errAcc ] ))
                           (InvalidState err, _) -> InvalidState err
                           (_, InvalidState err) -> InvalidState err
                           _ -> ValidState
-             ) base constraints
+             ) Untouched constraints
 
 checkConstraint: CallParameter -> Constraint -> ValidationState MethodCallParamError
 checkConstraint call constraint =
@@ -96,7 +101,7 @@ showMethodTab: Method -> MethodCall -> MethodCallUiInfo -> Html Msg
 showMethodTab method call uiInfo=
   case uiInfo.tab of
     CallParameters ->
-      div [ class "tab-parameters"] (List.map2 (showParam call (Maybe.withDefault Untouched (Dict.get call.id.value uiInfo.validation)))  method.parameters call.parameters)
+      div [ class "tab-parameters"] (List.map2 (\m c -> showParam call (Maybe.withDefault Untouched (Dict.get c.id.value uiInfo.validation)) m c )  method.parameters call.parameters)
     Conditions -> text ""
     {-
                         <div class="tab-conditions" ng-if="ui.methodTabs[method_call['$$hashKey']]=='conditions'">
@@ -212,7 +217,7 @@ methodDetail method call ui model =
       ]
     , div [ class "tabs" ] [ (showMethodTab method call ui) ]
     , div [ class "method-details-footer"] [
-          button [ class "btn btn-outline-secondary btn-sm" , disabled True, type_ "button"] [ -- ng-disabled="!canResetMethod(method_call)" ng-click="resetMethod(method_call)"
+          button [ class "btn btn-outline-secondary btn-sm" , type_ "button", onClick (ResetMethodCall call)] [ -- ng-disabled="!canResetMethod(method_call)" ng-click="resetMethod(method_call)"
             text "Reset "
           , i [ class "fa fa-undo-all"] []
           ]

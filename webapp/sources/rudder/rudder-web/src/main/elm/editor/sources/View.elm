@@ -43,7 +43,9 @@ isValidState state =
 
 
 
-isValid ui = (isValidState ui.idState )  && ( isValidState ui.nameState )
+isValid: TechniqueUIInfo -> Bool
+isValid ui =
+  (isValidState ui.idState )  && ( isValidState ui.nameState ) && (List.all (isValidState) (List.concatMap (.validation >> Dict.values ) (Dict.values ui.callsUI)))
 
 
 showTechnique : Model -> Technique ->  TechniqueState -> TechniqueUIInfo -> Html Msg

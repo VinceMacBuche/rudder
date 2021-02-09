@@ -43,7 +43,7 @@ parseResponse (json, optJson) =
 mainInit : { contextPath : String  } -> ( Model, Cmd Msg )
 mainInit initValues =
   let
-    model =  Model [] Dict.empty Introduction initValues.contextPath "" (MethodListUI (MethodFilter "" False Nothing) []) False dndSystem.model
+    model =  Model [] Dict.empty Introduction initValues.contextPath "" (MethodListUI (MethodFilter "" False Nothing FilterClosed) []) False dndSystem.model
   in
     (model, Cmd.batch ( getMethods model  :: []) )
 
@@ -235,6 +235,48 @@ update msg model =
             m -> model
       in
         (newModel, updatedStoreTechnique newModel )
+    ResetMethodCall call  ->
+      let
+        newModel =
+          case model.mode of
+            TechniqueDetails base s ui ->
+              let
+                technique =
+                  case s of
+                    Edit t -> t
+                    Clone t -> t
+                    Creation -> base
+                (updatedTechnique, needCheck) = case List.Extra.find (.id >> (==) call.id) technique.calls of
+                         Just resetCall -> ({ base | calls = List.Extra.updateIf (.id >> (==) call.id) (always resetCall) base.calls }, Just resetCall)
+                         Nothing -> (base,Nothing)
+                callUi =
+                  case needCheck of
+                    Just realCall ->
+                      let
+                        constraints = case Dict.get call.methodName.value model.methods of
+                           Just m -> Dict.fromList (List.map (\p -> (p.name.value, p.constraints))  m.parameters)
+                           Nothing -> Dict.empty
+
+                        updateCallUi = \optCui ->
+                          let
+                            b = case optCui of
+                              Nothing -> MethodCallUiInfo Closed CallParameters Dict.empty
+                              Just cui -> cui
+
+
+                            newValidation = List.foldl ( \param val ->
+                               Dict.update param.id.value (always (Just (accumulateErrorConstraint  param (Maybe.withDefault [] (Dict.get param.id.value constraints))  )))  val ) b.validation realCall.parameters
+                          in
+                            Just { b | validation = newValidation }
+                      in
+                        Dict.update call.id.value updateCallUi  ui.callsUI
+                    Nothing -> ui.callsUI
+
+              in
+                { model | mode = TechniqueDetails updatedTechnique s { ui | callsUI = callUi } }
+            m -> model
+      in
+        (newModel, updatedStoreTechnique newModel )
 
 
     GetTechniques (Ok  techniques) ->
@@ -348,11 +390,11 @@ update msg model =
                     base = case optCui of
                             Nothing -> MethodCallUiInfo Closed CallParameters Dict.empty
                             Just cui -> cui
+                    newValidation =  Dict.update paramId.value (always (Just (accumulateErrorConstraint  (CallParameter paramId newValue) constraints )))  base.validation
                   in
-                    Just { base | validation = Dict.update paramId.value (\v -> Just (accumulateErrorConstraint  (CallParameter paramId newValue) constraints (Maybe.withDefault Untouched v)  ))  base.validation }
+                    Just { base | validation = newValidation }
                 callUi  =
-                  Dict.update call.id.value updateCallUi  ui.callsUI --(List.map (\param -> Dict.get param.id constraints ) ) ui.callsUI.validation --Dict.update
-                --errors = List.map2 (\m c -> List.map (checkConstraint c) m.constraints) method.parameters updatedCall.parameters
+                  Dict.update call.id.value updateCallUi  ui.callsUI
                 technique = { t | calls = calls }
               in
                 { model | mode = TechniqueDetails technique o {ui | callsUI = callUi } }
@@ -450,3 +492,12 @@ update msg model =
               ({ model | mode = TechniqueDetails technique state ui } )
                 |> update OpenMethods
                 |>  Tuple.mapSecond (\c -> Cmd.batch [c, notification ])
+    ToggleFilter ->
+      let
+        ui = model.methodsUI
+        filter = ui.filter
+        newState = case filter.state of
+                        FilterOpened ->  FilterClosed
+                        FilterClosed -> FilterOpened
+      in
+        ({ model | methodsUI = { ui | filter = {filter | state = newState } } } ,Cmd.none)
