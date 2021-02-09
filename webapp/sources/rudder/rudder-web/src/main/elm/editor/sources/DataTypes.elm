@@ -118,6 +118,8 @@ dndSystem =
 
 type TechniqueState = Creation | Edit Technique | Clone Technique
 
+type ModalState = DeletionValidation Technique
+
 type alias Model =
   { techniques : List Technique
   , methods    : Dict String Method
@@ -127,6 +129,7 @@ type alias Model =
   , methodsUI : MethodListUI
   , genericMethodsOpen : Bool
   , dnd : DnDList.Groups.Model
+  , modal : Maybe ModalState
   }
 
 type ResourceState = New | Unchanged | Deleted | Modified
@@ -181,6 +184,7 @@ type Msg =
     SelectTechnique Technique
   | GetTechniques  (Result Error (List Technique))
   | SaveTechnique  (Result Error Technique)
+  | DeleteTechnique  (Result Error (TechniqueId, String))
   | GetMethods  (Result Error (Dict String Method))
   | OpenMethod CallId
   | CloseMethod CallId
@@ -214,3 +218,5 @@ type Msg =
   | ResetTechnique
   | ResetMethodCall MethodCall
   | ToggleFilter
+  | OpenDeletionPopup Technique
+  | ClosePopup

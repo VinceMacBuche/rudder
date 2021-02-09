@@ -43,7 +43,7 @@ parseResponse (json, optJson) =
 mainInit : { contextPath : String  } -> ( Model, Cmd Msg )
 mainInit initValues =
   let
-    model =  Model [] Dict.empty Introduction initValues.contextPath "" (MethodListUI (MethodFilter "" False Nothing FilterClosed) []) False dndSystem.model
+    model =  Model [] Dict.empty Introduction initValues.contextPath "" (MethodListUI (MethodFilter "" False Nothing FilterClosed) []) False dndSystem.model Nothing
   in
     (model, Cmd.batch ( getMethods model  :: []) )
 
@@ -501,3 +501,20 @@ update msg model =
                         FilterClosed -> FilterOpened
       in
         ({ model | methodsUI = { ui | filter = {filter | state = newState } } } ,Cmd.none)
+    DeleteTechnique (Ok (techniqueId, _)) ->
+      let
+        techniques = List.filter (.id >> (/=) techniqueId) model.techniques
+        newMode = case model.mode of
+                     TechniqueDetails t _ _ -> if t.id == techniqueId then Introduction else model.mode
+                     _ -> model.mode
+
+      in
+        ({ model | mode = newMode, techniques = techniques}  , infoNotification ("Successfully deleted technique '" ++ techniqueId.value ++  "'"))
+    DeleteTechnique (Err e) ->
+      ( model , errorNotification "Error when deleting technique")
+
+    OpenDeletionPopup technique ->
+
+      ( { model | modal = Just (DeletionValidation technique)}  , Cmd.none )
+    ClosePopup  ->
+      ( { model | modal = Nothing}  , Cmd.none )

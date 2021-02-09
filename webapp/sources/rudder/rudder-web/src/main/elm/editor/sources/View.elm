@@ -73,7 +73,7 @@ showTechnique model technique origin ui =
                       ]
                     ]
                   , li [] [
-                      a [ class "action-danger", disabled creation ] [ --ng-disabled="isNotSaved()"  ng-click="confirmPopup('Delete','Technique', deleteTechnique, selectedTechnique, selectedTechnique.name)"
+                      a [ class "action-danger", disabled creation, onClick (OpenDeletionPopup technique)] [ --ng-disabled="isNotSaved()"  ng-click="confirmPopup('Delete','Technique', deleteTechnique, selectedTechnique, selectedTechnique.name)"
                         text "Delete "
                       , i [ class "fa fa-times-circle"] []
                       ]
@@ -214,6 +214,31 @@ view model =
                text ""
          _ -> text ""
        )
+    , case model.modal of
+        Nothing -> text ""
+        Just (DeletionValidation technique) ->
+          div [ tabindex -1, class "modal fade ng-isolate-scope in", style "z-index" "1050", style "display"  "block" ]  [ -- modal-render="true" tabindex="-1" role="dialog" uib-modal-animation-class="fade" modal-in-class="in" ng-style="{'z-index': 1050 + index*10, display: 'block'}" uib-modal-window="modal-window" index="0" animate="animate" modal-animation="true" style="z-index: 1050; display: block;">
+            div [ class "modal-dialog" ] [
+              div [ class "modal-content" ]  [-- uib-modal-transclude="">
+                div [ class "modal-header ng-scope" ] [
+                  h3 [ class "modal-title" ] [ text "Delete Technique"]
+                ]
+              , div [ class "modal-body" ] [
+                  text "Are you sure you want to Delete Technique 'ressource test'?"
+                ]
+              , div [ class "modal-footer" ] [
+                  button [ class "btn btn-primary btn-outline pull-left", onClick ClosePopup ] [ --ng-click="cancel()"></button>
+                    text "Cancel "
+                  , i [ class "fa fa-arrow-left" ] []
+                  ]
+                , button [ class "btn btn-danger", onClick (CallApi (deleteTechnique technique)) ] [--ng-click="confirm()"></button>
+                    text "Delete "
+                  , i [ class "fa fa-times-circle" ] []
+                  ]
+                ]
+              ]
+            ]
+          ]
     ]
 
 

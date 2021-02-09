@@ -109,3 +109,9 @@ decodeMethod =
     |> optional "documentation" (maybe string) Nothing
     |> optional "deprecated" (maybe string) Nothing
     |> optional "rename" (maybe string) Nothing
+
+decodeDeleteTechniqueResponse : Decoder (TechniqueId,String)
+decodeDeleteTechniqueResponse =
+  succeed Tuple.pair
+    |> required "id" (map TechniqueId string)
+    |> required "version" string

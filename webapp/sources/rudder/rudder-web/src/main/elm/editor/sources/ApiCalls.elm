@@ -59,3 +59,20 @@ saveTechnique  technique creation model =
         }
   in
     req
+
+
+deleteTechnique : Technique  -> Model ->  Cmd Msg
+deleteTechnique  technique model =
+  let
+    req =
+      request
+        { method  = "DELETE"
+        , headers = []
+        , url     = getUrl model "internal/techniques/" ++ technique.id.value ++ "/" ++ technique.version
+        , body    = emptyBody
+        , expect  = expectJson DeleteTechnique ( Json.Decode.at ["data", "techniques" ] ( decodeDeleteTechniqueResponse ))
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+  in
+    req
