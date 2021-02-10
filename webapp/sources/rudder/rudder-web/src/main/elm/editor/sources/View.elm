@@ -227,11 +227,11 @@ view model =
                   text "Are you sure you want to Delete Technique 'ressource test'?"
                 ]
               , div [ class "modal-footer" ] [
-                  button [ class "btn btn-primary btn-outline pull-left", onClick ClosePopup ] [ --ng-click="cancel()"></button>
+                  button [ class "btn btn-primary btn-outline pull-left", onClick (ClosePopup Ignore) ] [ --ng-click="cancel()"></button>
                     text "Cancel "
                   , i [ class "fa fa-arrow-left" ] []
                   ]
-                , button [ class "btn btn-danger", onClick (CallApi (deleteTechnique technique)) ] [--ng-click="confirm()"></button>
+                , button [ class "btn btn-danger", onClick (ClosePopup (CallApi (deleteTechnique technique))) ] [--ng-click="confirm()"></button>
                     text "Delete "
                   , i [ class "fa fa-times-circle" ] []
                   ]

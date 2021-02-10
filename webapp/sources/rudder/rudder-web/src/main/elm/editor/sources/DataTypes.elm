@@ -81,6 +81,10 @@ type alias TechniqueParameter =
   , description : String
   }
 
+type alias TechniqueCategory =
+  { path : String
+  , name : String
+  }
 
 config : DnDList.Groups.Config (Either Method MethodCall)
 config =
@@ -123,6 +127,7 @@ type ModalState = DeletionValidation Technique
 type alias Model =
   { techniques : List Technique
   , methods    : Dict String Method
+  , categories : List TechniqueCategory
   , mode       : Mode
   , contextPath : String
   , techniqueFilter : String
@@ -183,6 +188,7 @@ type Mode = Introduction | TechniqueDetails Technique TechniqueState TechniqueUI
 type Msg =
     SelectTechnique Technique
   | GetTechniques  (Result Error (List Technique))
+  | GetCategories  (Result Error (List TechniqueCategory))
   | SaveTechnique  (Result Error Technique)
   | DeleteTechnique  (Result Error (TechniqueId, String))
   | GetMethods  (Result Error (Dict String Method))
@@ -219,4 +225,4 @@ type Msg =
   | ResetMethodCall MethodCall
   | ToggleFilter
   | OpenDeletionPopup Technique
-  | ClosePopup
+  | ClosePopup Msg

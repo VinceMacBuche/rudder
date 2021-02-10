@@ -115,3 +115,9 @@ decodeDeleteTechniqueResponse =
   succeed Tuple.pair
     |> required "id" (map TechniqueId string)
     |> required "version" string
+
+decodeCategory : Decoder TechniqueCategory
+decodeCategory =
+  succeed TechniqueCategory
+    |> required "path" string
+    |> required "name" string

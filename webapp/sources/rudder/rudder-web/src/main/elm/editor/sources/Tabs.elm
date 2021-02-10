@@ -133,9 +133,9 @@ techniqueTab model technique creation ui =
                        , div [ class "row form-group" ] [ -- show-errors>
                            label [ for "category",  class "col-xs-12 control-label"] [ text "Category" ]
                          , div [ class "col-sm-8" ] [
-                             select [ readonly (not creation),  class "form-control", name "category", id "category", value technique.category] [
-                               --        <option ng-repeat="category in techniqueCategories | orderBy:'+value'" ng-selected="category.key === selectedTechnique.category" value="{{category.key}}">{{category.value}}</option>
-                             ]
+                             select [ readonly (not creation),  class "form-control", name "category", id "category", value technique.category]
+                               (List.map (\c -> option [ selected (c.path == technique.category), value c.path] [ text c.name ] ) model.categories)
+
                            -- Used to be a else on creation with a readonly input a tried a readonly select <input  ng-if="originalTechnique.bundle_name !== undefined" readonly id="category" bundlename name="category" class="form-control" ng-model="getCategory(selectedTechnique.category).value">
                            ]
                          ]

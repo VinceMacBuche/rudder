@@ -28,6 +28,22 @@ getTechniques  model =
   in
     req
 
+getTechniquesCategories : Model -> Cmd Msg
+getTechniquesCategories  model =
+  let
+    req =
+      request
+        { method  = "GET"
+        , headers = []
+        , url     = getUrl model "internal/techniques/categories"
+        , body    = emptyBody
+        , expect  = expectJson GetCategories ( Json.Decode.at ["data", "techniqueCategories" ] ( Json.Decode.list decodeCategory))
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+  in
+    req
+
 getMethods : Model -> Cmd Msg
 getMethods  model =
   let

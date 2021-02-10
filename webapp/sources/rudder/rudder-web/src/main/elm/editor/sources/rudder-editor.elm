@@ -43,9 +43,9 @@ parseResponse (json, optJson) =
 mainInit : { contextPath : String  } -> ( Model, Cmd Msg )
 mainInit initValues =
   let
-    model =  Model [] Dict.empty Introduction initValues.contextPath "" (MethodListUI (MethodFilter "" False Nothing FilterClosed) []) False dndSystem.model Nothing
+    model =  Model [] Dict.empty [] Introduction initValues.contextPath "" (MethodListUI (MethodFilter "" False Nothing FilterClosed) []) False dndSystem.model Nothing
   in
-    (model, Cmd.batch ( getMethods model  :: []) )
+    (model, Cmd.batch ( [ getMethods model, getTechniquesCategories model ]) )
 
 updatedStoreTechnique: Model -> Cmd msg
 updatedStoreTechnique model =
@@ -284,6 +284,11 @@ update msg model =
     GetTechniques (Err e) ->
       Debug.log (Debug.toString e) ( model , Cmd.none )
 
+    GetCategories (Ok  categories) ->
+      ({ model | categories = List.sortBy .name categories},  get () )
+    GetCategories (Err e) ->
+      Debug.log (Debug.toString e) ( model , Cmd.none )
+
     SaveTechnique (Ok  technique) ->
       let
         techniques = if (List.any (.id >> (==) technique.id) model.techniques) then
@@ -509,12 +514,14 @@ update msg model =
                      _ -> model.mode
 
       in
-        ({ model | mode = newMode, techniques = techniques}  , infoNotification ("Successfully deleted technique '" ++ techniqueId.value ++  "'"))
+        ({ model | mode = newMode, techniques = techniques}, infoNotification ("Successfully deleted technique '" ++ techniqueId.value ++  "'"))
     DeleteTechnique (Err e) ->
       ( model , errorNotification "Error when deleting technique")
 
     OpenDeletionPopup technique ->
-
       ( { model | modal = Just (DeletionValidation technique)}  , Cmd.none )
-    ClosePopup  ->
-      ( { model | modal = Nothing}  , Cmd.none )
+    ClosePopup callback ->
+      let
+        (nm,cmd) = update callback { model | modal = Nothing}
+      in
+        (nm , Cmd.batch [  clear "storedTechnique", clear "originTechnique", cmd ] )
