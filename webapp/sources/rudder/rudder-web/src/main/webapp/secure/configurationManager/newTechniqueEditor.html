@@ -4,10 +4,11 @@
     <title>Rudder - Technique Editor</title>
     <link type="text/css" rel="stylesheet" data-lift="with-cached-resource" href="/style/rudder/rudder-technique-editor.css"/>
     <script data-lift="with-cached-resource" src="/javascript/rudder/elm/rudder-editor.js"></script>
+    <script data-lift="with-cached-resource" src="/javascript/rudder/angular/fileManager-editor.js"></script>
 
   </head>
 
-  <div ng-controller="filemanager-editor">
+  <div id="filemanager-editor" ng-controller="filemanager-editor">
   <div ng-if="fileManagerState.open" class="filemanager-container" ng-click="closeWindow($event,false)">
     <angular-filemanager></angular-filemanager>
   </div>
@@ -25,8 +26,18 @@ $(document).ready(function(){
      navigator.clipboard.writeText(value).then(function(){  console.log('Async: Copying to clipboard was successful!');}, function() {})()
   });
 
-
+  angular.bootstrap('#filemanager-editor', ['filemanager-editor']);
+  var scope = angular.element($("#filemanager-editor")).scope();
   var port = app.ports.response
+
+
+  app.ports.openManager.subscribe(function(url) {
+
+  scope.$apply(function(){
+    scope.updateFileManagerConf(url);
+  });
+  });
+
   app.ports.store.subscribe(function(kv) {
     console.log(kv);
     var key = kv[0];
@@ -40,11 +51,13 @@ $(document).ready(function(){
   app.ports.get.subscribe(function() {
     var current = undefined;
     var origin = null;
+    var id = undefined;
     try {
       current = JSON.parse(localStorage.getItem("currentTechnique"))
       origin = JSON.parse(localStorage.getItem("originTechnique"))
+      id = localStorage.getItem("internalId")
     } catch (e) {}
-    port.send([current,origin])
+    port.send([current,origin, ""])
 
   });
 

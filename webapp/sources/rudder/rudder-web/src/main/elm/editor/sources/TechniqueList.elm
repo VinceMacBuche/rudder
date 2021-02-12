@@ -31,7 +31,7 @@ techniqueList model techniques =
           , input [ id "btn-import",  type_ "file", class "hidden"] []--onchange="angular.element(this).scope().onImportFileChange(this)" >
 
           ]
-        , button [ class "btn btn-sm btn-success", onClick NewTechnique ] [
+        , button [ class "btn btn-sm btn-success", onClick  (GenerateId (\s -> NewTechnique (TechniqueId s))) ] [
             text "Create "
           , i [ class "fa fa-plus-circle"] []
           ]

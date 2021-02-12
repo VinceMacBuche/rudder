@@ -1,4 +1,5 @@
 
+var app = angular.module('filemanager-editor', ['FileManagerApp'])
 
 app.controller('filemanager-editor', function ($scope, fileManagerConfig, apiMiddleware, apiHandler) {
 
@@ -12,14 +13,10 @@ app.controller('filemanager-editor', function ($scope, fileManagerConfig, apiMid
       $scope.fileManagerState.open = false;
     }
   }
-function updateFileManagerConf (newUrl) {
+$scope.updateFileManagerConf = function (newUrl) {
   $scope.fileManagerState.updating = true;
-  var urlParam= $scope.originalTechnique.bundle_name !== undefined ? $scope.selectedTechnique.bundle_name+"/" + $scope.selectedTechnique.version +"/" + $scope.selectedTechnique.category : "draft/" + $scope.selectedTechnique.internalId +"/" + $scope.selectedTechnique.version
-  var newUrl =  contextPath + "/secure/api/resourceExplorer/"+ urlParam
-  updateResources()
 
   apiHandler.prototype.deferredHandler = function(data, deferred, code, defaultMsg) {
-    updateResources()
     if (!data || typeof data !== 'object') {
       this.error = 'Error %s - Bridge response error, please check the API docs or this ajax response.'.replace('%s', code);
     }
@@ -48,9 +45,7 @@ function updateFileManagerConf (newUrl) {
       if (! $window.FormData) {
           throw new Error('Unsupported browser version');
       }
-
       var destination = this.getPath(path);
-
       return this.apiHandler.upload(newUrl, destination, files);
   };
 
@@ -104,10 +99,8 @@ function updateFileManagerConf (newUrl) {
 
 
   apiMiddleware.prototype.download = function(item, forceNewWindow) {
-
     var itemPath = this.getFilePath(item);
     var toFilename = item.model.name;
-
     if (item.isFolder()) {
         return;
     }
@@ -120,5 +113,7 @@ function updateFileManagerConf (newUrl) {
         forceNewWindow
     );
   };
+
+  $scope.fileManagerState.open = true;
 }
-}
+})

@@ -188,7 +188,7 @@ techniqueTab model technique creation ui =
             ]
           ]
         , div [ class "text-center btn-manage" ] [
-            div [ class "btn btn-success btn-outline" ] [ --ng-click="fileManagerState.open = true"  >
+            div [ class "btn btn-success btn-outline", onClick OpenFileManager ] [
               text "Manage resources "
             , i [ class "fa fa-folder" ] []
             ]

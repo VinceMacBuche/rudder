@@ -53,15 +53,15 @@ showTechnique model technique origin ui =
   let
     activeTabClass = (\tab -> "ui-tabs-tab " ++ (if ui.tab == tab then "active" else ""))
     creation = case origin of
-                 Creation ->True
-                 Clone _ -> True
+                 Creation _ ->True
+                 Clone _ _ -> True
                  Edit _ -> False
     isUnchanged = case origin of
                     Edit t -> t == technique
-                    Creation -> False
-                    Clone t -> t == technique
+                    Creation _ -> False
+                    Clone t _ -> t == technique
     topButtons =  [ li [] [
-                      a [ class "action-success", disabled creation , onClick (CloneTechnique technique)] [
+                      a [ class "action-success", disabled creation , onClick (GenerateId (\s -> CloneTechnique technique (TechniqueId s))) ] [
                         text "Clone "
                       , i [ class "fa fa-clone"] []
                       ]
@@ -188,7 +188,7 @@ view model =
                         h1 [] [ text "Technique editor" ]
                       , p [] [ text "Create a new technique or edit one from the list on the left."]
                       , p [] [ text "Define target configuration using the generic methods from the list on the right as building blocks."]
-                      , button [ class "btn btn-success btn-lg" , onClick NewTechnique] [
+                      , button [ class "btn btn-success btn-lg" , onClick (GenerateId (\s -> NewTechnique (TechniqueId s) ))] [
                           text "Create Technique "
                         , i [ class "fa fa-plus-circle" ] []
                         ]

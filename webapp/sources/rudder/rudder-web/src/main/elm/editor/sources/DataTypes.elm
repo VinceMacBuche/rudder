@@ -120,7 +120,7 @@ dndSystem : DnDList.Groups.System (Either Method MethodCall) Msg
 dndSystem =
   DnDList.Groups.create config DndEvent
 
-type TechniqueState = Creation | Edit Technique | Clone Technique
+type TechniqueState = Creation TechniqueId | Edit Technique | Clone Technique TechniqueId
 
 type ModalState = DeletionValidation Technique
 
@@ -211,7 +211,7 @@ type Msg =
   | ToggleDoc MethodId
   | OpenMethods
   | OpenTechniques
-  | NewTechnique
+  | NewTechnique TechniqueId
   | Ignore
   | AddMethod Method CallId
   | DndEvent DnDList.Groups.Msg
@@ -219,10 +219,11 @@ type Msg =
   | StartSaving
   | Copy String
   | Store String Value
-  | GetFromStore Technique (Maybe Technique)
-  | CloneTechnique Technique
+  | GetFromStore Technique (Maybe Technique) TechniqueId
+  | CloneTechnique Technique TechniqueId
   | ResetTechnique
   | ResetMethodCall MethodCall
   | ToggleFilter
   | OpenDeletionPopup Technique
   | ClosePopup Msg
+  | OpenFileManager

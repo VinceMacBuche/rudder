@@ -11,7 +11,8 @@ import Random
 import UUID
 import List.Extra
 import Either exposing (Either(..))
-import  Json.Decode exposing (Value)
+import Json.Decode exposing (Value)
+import Json.Encode
 import JsonEncoder exposing ( encodeTechnique)
 import JsonDecoder exposing ( decodeTechnique)
 
@@ -20,15 +21,17 @@ port copy : String -> Cmd msg
 port store : (String , Value) -> Cmd msg
 port clear : String  -> Cmd msg
 port get : () -> Cmd msg
-port response: ((Value, Value) -> msg) -> Sub msg
+port response: ((Value, Value, String) -> msg) -> Sub msg
+
+port openManager: String -> Cmd msg
 
 port successNotification : String -> Cmd msg
 port errorNotification   : String -> Cmd msg
 port warnNotification   : String -> Cmd msg
 port infoNotification    : String -> Cmd msg
 
-parseResponse: (Value, Value) -> Msg
-parseResponse (json, optJson) =
+parseResponse: (Value, Value, String) -> Msg
+parseResponse (json, optJson, internalId) =
   case Json.Decode.decodeValue decodeTechnique json of
     Ok tech ->
       let
@@ -37,7 +40,7 @@ parseResponse (json, optJson) =
             Ok (m) -> m
             _ -> Nothing
       in
-        GetFromStore tech o
+        GetFromStore tech o (TechniqueId internalId)
     Err _ -> Ignore
 
 mainInit : { contextPath : String  } -> ( Model, Cmd Msg )
@@ -54,10 +57,11 @@ updatedStoreTechnique model =
       let
         storeOriginTechnique =
           case o of
-            Edit origin -> store ("originTechnique", encodeTechnique origin)
-            _ -> clear "originTechnique"
+            Edit origin -> [ store ("originTechnique", encodeTechnique origin), clear "internalId" ]
+            Creation id -> [  clear "originTechnique", store ("internalId", Json.Encode.string id.value) ]
+            Clone origin id -> [  store ("originTechnique", encodeTechnique origin), store ("internalId", Json.Encode.string id.value) ]
       in
-        Cmd.batch [ store ("currentTechnique", encodeTechnique t), storeOriginTechnique ]
+        Cmd.batch ( store ("currentTechnique", encodeTechnique t) ::  storeOriginTechnique )
     _ -> Cmd.none
 
 main =
@@ -105,20 +109,20 @@ update msg model =
         _ ->
           selectTechnique model technique
 
-    CloneTechnique technique ->
+    CloneTechnique technique internalId ->
       let
         ui = TechniqueUIInfo General (Dict.fromList (List.map (\c -> (c.id.value, defaultMethodUiInfo)) technique.calls)) [] False Untouched Untouched
       in
-        ({ model | mode = TechniqueDetails technique  (Clone technique) ui } )
+        ({ model | mode = TechniqueDetails technique  (Clone technique internalId) ui } )
           |> update OpenMethods
           |> Tuple.first
           |> update (Store "storedTechnique" (encodeTechnique technique))
 
-    NewTechnique ->
+    NewTechnique id ->
       let
         ui = TechniqueUIInfo General Dict.empty [] False Untouched Untouched
         t = Technique (TechniqueId "") "1.0" "" "" "ncf_techniques" [] []
-        newModel =  { model | mode = TechniqueDetails t Creation ui}
+        newModel =  { model | mode = TechniqueDetails t (Creation id) ui}
       in
         (newModel, updatedStoreTechnique newModel )
 
@@ -228,8 +232,8 @@ update msg model =
                 technique =
                   case s of
                     Edit t -> t
-                    Clone t -> t
-                    Creation -> base
+                    Clone t _ -> t
+                    Creation _ -> base
               in
                 { model | mode = TechniqueDetails technique s ui }
             m -> model
@@ -244,8 +248,8 @@ update msg model =
                 technique =
                   case s of
                     Edit t -> t
-                    Clone t -> t
-                    Creation -> base
+                    Clone t _ -> t
+                    Creation _ -> base
                 (updatedTechnique, needCheck) = case List.Extra.find (.id >> (==) call.id) technique.calls of
                          Just resetCall -> ({ base | calls = List.Extra.updateIf (.id >> (==) call.id) (always resetCall) base.calls }, Just resetCall)
                          Nothing -> (base,Nothing)
@@ -483,14 +487,14 @@ update msg model =
       (model, copy value)
     Store key value ->
       (model, updatedStoreTechnique model )
-    GetFromStore technique originTechnique ->
+    GetFromStore technique originTechnique newId ->
             let
               notification = case (List.Extra.find (.id >> (==) technique.id) model.techniques,originTechnique) of
                 (Nothing, Just _) -> warnNotification "Technique reloaded from cache was deleted, Saving will recreate it"
                 (Just _ , Nothing) -> warnNotification "Technique from cache was created, change name/id before saving"
                 (Just t , Just o) -> if t /= o then warnNotification "Technique reloaded from cache since you modified it, saving will overwrite current changes" else infoNotification "Technique reloaded from cache"
                 (Nothing, Nothing) -> infoNotification "Technique reloaded from cache"
-              state = Maybe.withDefault Creation (Maybe.map Edit originTechnique)
+              state = Maybe.withDefault (Creation newId)  (Maybe.map Edit originTechnique)
 
               ui = TechniqueUIInfo General (Dict.fromList (List.map (\c -> (c.id.value, defaultMethodUiInfo)) technique.calls)) [] False (checkTechniqueName technique model) (checkTechniqueId state technique model)
             in
@@ -525,3 +529,17 @@ update msg model =
         (nm,cmd) = update callback { model | modal = Nothing}
       in
         (nm , Cmd.batch [  clear "storedTechnique", clear "originTechnique", cmd ] )
+    OpenFileManager ->
+      let
+        cmd = case model.mode of
+                TechniqueDetails t s _ ->
+                  let
+                    url = case s of
+                            Edit _ ->  t.id.value ++ "/" ++ t.version ++ "/" ++ t.category
+                            Creation internalId -> "draft/" ++ internalId.value ++ "/" ++ t.version
+                            Clone _ internalId -> "draft/" ++ internalId.value ++ "/" ++ t.version
+                  in
+                    openManager (model.contextPath ++ "/secure/api/resourceExplorer/"  ++ url)
+                _ -> Cmd.none
+      in
+      (model, cmd)
