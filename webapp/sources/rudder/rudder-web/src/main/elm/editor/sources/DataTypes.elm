@@ -60,6 +60,7 @@ type alias Technique =
   , category : String
   , calls : List MethodCall
   , parameters : List TechniqueParameter
+  , resources : List Resource
   }
 
 type alias MethodCall =
@@ -192,6 +193,7 @@ type Msg =
   | SaveTechnique  (Result Error Technique)
   | DeleteTechnique  (Result Error (TechniqueId, String))
   | GetMethods  (Result Error (Dict String Method))
+  | GetTechniqueResources  (Result Error (List Resource))
   | OpenMethod CallId
   | CloseMethod CallId
   | RemoveMethod CallId

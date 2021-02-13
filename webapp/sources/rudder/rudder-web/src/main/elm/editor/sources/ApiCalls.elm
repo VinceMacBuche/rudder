@@ -92,3 +92,23 @@ deleteTechnique  technique model =
         }
   in
     req
+
+getRessources : TechniqueState ->  Model -> Cmd Msg
+getRessources state model =
+  let
+    url = case state of
+            Edit t -> t.id.value ++ "/" ++ t.version ++ "/resources"
+            Creation id -> "draft/" ++ id.value ++ "/" ++ "1.0/resources"
+            Clone t id -> "draft/" ++ id.value ++ "/" ++ t.version ++ "/resources"
+    req =
+      request
+        { method  = "GET"
+        , headers = []
+        , url     = getUrl model "internal/techniques/" ++ url
+        , body    = emptyBody
+        , expect  = expectJson GetTechniqueResources ( Json.Decode.at ["data", "resources" ] ( Json.Decode.list decodeResource ))
+        , timeout = Nothing
+        , tracker = Nothing
+        }
+  in
+    req

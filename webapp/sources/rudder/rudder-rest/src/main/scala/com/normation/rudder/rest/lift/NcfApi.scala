@@ -226,10 +226,6 @@ class NcfApi(
     def process0(version: ApiVersion, path: ApiPath, req: Req, params: DefaultParams, authzToken: AuthzToken): LiftResponse = {
       val response = for {
         techniques <- techniqueReader.readTechniquesMetadataFile
-        resources <- ZIO.foreach(techniques)(
-          t => 
-          resourceFileService.getResources.)
-
       } yield {
          JArray(techniques.map(techniqueSerializer.serializeTechniqueMetadata))
       }

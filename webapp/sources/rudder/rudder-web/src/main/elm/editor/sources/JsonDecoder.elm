@@ -37,6 +37,7 @@ decodeTechnique =
     |> required "category"  string
     |> required "method_calls" (list decodeMethodCall)
     |> required "parameter" (list decodeTechniqueParameter)
+    |> required "resources" (list decodeResource)
 
 
 decodeAgent : Decoder Agent
@@ -121,3 +122,15 @@ decodeCategory =
   succeed TechniqueCategory
     |> required "path" string
     |> required "name" string
+
+decodeResource : Decoder Resource
+decodeResource =
+  succeed Resource
+    |> required "name" string
+    |> required "state" (andThen (\s -> case s of
+                                     "new" -> succeed New
+                                     "untouched" -> succeed Unchanged
+                                     "modified" -> succeed Modified
+                                     "deleted" -> succeed Deleted
+                                     _ -> fail "not a valid state"
+                        ) string)

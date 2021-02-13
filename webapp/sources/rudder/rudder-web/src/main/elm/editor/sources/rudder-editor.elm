@@ -89,9 +89,7 @@ selectTechnique model technique =
   in
     ({ model | mode = TechniqueDetails technique  (Edit technique) ui } )
       |> update OpenMethods
-      |> Tuple.first
-      |> update (Store "storedTechnique" (encodeTechnique technique))
-
+      |> Tuple.mapSecond ( always ( Cmd.batch [ updatedStoreTechnique model, getRessources (Edit technique) model ]  ))
 
 generator : Random.Generator String
 generator = Random.map (UUID.toString) UUID.generator
@@ -121,7 +119,7 @@ update msg model =
     NewTechnique id ->
       let
         ui = TechniqueUIInfo General Dict.empty [] False Untouched Untouched
-        t = Technique (TechniqueId "") "1.0" "" "" "ncf_techniques" [] []
+        t = Technique (TechniqueId "") "1.0" "" "" "ncf_techniques" [] [] []
         newModel =  { model | mode = TechniqueDetails t (Creation id) ui}
       in
         (newModel, updatedStoreTechnique newModel )
@@ -543,3 +541,14 @@ update msg model =
                 _ -> Cmd.none
       in
       (model, cmd)
+
+    GetTechniqueResources (Ok  resources) ->
+      let
+        mode = case model.mode of
+                 TechniqueDetails t s ui ->
+                   TechniqueDetails {t | resources = resources } s ui
+                 _ -> model.mode
+      in
+        ({ model | mode = mode },  Cmd.none )
+    GetTechniqueResources (Err e) ->
+      Debug.log (Debug.toString e) ( model , Cmd.none )

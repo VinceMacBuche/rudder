@@ -4,11 +4,12 @@ import DataTypes exposing (..)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
+import String.Extra
 
 
 
-techniqueResource : Technique -> Resource -> Html Msg
-techniqueResource technique resource =
+techniqueResource : Resource -> Html Msg
+techniqueResource  resource =
   let
     stateClass =
       case resource.state of
@@ -168,7 +169,7 @@ techniqueTab model technique creation ui =
     Resources ->
       let
         resourceList =
-          if True then -- empty resources
+          if List.isEmpty technique.resources then
             [ li [class "empty" ] [
               span [] [ text "There is no resource files."]
             , span [ class "warning-sign" ] [
@@ -176,17 +177,24 @@ techniqueTab model technique creation ui =
               ]
             ] ]
           else
-            List.map (techniqueResource technique) []
+            List.map techniqueResource technique.resources
       in
         div [ class "tab tab-resources" ] [
           ul [ class "files-list" ]
             resourceList
-        , div [ class "resources-uncommitted" ] [ -- ng-if="getResourcesByState(selectedTechnique.resources, 'new').length>0 || getResourcesByState(selectedTechnique.resources, 'deleted').length > 0">
-            span [] [
-              i [ class "fa fa-exclamation-triangle"] []
-            , text "TODO resources to save" --There {{(getResourcesByState(selectedTechnique.resources, 'new').length + getResourcesByState(selectedTechnique.resources, 'deleted').length) > 1 ? "are" : "is" }} <b>{{(getResourcesByState(selectedTechnique.resources, 'new').length + getResourcesByState(selectedTechnique.resources, 'deleted').length)}}</b> unsaved file{{(getResourcesByState(selectedTechnique.resources, 'new').length + getResourcesByState(selectedTechnique.resources, 'deleted').length) > 1 ? "s" : "" }}, save your changes to complete upload.
-            ]
-          ]
+        , if (List.any (\s -> (s.state == New) || (s.state == Deleted)) technique.resources) then
+            let
+              number = List.length (List.filter (\s -> (s.state == New) || (s.state == Deleted)) technique.resources)
+            in
+              div [ class "resources-uncommitted" ] [ -- ng-if="getResourcesByState(selectedTechnique.resources, 'new').length>0 || getResourcesByState(selectedTechnique.resources, 'deleted').length > 0">
+                span [] [
+                  i [ class "fa fa-exclamation-triangle"] []
+                , text ("There " ++ (String.fromInt number) ++" " ++ (String.Extra.pluralize "is"  "are" number) ++  " ")
+                , b [] [ text (String.fromInt number) ]
+                , text (" unsaved " ++ (String.Extra.pluralize "file"  "files" number) ++ ", save your changes to complete upload.")
+                ]
+              ]
+          else text ""
         , div [ class "text-center btn-manage" ] [
             div [ class "btn btn-success btn-outline", onClick OpenFileManager ] [
               text "Manage resources "

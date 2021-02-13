@@ -123,7 +123,7 @@ showTechnique model technique origin ui =
       , li [ class (activeTabClass Resources)  , onClick (SwitchTab Resources)] [
           a [] [
             text "Resources "
-          , span [  class "badge badge-secondary badge-resources tooltip-bs" ] [
+          , span [  class  ( "badge badge-secondary badge-resources tooltip-bs " ++ if List.isEmpty technique.resources then "empty" else "") ] [
                -- ng-class="{'empty' : selectedTechnique.resources.length <= 0}"
                -- data-toggle="tooltip"
                -- data-trigger="hover"
@@ -133,9 +133,9 @@ showTechnique model technique origin ui =
                -- data-html="true"
                -- data-delay='{"show":"400", "hide":"100"}'
                -- >
-              span [] []--ng-if="(selectedTechnique.resources.length <= 0 || getResourcesByState(selectedTechnique.resources, 'new').length != selectedTechnique.resources.length && getResourcesByState(selectedTechnique.resources, 'deleted').length != selectedTechnique.resources.length)" class="nb-resources">{{selectedTechnique.resources.length - (getResourcesByState(selectedTechnique.resources, 'new').length + getResourcesByState(selectedTechnique.resources, 'deleted').length)}}</span>
-            , span [] [] -- ng-if="getResourcesByState(selectedTechnique.resources, 'new').length>0" class="nb-resources new"> {{getResourcesByState(selectedTechnique.resources, 'new').length}}+ </span>
-            , span [] [] --ng-if="getResourcesByState(selectedTechnique.resources, 'deleted').length>0" class="nb-resources del"> {{getResourcesByState(selectedTechnique.resources, 'deleted').length}}- </span>
+              if ((List.isEmpty technique.resources)|| (List.any (\s -> (s.state == Unchanged) || (s.state == Modified)) technique.resources) ) then span [ class "nb-resources" ] [text (String.fromInt (List.length (List.filter  (\s -> s.state == Unchanged || s.state == Modified) technique.resources ) ))] else text ""
+            , if not (List.isEmpty (List.filter (.state >> (==) New) technique.resources)) then  span [class "nb-resources new"] [ text ((String.fromInt (List.length (List.filter (.state >> (==) New) technique.resources))) ++ "+")] else text ""
+            , if not (List.isEmpty (List.filter (.state >> (==) Deleted) technique.resources)) then  span [class "nb-resources del"] [ text ((String.fromInt (List.length  (List.filter (.state >> (==) Deleted) technique.resources)) ++ "-"))] else text ""
             ]
           ]
         ]
