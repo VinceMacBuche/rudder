@@ -229,3 +229,4 @@ type Msg =
   | OpenDeletionPopup Technique
   | ClosePopup Msg
   | OpenFileManager
+  | Export

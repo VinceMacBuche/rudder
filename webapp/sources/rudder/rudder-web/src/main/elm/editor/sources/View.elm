@@ -10,7 +10,9 @@ import MethodCall exposing (..)
 import Dict exposing (Dict)
 import MethodsList exposing (..)
 import ApiCalls exposing (..)
-
+import File.Download
+import JsonEncoder
+import Json.Print
 
 
 checkTechniqueId origin technique model =
@@ -67,7 +69,7 @@ showTechnique model technique origin ui =
                       ]
                     ]
                   , li [] [
-                      a [ class "action-primary" ] [ --ng-disabled="isNotSaved()"  ng-click=""exportTechnique(selectedTechnique)
+                      a [ class "action-primary" , onClick Export] [ --ng-disabled="isNotSaved()"  ng-click=""exportTechnique(selectedTechnique)
                         text "Export "
                       , i [ class "fa fa-download"] []
                       ]

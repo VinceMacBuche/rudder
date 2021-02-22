@@ -15,6 +15,8 @@ import Json.Decode exposing (Value)
 import Json.Encode
 import JsonEncoder exposing ( encodeTechnique)
 import JsonDecoder exposing ( decodeTechnique)
+import File.Download
+import Json.Print
 
 port copy : String -> Cmd msg
 
@@ -24,12 +26,18 @@ port get : () -> Cmd msg
 port response: ((Value, Value, String) -> msg) -> Sub msg
 
 port openManager: String -> Cmd msg
+port updateResources : (() -> msg) -> Sub msg
 
 port successNotification : String -> Cmd msg
 port errorNotification   : String -> Cmd msg
 port warnNotification   : String -> Cmd msg
 port infoNotification    : String -> Cmd msg
 
+updateResourcesResponse : Model -> Msg
+updateResourcesResponse model =
+  case model.mode of
+    TechniqueDetails _ s _ -> CallApi ( getRessources s )
+    _ -> Ignore
 parseResponse: (Value, Value, String) -> Msg
 parseResponse (json, optJson, internalId) =
   case Json.Decode.decodeValue decodeTechnique json of
@@ -78,6 +86,7 @@ subscriptions model =
     Sub.batch
         [ dndSystem.subscriptions model.dnd
         , response parseResponse
+        , updateResources (always (updateResourcesResponse model))
         ]
 
 defaultMethodUiInfo = MethodCallUiInfo Closed CallParameters Dict.empty
@@ -552,3 +561,15 @@ update msg model =
         ({ model | mode = mode },  Cmd.none )
     GetTechniqueResources (Err e) ->
       Debug.log (Debug.toString e) ( model , Cmd.none )
+    Export ->
+      let
+        action = case model.mode of
+                   TechniqueDetails t _ _ ->
+                     File.Download.string (t.id.value) "text/json" (
+                                                                                  case Json.Print.prettyValue (Json.Print.Config 2 100 ) (encodeTechnique t) of
+                                                                                    Ok s-> s
+                                                                                    Err s -> s
+                                                                                  )
+                   _ -> Cmd.none
+      in
+        (model, action)

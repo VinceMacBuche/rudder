@@ -1,17 +1,22 @@
 
 var app = angular.module('filemanager-editor', ['FileManagerApp'])
 
-app.controller('filemanager-editor', function ($scope, fileManagerConfig, apiMiddleware, apiHandler) {
+app.controller('filemanager-editor', function ($scope, $window, fileManagerConfig, apiMiddleware, apiHandler) {
 
   $scope.fileManagerState = {
     open : false,
     updating : false,
   };
 
+  $scope.updateResources = null
   $scope.closeWindow = function(event, enforce){
     if((enforce)||(event.currentTarget == event.target)){
       $scope.fileManagerState.open = false;
     }
+    $scope.updateResources.send(null)
+  }
+  $scope.init = function(updateResourcesFun) {
+    $scope.updateResources = updateResourcesFun
   }
 $scope.updateFileManagerConf = function (newUrl) {
   $scope.fileManagerState.updating = true;
@@ -117,3 +122,37 @@ $scope.updateFileManagerConf = function (newUrl) {
   $scope.fileManagerState.open = true;
 }
 })
+
+
+app.config(['fileManagerConfigProvider', function (config) {
+  var baseUrl = contextPath ? contextPath : "/rudder";
+  var apiPath = baseUrl + '/secure/api/techniques/';
+  var defaults = config.$get();
+
+  	config.set({
+    appName : 'resources',
+    listUrl             : apiPath,
+    uploadUrl           : apiPath,
+    renameUrl           : apiPath,
+    copyUrl             : apiPath,
+    moveUrl             : apiPath,
+    removeUrl           : apiPath,
+    editUrl             : apiPath,
+    getContentUrl       : apiPath,
+    createFolderUrl     : apiPath,
+    downloadFileUrl     : apiPath,
+    downloadMultipleUrl : apiPath,
+    compressUrl         : apiPath,
+    extractUrl          : apiPath,
+    permissionsUrl      : apiPath,
+    isEditableFilePattern : /.*/,
+    tplPath             : baseUrl + '/templates/angular/technique-editor-filemanager',
+    allowedActions: angular.extend(defaults.allowedActions, {
+      compress: false,
+      compressChooseName: false,
+      preview : true,
+      edit: true,
+      extract: false
+    })
+  });
+}]);

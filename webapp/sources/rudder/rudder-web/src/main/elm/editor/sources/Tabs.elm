@@ -18,7 +18,7 @@ techniqueResource  resource =
         Modified -> "modified"
         Unchanged -> "unchanged"
   in
-    li [ class stateClass ] [
+    li [ class ("state-"++stateClass) ] [
       span [ class "fa fa-file" ] []
     , span [ class "target-name" ] [ text resource.name ]
     , span [ class "border" ] []
