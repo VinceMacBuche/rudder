@@ -296,16 +296,16 @@ callBody model ui call dragAttributes isGhost =
         ]
       ]
     , div [ class "flex-column" ] [
-        if (call.condition == "any") then
+        if (call.condition == Nothing) then
           text ""
         else
           div [ class "method-condition flex-form" ] [
             label [] [ text "Condition:" ]
-          , textarea [ class "form-control popover-bs", rows 1, readonly True, value call.condition, title call.condition
+          , textarea [ class "form-control popover-bs", rows 1, readonly True, value (conditionStr call.condition), title (conditionStr call.condition)
                             --msd-elastic
                             --ng-click="$event.stopPropagation();"
                      , attribute "data-toggle" "popover", attribute "data-trigger" "hover", attribute "data-placement" "top"
-                     , attribute "data-title" call.condition, attribute "data-content" "<small>Click <span class='text-info'>3</span> times to copy the whole condition below</small>"
+                     , attribute "data-title" (conditionStr call.condition), attribute "data-content" "<small>Click <span class='text-info'>3</span> times to copy the whole condition below</small>"
                      , attribute "data-template" """<div class="popover condition" role="tooltip"><div class="arrow"></div><h3 class="popover-header"></h3><div class="popover-body"></div></div>"""
                      , attribute "data-html" "true" ] []
           ]

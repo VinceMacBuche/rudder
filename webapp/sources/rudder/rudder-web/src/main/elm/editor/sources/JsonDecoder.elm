@@ -18,13 +18,33 @@ decodeCallParameter =
     |> required "name" (map ParameterId string)
     |> required "value" string
 
+
+
+getOs: String -> Maybe OS
+getOs os =
+  Nothing
+
+parseCondition : String -> Maybe Condition
+parseCondition class_context =
+  if String.isEmpty class_context then
+    Nothing
+  else
+     case String.split "." class_context of
+       [] -> Nothing
+       [_] -> Just (Condition Nothing class_context)
+       head :: rest ->
+         case getOs head of
+           Nothing ->  Just (Condition Nothing class_context)
+           os -> Just (Condition os (String.join "." rest))
+
+
 decodeMethodCall : Decoder MethodCall
 decodeMethodCall =
   succeed MethodCall
     |> required "id" (map CallId string)
     |> required "method_name" (map MethodId string)
     |> required "parameters"  (list decodeCallParameter )
-    |> required "class_context"  string
+    |> required "class_context"  (map parseCondition string)
     |> required "component"  string
 
 decodeTechnique : Decoder Technique

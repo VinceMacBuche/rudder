@@ -1,5 +1,6 @@
 module DataTypes exposing (..)
 
+import File exposing (File)
 import Http exposing (Error)
 import Dict exposing (Dict)
 import DnDList.Groups
@@ -67,7 +68,7 @@ type alias MethodCall =
   { id : CallId
   , methodName : MethodId
   , parameters : List CallParameter
-  , condition : String
+  , condition : Maybe Condition
   , component : String
   }
 
@@ -110,7 +111,7 @@ config =
                      Debug.log "setter" (
                        case (drag,drop) of
                          (  Right _, Left method ) ->
-                           Right (MethodCall (CallId "") method.id (List.map (\p -> CallParameter p.name "") method.parameters) "any" "")
+                           Right (MethodCall (CallId "") method.id (List.map (\p -> CallParameter p.name "") method.parameters) Nothing "")
                          _-> drop
                      )
                   )
@@ -186,6 +187,30 @@ type Tab =  General |  Parameters | Resources | None
 
 type Mode = Introduction | TechniqueDetails Technique TechniqueState TechniqueUIInfo
 
+type OS = AIX | Linux (Maybe LinuxOS) | BSD | Solaris | Windows
+
+conditionOs : OS -> String
+conditionOs os =
+  "lol"
+
+conditionStr : Maybe Condition -> String
+conditionStr condition =
+  Maybe.withDefault "" <| Maybe.map (\c -> (Maybe.withDefault "" (Maybe.map (\os ->  (conditionOs os) ++ "." ) c.os)) ++ c.advanced) condition
+
+type alias Condition =
+  { os : Maybe OS
+  , advanced : String
+  }
+
+type LinuxOS = Debian { major : Maybe  Int, minor : Maybe Int }
+             | RHEL { major : Maybe  Int, minor : Maybe Int }
+             | RH { major : Maybe  Int, minor : Maybe Int }
+             | Centos { major : Maybe  Int, minor : Maybe Int }
+             | Fedora { major : Maybe  Int}| Ubuntu { major : Maybe  Int, minor : Maybe Int }
+             | Slackware
+             | Suse { major : Maybe  Int, minor : Maybe Int }
+             | Oracle { major : Maybe  Int, minor : Maybe Int }
+
 type Msg =
     SelectTechnique Technique
   | GetTechniques  (Result Error (List Technique))
@@ -230,3 +255,7 @@ type Msg =
   | ClosePopup Msg
   | OpenFileManager
   | Export
+  | StartImport
+  | ImportFile File
+  | ParseImportedFile File String
+  | ScrollCategory String

@@ -2,6 +2,9 @@ port module Editor exposing (..)
 
 import DataTypes exposing (..)
 import ApiCalls exposing (..)
+import File
+import File.Select
+import Task
 import View exposing (view, checkTechniqueName, checkTechniqueId)
 import MethodCall exposing (checkConstraint, accumulateErrorConstraint)
 import Browser
@@ -13,10 +16,10 @@ import List.Extra
 import Either exposing (Either(..))
 import Json.Decode exposing (Value)
 import Json.Encode
-import JsonEncoder exposing ( encodeTechnique)
+import JsonEncoder exposing ( encodeTechnique, encodeExportTechnique)
 import JsonDecoder exposing ( decodeTechnique)
 import File.Download
-import Json.Print
+import Browser.Dom
 
 port copy : String -> Cmd msg
 
@@ -357,7 +360,7 @@ update msg model =
 
     AddMethod method newId ->
       let
-        newCall = MethodCall newId method.id (List.map (\p -> CallParameter p.name "") method.parameters) "" ""
+        newCall = MethodCall newId method.id (List.map (\p -> CallParameter p.name "") method.parameters) Nothing ""
         newModel =
           case model.mode of
             TechniqueDetails t o ui ->
@@ -565,11 +568,30 @@ update msg model =
       let
         action = case model.mode of
                    TechniqueDetails t _ _ ->
-                     File.Download.string (t.id.value) "text/json" (
-                                                                                  case Json.Print.prettyValue (Json.Print.Config 2 100 ) (encodeTechnique t) of
-                                                                                    Ok s-> s
-                                                                                    Err s -> s
-                                                                                  )
+                     let
+                       data =  encodeExportTechnique t
+                       content = Json.Encode.encode 2 data
+                     in
+                       File.Download.string (t.id.value ++ ".json") "application/json" content
                    _ -> Cmd.none
       in
         (model, action)
+    StartImport ->
+        (model, File.Select.file [ "text/plain", "application/json" ]  ImportFile )
+    ImportFile file ->
+      (model, Task.perform (ParseImportedFile file) (File.toString file) )
+    ParseImportedFile file content ->
+      case Json.Decode.decodeString (Json.Decode.at ["data"] decodeTechnique ) (Debug.log "content" content) of
+        Ok t ->
+          let
+            mode = TechniqueDetails t (Creation t.id) (TechniqueUIInfo General (Dict.fromList (List.map (\c -> (c.id.value, defaultMethodUiInfo)) t.calls)) [] False (checkTechniqueName t model) (checkTechniqueId (Creation t.id) t model))
+            (newModel, cmd) = (update (CallApi ( getRessources (Creation t.id) ))  {model | mode = mode })
+          in
+            ( newModel, Cmd.batch [ cmd, infoNotification ("Technique '"++ t.id.value ++ "' successfully imported, please save to create technique") ] )
+        Err s ->
+         (model, errorNotification ("Error when importing technique from file " ++ (File.name file) ++ ", details: "++ (Debug.toString s)))
+    ScrollCategory category ->
+      let
+        task = (Browser.Dom.getElement "methods-list-container") |> ((Browser.Dom.getViewportOf "methods-list-container") |> ((Browser.Dom.getElement category) |> Task.map3 (\elem viewport container -> viewport.viewport.y + elem.element.y - container.element.y ))  )  |> Task.andThen (Browser.Dom.setViewportOf "methods-list-container" 0)
+      in
+        (model, Task.attempt (always Ignore) task )

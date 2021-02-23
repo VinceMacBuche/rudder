@@ -169,7 +169,7 @@ methodsList model =
 showCategory: String -> Bool -> Html Msg
 showCategory  category allDeprecated =
   li [ class ("active" ++ (if allDeprecated then " deprecatedCategory" else "") ) ] [
-    a [ href "" ]  --ng-click="scroll(kind)">
+    a [  onClick (ScrollCategory category) ]
       ( text category ::
         if (allDeprecated) then
           [ span [ class "cursor-help popover-bs", attribute "data-toggle" "popover"

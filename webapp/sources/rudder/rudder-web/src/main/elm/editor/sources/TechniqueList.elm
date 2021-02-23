@@ -25,11 +25,9 @@ techniqueList model techniques =
       div [ class "header-title" ] [
         h1 [] [ text "Techniques"]
       , div [ class "header-buttons"] [ -- Need to add technique-write rights
-          label [class "btn btn-sm btn-primary", for "btn-import"] [
+          label [class "btn btn-sm btn-primary", onClick StartImport] [
             text "Import "
           , i [ class "fa fa-upload" ] []
-          , input [ id "btn-import",  type_ "file", class "hidden"] []--onchange="angular.element(this).scope().onImportFileChange(this)" >
-
           ]
         , button [ class "btn btn-sm btn-success", onClick  (GenerateId (\s -> NewTechnique (TechniqueId s))) ] [
             text "Create "

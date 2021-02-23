@@ -14,6 +14,20 @@ encodeTechnique technique =
   , ("category", string technique.category)
   , ("parameter" , list encodeTechniqueParameters technique.parameters)
   , ("method_calls", list encodeMethodCall technique.calls)
+  , ("resources", list encodeResource technique.resources )
+  ]
+
+encodeResource: Resource -> Value
+encodeResource resource =
+  object [
+    ("name", string resource.name)
+  , ("state", string ( case resource.state of
+                         Unchanged -> "unchanged"
+                         New -> "new"
+                         Modified -> "modified"
+                         Deleted -> "deleted"
+                     )
+    )
   ]
 
 encodeTechniqueParameters: TechniqueParameter -> Value
@@ -24,12 +38,13 @@ encodeTechniqueParameters param =
   , ("description", string param.description)
   ]
 
+
 encodeMethodCall: MethodCall -> Value
 encodeMethodCall call =
   object [
     ("id", string call.id.value)
   , ("method_name", string call.methodName.value)
-  , ("class_context", string call.condition)
+  , ("class_context",  string <| conditionStr call.condition)
   , ("component", string call.component)
   , ("parameters", list encodeCallParameters call.parameters)
   ]
@@ -39,4 +54,12 @@ encodeCallParameters param =
   object [
     ("name", string param.id.value)
   , ("value", string param.value)
+  ]
+
+encodeExportTechnique: Technique -> Value
+encodeExportTechnique technique =
+  object [
+    ("type", string "ncf_technique")
+  , ("version", string "3.0")
+  , ("data", encodeTechnique technique)
   ]
