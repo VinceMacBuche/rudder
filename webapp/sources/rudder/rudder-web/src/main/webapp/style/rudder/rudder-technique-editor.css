@@ -1430,3 +1430,12 @@ ul.list-unstyled > li{
       -webkit-box-shadow: 0 0 0 0 rgba(199, 218, 252, 0);
   }
 }
+
+.optGroup {
+    font-weight: bold;
+    font-style: italic;
+}
+
+.optChild {
+    padding-left: 15px;
+}

@@ -20,22 +20,27 @@ decodeCallParameter =
 
 
 
-getOs: String -> Maybe OS
-getOs os =
-  Nothing
+parseOs: String -> Maybe OS
+parseOs os =
+  case os of
+    "linux" -> Just (Linux Nothing)
+    "debian" -> Just (Linux (Just (Debian { major = Nothing, minor = Nothing })))
+    "centos" -> Just (Linux (Just (Centos { major = Nothing, minor = Nothing })))
+    _ -> Nothing
 
-parseCondition : String -> Maybe Condition
+
+parseCondition : String -> Condition
 parseCondition class_context =
-  if String.isEmpty class_context then
-    Nothing
-  else
      case String.split "." class_context of
-       [] -> Nothing
-       [_] -> Just (Condition Nothing class_context)
+       [] -> Condition Nothing ""
+       [_] ->
+         case parseOs class_context of
+           Nothing ->  Condition Nothing class_context
+           os -> Condition os ""
        head :: rest ->
-         case getOs head of
-           Nothing ->  Just (Condition Nothing class_context)
-           os -> Just (Condition os (String.join "." rest))
+         case parseOs head of
+           Nothing ->  Condition Nothing class_context
+           os -> Condition os (String.join "." rest)
 
 
 decodeMethodCall : Decoder MethodCall

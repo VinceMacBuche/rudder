@@ -4,7 +4,9 @@ import DataTypes exposing (..)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
+import Html.Events.Extra exposing (..)
 import Dict
+import JsonDecoder
 import List.Extra
 import String.Extra
 import Regex
@@ -93,30 +95,40 @@ checkConstraint call constraint =
                      InvalidState (ConstraintError [ "Parameter '" ++ call.id.value ++ "'  should be one of the value from the following list: " ++ (String.join ", " list)] )
 
 
-checkParam: MethodParameter -> CallParameter -> Bool
-checkParam methodParam param =
-  False
+noVersion = {major = Nothing, minor = Nothing }
 
 showMethodTab: Method -> MethodCall -> MethodCallUiInfo -> Html Msg
 showMethodTab method call uiInfo=
   case uiInfo.tab of
     CallParameters ->
       div [ class "tab-parameters"] (List.map2 (\m c -> showParam call (Maybe.withDefault Untouched (Dict.get c.id.value uiInfo.validation)) m c )  method.parameters call.parameters)
-    Conditions -> text ""
-    {-
+    Conditions ->
+      let
+        condition = call.condition
+      in
+      div [ class "tab-conditions"] [
+        div [class "form-group condition-form", id "os-form"] [
+          div [ class "form-inline" ] [ -- form
+            div [ class "input-group" ] [
+              label [ class "input-group-addon", for "OsCondition"] [ text "Operating system: " ]
+            , div [ class "input-group-btn" ] [
+                button [ class "btn btn-default dropdown-toggle", id "OsCondition", attribute  "data-toggle" "dropdown", attribute  "aria-haspopup" "true", attribute "aria-expanded" "true" ] [
+                  text ((Maybe.withDefault "All" (Maybe.map conditionOs <| condition.os)) ++ " ")
+                , span [ class "caret" ] []
+                ]
+              , ul [ class "dropdown-menu", attribute "aria-labelledby" "OsCondition" ] [
+                  li [ onClick (UpdateCondition call.id {condition | os = Just (Linux Nothing) }), class "optGroup" ] [ a [href "#" ] [ text "Linux" ] ]
+                , li [ onClick (UpdateCondition call.id {condition | os = Just (Linux (Just (Debian noVersion))) }), class "optChild" ] [ a [href "#" ] [  text "Debian" ] ]
+                , li [ onClick (UpdateCondition call.id {condition | os = Just (Linux (Just (Centos noVersion))) }), class "optChild" ] [a [href "#" ] [ text "CentOS" ] ]
+                ]
+              ]
+            ]
+          ]
+          {-
                         <div class="tab-conditions" ng-if="ui.methodTabs[method_call['$$hashKey']]=='conditions'">
                           <div class="form-group condition-form" id="os-form">
                             <label for="os_class">Operating system:</label>
                             <form class="form-inline" role="form">
-                              <div class="form-group">
-                                <label for="os_class">Type:</label>
-                                <select class="form-control" ng-change="updateOSType(method_call)" ng-model="method_call.OS_class.type" ng-options="type for type in type_classes" ></select>
-                              </div>
-                              <div class="form-group" ng-show="os_classes_by_type[method_call.OS_class.type].length > 0" >
-                                <label for="os_class">Name:</label>
-                                <select class="form-control" ng-change="updateOSName(method_call)" ng-model="method_call.OS_class.name" ng-options="os for os in os_classes_by_type[method_call.OS_class.type]"></select>
-                              </div>
-                            </form>
                             <form class="form-inline sm-space-top" name="CForm.versionForm" role="form">
                               <div class="form-group" ng-show="checkMajorVersion(method_call)">
                                 <label for="os_class">Version (Major):</label>
@@ -134,23 +146,48 @@ showMethodTab method call uiInfo=
                               </div>
                             </form>
                           </div>
-                          <form name="CForm.form">
-                            <div class="form-group condition-form">
-                              <label for="advanced">Other conditions:</label>
-                              <textarea msd-elastic name="cfClasses" class="form-control" rows="1" id="advanced" ng-pattern="/^[a-zA-Z0-9_!.|${}\[\]()@:]+$/" ng-model="method_call.advanced_class" ng-change="updateClassContext(method_call)"></textarea>
-                              <div ng-messages="CForm.form.cfClasses.$error" role="alert">
+                          -}
+        ]
+      , div [ class "form-group condition-form" ] [
+          label [ for "advanced"] [ text "Other conditions:" ]
+        , textarea [ name "advanced", class "form-control", rows 1, id "advanced", value condition.advanced, onInput (\s -> UpdateCondition call.id {condition | advanced = s })  ] [] --ng-pattern="/^[a-zA-Z0-9_!.|${}\[\]()@:]+$/" ng-model="method_call.advanced_class" ng-change="updateClassContext(method_call)"></textarea>
+          {-<div ng-messages="CForm.form.cfClasses.$error" role="alert">
                                 <div ng-message="pattern" class="text-danger">This field should only contains alphanumerical characters (a-zA-Z0-9) or the following characters _!.|${}[]()@:</div>
                               </div>
-                            </div>
-                            <div class="form-group condition-form">
-                              <label for="class_context">Applied condition expression:</label>
-                              <textarea msd-elastic name="cfClassContext" class="form-control" rows="1" id="advanced" ng-maxlength="2048" ng-model="method_call.class_context" ng-readonly="true"></textarea>
-                              <span class="text-danger" ng-show="CForm.form.cfClassContext.$error.maxlength">
-                                    Classes over 2048 characters are currently not supported.
-                                  </span>
-                            </div>
-                          </form>
-                        </div>
+                            </div>-}
+       ]
+      , div [ class "form-group condition-form" ] [
+          label [ for "class_context" ] [ text "Applied condition expression:" ]
+        , textarea [ name "class_context",  class "form-control",  rows 1, id "advanced", value (conditionStr condition), readonly True ] []
+        , if String.length (conditionStr condition) > 2048 then
+            span [ class "text-danger" ] [text "Classes over 2048 characters are currently not supported." ]
+          else
+            text ""
+        ]
+      ]
+    {-
+                        <div class="tab-conditions" ng-if="ui.methodTabs[method_call['$$hashKey']]=='conditions'">
+                          <div class="form-group condition-form" id="os-form">
+                            <label for="os_class">Operating system:</label>
+                            <form class="form-inline" role="form">
+                            <form class="form-inline sm-space-top" name="CForm.versionForm" role="form">
+                              <div class="form-group" ng-show="checkMajorVersion(method_call)">
+                                <label for="os_class">Version (Major):</label>
+                                <input type="text" ng-pattern="versionRegex" class="form-control" ng-change="updateClassContext(method_call)" ng-model="method_call.OS_class.majorVersion" name="versionMaj" placeholder="">
+                              </div>
+                              <div class="form-group" ng-show="checkMinorVersion(method_call)">
+                                <label for="os_class">Version (Minor):</label>
+                                <input type="text"  ng-pattern="versionRegex" class="form-control" ng-change="updateClassContext(method_call)" ng-disabled="method_call.OS_class.majorVersion === undefined || method_call.OS_class.majorVersion === '' " ng-model="method_call.OS_class.minorVersion"  placeholder="" name="versionMin">
+                              </div>
+                              <div ng-messages="CForm.versionForm.versionMaj.$error" class="sm-space-top" role="alert">
+                                <div ng-message="pattern" class="text-danger">Invalid major version's number</div>
+                              </div>
+                              <div ng-messages="CForm.versionForm.versionMin.$error" role="alert">
+                                <div ng-message="pattern" class="text-danger">Invalid minor version's number</div>
+                              </div>
+                            </form>
+                          </div>
+
 
                           -}
     Result     ->
@@ -296,7 +333,7 @@ callBody model ui call dragAttributes isGhost =
         ]
       ]
     , div [ class "flex-column" ] [
-        if (call.condition == Nothing) then
+        if (call.condition.os == Nothing && call.condition.advanced == "") then
           text ""
         else
           div [ class "method-condition flex-form" ] [

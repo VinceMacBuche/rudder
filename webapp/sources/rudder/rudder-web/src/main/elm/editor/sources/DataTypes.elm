@@ -68,7 +68,7 @@ type alias MethodCall =
   { id : CallId
   , methodName : MethodId
   , parameters : List CallParameter
-  , condition : Maybe Condition
+  , condition : Condition
   , component : String
   }
 
@@ -111,7 +111,7 @@ config =
                      Debug.log "setter" (
                        case (drag,drop) of
                          (  Right _, Left method ) ->
-                           Right (MethodCall (CallId "") method.id (List.map (\p -> CallParameter p.name "") method.parameters) Nothing "")
+                           Right (MethodCall (CallId "") method.id (List.map (\p -> CallParameter p.name "") method.parameters) (Condition Nothing "") "")
                          _-> drop
                      )
                   )
@@ -187,15 +187,40 @@ type Tab =  General |  Parameters | Resources | None
 
 type Mode = Introduction | TechniqueDetails Technique TechniqueState TechniqueUIInfo
 
-type OS = AIX | Linux (Maybe LinuxOS) | BSD | Solaris | Windows
+type OS = AIX | Linux (Maybe LinuxOS)  | Solaris | Windows
+
+
+conditionLinux: LinuxOS -> String
+conditionLinux os =
+  case os of
+    Debian v -> "debian"
+    Ubuntu v -> "ubuntu"
+    RH v -> "redhat"
+    Centos v -> "centos"
+    Fedora v -> "fedora"
+    Oracle v -> "oracle"
+    Amazon -> "amazon"
+    Suse -> "SUSE"
+    SLES v -> "sles"
+    SLED v -> "sled"
+    OpenSuse v -> "opensuse"
+    Slackware -> "slackware"
 
 conditionOs : OS -> String
 conditionOs os =
-  "lol"
+  case os of
+    AIX -> "aix"
+    Linux Nothing -> "linux"
+    Solaris -> "solaris"
+    Windows -> "windows"
+    Linux (Just linuxOs) -> conditionLinux linuxOs
 
-conditionStr : Maybe Condition -> String
+conditionStr : Condition -> String
 conditionStr condition =
-  Maybe.withDefault "" <| Maybe.map (\c -> (Maybe.withDefault "" (Maybe.map (\os ->  (conditionOs os) ++ "." ) c.os)) ++ c.advanced) condition
+  case condition.os of
+    Nothing -> condition.advanced
+    Just os ->
+      if (String.isEmpty condition.advanced) then conditionOs os else conditionOs os ++ "." ++ condition.advanced
 
 type alias Condition =
   { os : Maybe OS
@@ -203,13 +228,17 @@ type alias Condition =
   }
 
 type LinuxOS = Debian { major : Maybe  Int, minor : Maybe Int }
-             | RHEL { major : Maybe  Int, minor : Maybe Int }
              | RH { major : Maybe  Int, minor : Maybe Int }
              | Centos { major : Maybe  Int, minor : Maybe Int }
-             | Fedora { major : Maybe  Int}| Ubuntu { major : Maybe  Int, minor : Maybe Int }
+             | Fedora { major : Maybe  Int}
+             | Ubuntu { major : Maybe  Int, minor : Maybe Int }
              | Slackware
-             | Suse { major : Maybe  Int, minor : Maybe Int }
+             | Suse
              | Oracle { major : Maybe  Int, minor : Maybe Int }
+             | Amazon
+             | SLES { version : Maybe  Int, sp : Maybe Int }
+             | SLED { version : Maybe  Int, sp : Maybe Int }
+             | OpenSuse { version : Maybe  Int }
 
 type Msg =
     SelectTechnique Technique
@@ -259,3 +288,4 @@ type Msg =
   | ImportFile File
   | ParseImportedFile File String
   | ScrollCategory String
+  | UpdateCondition CallId Condition

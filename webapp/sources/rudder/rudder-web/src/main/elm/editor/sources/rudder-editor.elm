@@ -360,7 +360,7 @@ update msg model =
 
     AddMethod method newId ->
       let
-        newCall = MethodCall newId method.id (List.map (\p -> CallParameter p.name "") method.parameters) Nothing ""
+        newCall = MethodCall newId method.id (List.map (\p -> CallParameter p.name "") method.parameters) (Condition Nothing "") ""
         newModel =
           case model.mode of
             TechniqueDetails t o ui ->
@@ -595,3 +595,12 @@ update msg model =
         task = (Browser.Dom.getElement "methods-list-container") |> ((Browser.Dom.getViewportOf "methods-list-container") |> ((Browser.Dom.getElement category) |> Task.map3 (\elem viewport container -> viewport.viewport.y + elem.element.y - container.element.y ))  )  |> Task.andThen (Browser.Dom.setViewportOf "methods-list-container" 0)
       in
         (model, Task.attempt (always Ignore) task )
+
+    UpdateCondition callId condition ->
+      case model.mode of
+        TechniqueDetails t s ui ->
+          let
+            newModel = {model | mode = TechniqueDetails {t | calls = List.Extra.updateIf (.id >> (==) callId ) (\c -> { c | condition = condition }) t.calls} s ui}
+          in
+          (newModel, Cmd.none )
+        _ -> (model,Cmd.none)
