@@ -190,6 +190,32 @@ type Mode = Introduction | TechniqueDetails Technique TechniqueState TechniqueUI
 type OS = AIX | Linux (Maybe LinuxOS)  | Solaris | Windows
 
 
+osName: Maybe OS -> String
+osName maybeOs =
+  case maybeOs of
+    Nothing -> "All"
+    Just os ->
+      case os of
+        AIX -> "AIX"
+        Solaris -> "Solaris"
+        Windows -> "Windows"
+        Linux Nothing -> "Linux"
+        Linux (Just linux) ->
+          case linux of
+            Debian _ -> "Debian (and derivatives)"
+            Ubuntu _ -> "Ubuntu"
+            RH _ -> "Red hat (and derivatives)"
+            Centos _ -> "CentOS"
+            Fedora _ -> "Fedora"
+            Oracle _ -> "Oracle Linux"
+            Amazon   -> "Amazon Linux"
+            Suse -> "SuSE family"
+            SLES _ -> "SLES"
+            SLED _ -> "SLED"
+            OpenSuse _ -> "OpenSuSE"
+            Slackware -> "Slackware"
+
+
 conditionLinux: LinuxOS -> String
 conditionLinux os =
   case os of
@@ -230,7 +256,7 @@ type alias Condition =
 type LinuxOS = Debian { major : Maybe  Int, minor : Maybe Int }
              | RH { major : Maybe  Int, minor : Maybe Int }
              | Centos { major : Maybe  Int, minor : Maybe Int }
-             | Fedora { major : Maybe  Int}
+             | Fedora { version : Maybe  Int}
              | Ubuntu { major : Maybe  Int, minor : Maybe Int }
              | Slackware
              | Suse

@@ -23,6 +23,121 @@ showParam param =
                           </div>
 -}
 
+osList : List (Maybe OS)
+osList =
+  [ Nothing
+  , Just (Linux Nothing)
+  , Just (Linux (Just (Debian noVersion)))
+  , Just (Linux (Just (Ubuntu noVersion)))
+  , Just (Linux (Just (RH noVersion)))
+  , Just (Linux (Just (Centos noVersion)))
+  , Just (Linux (Just (Fedora {version = Nothing})))
+  , Just (Linux (Just (Oracle noVersion)))
+  , Just (Linux (Just (Amazon)))
+  , Just (Linux (Just (Suse)))
+  , Just (Linux (Just (SLES {version = Nothing, sp = Nothing})))
+  , Just (Linux (Just (SLED {version = Nothing, sp = Nothing})))
+  , Just (Linux (Just (OpenSuse {version = Nothing})))
+  , Just (Linux (Just (Slackware)))
+  , Just Windows
+  , Just AIX
+  , Just Solaris
+  ]
+
+hasVersion: Maybe OS -> Bool
+hasVersion os =
+  case os of
+    Just (Linux (Just (Fedora _))) -> True
+    Just (Linux (Just (SLES _))) -> True
+    Just (Linux (Just (SLED _))) -> True
+    Just (Linux (Just (OpenSuse _))) -> True
+    _ -> False
+
+updateVersion:  Maybe Int -> Maybe OS -> Maybe OS
+updateVersion newVersion os =
+  case os of
+    Just (Linux (Just (SLES v))) -> Just (Linux (Just (SLES {v | version = newVersion})))
+    Just (Linux (Just (SLED v))) -> Just (Linux (Just (SLED {v | version = newVersion})))
+    Just (Linux (Just (Fedora v))) -> Just (Linux (Just (Fedora {v | version = newVersion})))
+    Just (Linux (Just (OpenSuse v))) -> Just (Linux (Just (OpenSuse {v | version = newVersion})))
+    _ -> os
+
+hasSP: Maybe OS -> Bool
+hasSP os =
+  case os of
+    Just (Linux (Just (SLES _))) -> True
+    Just (Linux (Just (SLED _))) -> True
+    _ -> False
+
+updateSP:   Maybe OS -> Maybe Int -> Maybe OS
+updateSP os newSP =
+  case os of
+    Just (Linux (Just (SLES v))) -> Just (Linux (Just (SLES {v | sp = newSP})))
+    Just (Linux (Just (SLED v))) -> Just (Linux (Just (SLED {v | sp = newSP})))
+    _ -> os
+
+hasMajorMinorVersion: Maybe OS -> Bool
+hasMajorMinorVersion os =
+  case os of
+    Just (Linux (Just (Debian _))) -> True
+    Just (Linux (Just (Ubuntu _)))-> True
+    Just (Linux (Just (RH _))) -> True
+    Just (Linux (Just (Centos _))) -> True
+    Just (Linux (Just (Oracle _))) -> True
+    _ -> False
+
+
+getMajorVersion:  Maybe OS -> Maybe Int
+getMajorVersion os =
+  case os of
+    Just (Linux (Just (Debian v))) -> v.major
+    Just (Linux (Just (Ubuntu v)))-> v.major
+    Just (Linux (Just (RH v))) -> v.major
+    Just (Linux (Just (Centos v))) -> v.major
+    Just (Linux (Just (Oracle v))) -> v.major
+    _ -> Nothing
+
+getMinorVersion:  Maybe OS -> Maybe Int
+getMinorVersion os =
+  case os of
+    Just (Linux (Just (Debian v))) -> v.minor
+    Just (Linux (Just (Ubuntu v)))-> v.minor
+    Just (Linux (Just (RH v))) -> v.minor
+    Just (Linux (Just (Centos v))) -> v.minor
+    Just (Linux (Just (Oracle v))) -> v.minor
+    _ -> Nothing
+updateMajorVersion: Maybe Int -> Maybe OS -> Maybe OS
+updateMajorVersion newMajor os =
+  case os of
+    Just (Linux (Just (Debian v))) -> Just (Linux (Just (Debian {v | major = newMajor})))
+    Just (Linux (Just (Ubuntu v)))-> Just (Linux (Just (Ubuntu {v | major = newMajor})))
+    Just (Linux (Just (RH v))) -> Just (Linux (Just (RH {v | major = newMajor})))
+    Just (Linux (Just (Centos v))) -> Just (Linux (Just (Centos {v | major = newMajor})))
+    Just (Linux (Just (Oracle v))) -> Just (Linux (Just (Oracle {v | major = newMajor})))
+    _ -> os
+
+updateMinorVersion: Maybe Int -> Maybe OS -> Maybe OS
+updateMinorVersion newMinor os =
+  case os of
+    Just (Linux (Just (Debian v))) -> Just (Linux (Just (Debian {v | minor = newMinor})))
+    Just (Linux (Just (Ubuntu v)))-> Just (Linux (Just (Ubuntu {v | minor = newMinor})))
+    Just (Linux (Just (RH v))) -> Just (Linux (Just (RH {v | minor = newMinor})))
+    Just (Linux (Just (Centos v))) -> Just (Linux (Just (Centos {v | minor = newMinor})))
+    Just (Linux (Just (Oracle v))) -> Just (Linux (Just (Oracle {v | minor = newMinor})))
+    _ -> os
+
+osClass: Maybe OS -> String
+osClass maybeOs =
+  case maybeOs of
+    Nothing -> "optGroup"
+    Just os ->
+      case os of
+        AIX -> "optGroup"
+        Solaris -> "optGroup"
+        Windows -> "optGroup"
+        Linux Nothing -> "optGroup"
+        Linux (Just _) -> "optChild"
+
 getClassParameter: Method -> MethodParameter
 getClassParameter method =
   case findClassParameter method of
@@ -97,6 +212,8 @@ checkConstraint call constraint =
 
 noVersion = {major = Nothing, minor = Nothing }
 
+strToVersion version =  String.toInt version
+
 showMethodTab: Method -> MethodCall -> MethodCallUiInfo -> Html Msg
 showMethodTab method call uiInfo=
   case uiInfo.tab of
@@ -109,19 +226,21 @@ showMethodTab method call uiInfo=
       div [ class "tab-conditions"] [
         div [class "form-group condition-form", id "os-form"] [
           div [ class "form-inline" ] [ -- form
-            div [ class "input-group" ] [
-              label [ class "input-group-addon", for "OsCondition"] [ text "Operating system: " ]
-            , div [ class "input-group-btn" ] [
+            div [ class "form-group" ] [
+              label [ style "display" "inline-block",  class "", for "OsCondition"] [ text "Operating system: " ]
+            , div [ style "display" "inline-block", style "width" "auto", style "margin-left" "5px",class "btn-group"] [
                 button [ class "btn btn-default dropdown-toggle", id "OsCondition", attribute  "data-toggle" "dropdown", attribute  "aria-haspopup" "true", attribute "aria-expanded" "true" ] [
-                  text ((Maybe.withDefault "All" (Maybe.map conditionOs <| condition.os)) ++ " ")
+                  text ((osName condition.os) ++ " ")
                 , span [ class "caret" ] []
                 ]
-              , ul [ class "dropdown-menu", attribute "aria-labelledby" "OsCondition" ] [
-                  li [ onClick (UpdateCondition call.id {condition | os = Just (Linux Nothing) }), class "optGroup" ] [ a [href "#" ] [ text "Linux" ] ]
-                , li [ onClick (UpdateCondition call.id {condition | os = Just (Linux (Just (Debian noVersion))) }), class "optChild" ] [ a [href "#" ] [  text "Debian" ] ]
-                , li [ onClick (UpdateCondition call.id {condition | os = Just (Linux (Just (Centos noVersion))) }), class "optChild" ] [a [href "#" ] [ text "CentOS" ] ]
-                ]
+              , ul [ class "dropdown-menu", attribute "aria-labelledby" "OsCondition", style "margin-left" "0px" ]
+                 ( List.map (\os -> li [ onClick (UpdateCondition call.id {condition | os = os }), class (osClass os) ] [ a [href "#" ] [ text (osName os) ] ] ) osList )
               ]
+            , if (hasMajorMinorVersion condition.os ) then input [value (Maybe.withDefault "" (Maybe.map String.fromInt (Maybe.andThen getMajorVersion condition.os) ), onInput (\s -> UpdateCondition call.id {condition | os = updateMajorVersion  (String.toInt s) condition.os}  ),type_ "number", style "display" "inline-block", style "width" "auto", style "margin-left" "5px",  class "form-control", placeholder "Major version"] [] else text ""
+            , if (hasMajorMinorVersion condition.os ) then input [onInput (\s -> UpdateCondition call.id {condition | os = updateMinorVersion  (String.toInt s) condition.os}  ), type_ "number", style "display" "inline-block", style "width" "auto", class "form-control", style "margin-left" "5px", placeholder "Minor version"] []  else text ""
+            , if (hasVersion condition.os ) then input [ onInput (\s -> UpdateCondition call.id {condition | os = updateVersion  (String.toInt s) condition.os}  ), type_ "number",style "display" "inline-block", style "width" "auto", class "form-control", style "margin-left" "5px", placeholder "Version"] []  else text ""
+            , if (hasSP condition.os ) then input [ onInput (\s -> UpdateCondition call.id {condition | os = updateSP condition.os (String.toInt s)}  ), type_ "number", style "display" "inline-block", style "width" "auto", class "form-control", style "margin-left" "5px", placeholder "Service pack"] []  else text ""
+
             ]
           ]
           {-
