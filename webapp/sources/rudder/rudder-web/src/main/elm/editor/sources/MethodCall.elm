@@ -32,16 +32,16 @@ osList =
   , Just (Linux (Just (RH noVersion)))
   , Just (Linux (Just (Centos noVersion)))
   , Just (Linux (Just (Fedora {version = Nothing})))
-  , Just (Linux (Just (Oracle noVersion)))
+  , Just (Linux (Just (Oracle)))
   , Just (Linux (Just (Amazon)))
   , Just (Linux (Just (Suse)))
   , Just (Linux (Just (SLES {version = Nothing, sp = Nothing})))
   , Just (Linux (Just (SLED {version = Nothing, sp = Nothing})))
-  , Just (Linux (Just (OpenSuse {version = Nothing})))
-  , Just (Linux (Just (Slackware)))
+  , Just (Linux (Just (OpenSuse noVersion)))
+  , Just (Linux (Just (Slackware noVersion)))
   , Just Windows
-  , Just AIX
-  , Just Solaris
+  , Just ( AIX {version = Nothing} )
+  , Just ( Solaris noVersion)
   ]
 
 hasVersion: Maybe OS -> Bool
@@ -50,16 +50,24 @@ hasVersion os =
     Just (Linux (Just (Fedora _))) -> True
     Just (Linux (Just (SLES _))) -> True
     Just (Linux (Just (SLED _))) -> True
-    Just (Linux (Just (OpenSuse _))) -> True
+    Just (AIX _) -> True
     _ -> False
 
+getVersion: Maybe OS -> Maybe Int
+getVersion os =
+  case os of
+    Just (Linux (Just (Fedora v))) -> v.version
+    Just (Linux (Just (SLES v))) -> v.version
+    Just (Linux (Just (SLED v))) -> v.version
+    Just (AIX v) -> v.version
+    _ -> Nothing
 updateVersion:  Maybe Int -> Maybe OS -> Maybe OS
 updateVersion newVersion os =
   case os of
     Just (Linux (Just (SLES v))) -> Just (Linux (Just (SLES {v | version = newVersion})))
     Just (Linux (Just (SLED v))) -> Just (Linux (Just (SLED {v | version = newVersion})))
     Just (Linux (Just (Fedora v))) -> Just (Linux (Just (Fedora {v | version = newVersion})))
-    Just (Linux (Just (OpenSuse v))) -> Just (Linux (Just (OpenSuse {v | version = newVersion})))
+    Just (AIX v) -> Just (AIX {v | version = newVersion})
     _ -> os
 
 hasSP: Maybe OS -> Bool
@@ -68,6 +76,13 @@ hasSP os =
     Just (Linux (Just (SLES _))) -> True
     Just (Linux (Just (SLED _))) -> True
     _ -> False
+
+getSP: Maybe OS -> Maybe Int
+getSP os =
+  case os of
+    Just (Linux (Just (SLES v))) -> v.sp
+    Just (Linux (Just (SLED v))) -> v.sp
+    _ -> Nothing
 
 updateSP:   Maybe OS -> Maybe Int -> Maybe OS
 updateSP os newSP =
@@ -83,7 +98,9 @@ hasMajorMinorVersion os =
     Just (Linux (Just (Ubuntu _)))-> True
     Just (Linux (Just (RH _))) -> True
     Just (Linux (Just (Centos _))) -> True
-    Just (Linux (Just (Oracle _))) -> True
+    Just (Linux (Just (OpenSuse _))) -> True
+    Just (Linux (Just (Slackware _))) -> True
+    Just (Solaris _) -> True
     _ -> False
 
 
@@ -94,7 +111,9 @@ getMajorVersion os =
     Just (Linux (Just (Ubuntu v)))-> v.major
     Just (Linux (Just (RH v))) -> v.major
     Just (Linux (Just (Centos v))) -> v.major
-    Just (Linux (Just (Oracle v))) -> v.major
+    Just (Linux (Just (OpenSuse v))) -> v.major
+    Just (Linux (Just (Slackware v))) -> v.major
+    Just (Solaris v) -> v.major
     _ -> Nothing
 
 getMinorVersion:  Maybe OS -> Maybe Int
@@ -104,7 +123,9 @@ getMinorVersion os =
     Just (Linux (Just (Ubuntu v)))-> v.minor
     Just (Linux (Just (RH v))) -> v.minor
     Just (Linux (Just (Centos v))) -> v.minor
-    Just (Linux (Just (Oracle v))) -> v.minor
+    Just (Linux (Just (OpenSuse v))) -> v.minor
+    Just (Linux (Just (Slackware v))) -> v.minor
+    Just (Solaris v) -> v.minor
     _ -> Nothing
 updateMajorVersion: Maybe Int -> Maybe OS -> Maybe OS
 updateMajorVersion newMajor os =
@@ -113,7 +134,9 @@ updateMajorVersion newMajor os =
     Just (Linux (Just (Ubuntu v)))-> Just (Linux (Just (Ubuntu {v | major = newMajor})))
     Just (Linux (Just (RH v))) -> Just (Linux (Just (RH {v | major = newMajor})))
     Just (Linux (Just (Centos v))) -> Just (Linux (Just (Centos {v | major = newMajor})))
-    Just (Linux (Just (Oracle v))) -> Just (Linux (Just (Oracle {v | major = newMajor})))
+    Just (Linux (Just (OpenSuse v))) -> Just (Linux (Just (OpenSuse {v | major = newMajor})))
+    Just (Linux (Just (Slackware v))) -> Just (Linux (Just (Slackware {v | major = newMajor})))
+    Just (Solaris v) -> Just ( Solaris { v | major = newMajor } )
     _ -> os
 
 updateMinorVersion: Maybe Int -> Maybe OS -> Maybe OS
@@ -123,7 +146,10 @@ updateMinorVersion newMinor os =
     Just (Linux (Just (Ubuntu v)))-> Just (Linux (Just (Ubuntu {v | minor = newMinor})))
     Just (Linux (Just (RH v))) -> Just (Linux (Just (RH {v | minor = newMinor})))
     Just (Linux (Just (Centos v))) -> Just (Linux (Just (Centos {v | minor = newMinor})))
-    Just (Linux (Just (Oracle v))) -> Just (Linux (Just (Oracle {v | minor = newMinor})))
+    Just (Linux (Just (OpenSuse v))) -> Just (Linux (Just (OpenSuse {v | minor = newMinor})))
+    Just (Linux (Just (Slackware v))) -> Just (Linux (Just (Slackware {v | minor = newMinor})))
+    Just (Solaris v) -> Just ( Solaris { v | minor = newMinor } )
+
     _ -> os
 
 osClass: Maybe OS -> String
@@ -132,8 +158,8 @@ osClass maybeOs =
     Nothing -> "optGroup"
     Just os ->
       case os of
-        AIX -> "optGroup"
-        Solaris -> "optGroup"
+        AIX _ -> "optGroup"
+        Solaris _ -> "optGroup"
         Windows -> "optGroup"
         Linux Nothing -> "optGroup"
         Linux (Just _) -> "optChild"
@@ -236,10 +262,10 @@ showMethodTab method call uiInfo=
               , ul [ class "dropdown-menu", attribute "aria-labelledby" "OsCondition", style "margin-left" "0px" ]
                  ( List.map (\os -> li [ onClick (UpdateCondition call.id {condition | os = os }), class (osClass os) ] [ a [href "#" ] [ text (osName os) ] ] ) osList )
               ]
-            , if (hasMajorMinorVersion condition.os ) then input [value (Maybe.withDefault "" (Maybe.map String.fromInt (Maybe.andThen getMajorVersion condition.os) ), onInput (\s -> UpdateCondition call.id {condition | os = updateMajorVersion  (String.toInt s) condition.os}  ),type_ "number", style "display" "inline-block", style "width" "auto", style "margin-left" "5px",  class "form-control", placeholder "Major version"] [] else text ""
-            , if (hasMajorMinorVersion condition.os ) then input [onInput (\s -> UpdateCondition call.id {condition | os = updateMinorVersion  (String.toInt s) condition.os}  ), type_ "number", style "display" "inline-block", style "width" "auto", class "form-control", style "margin-left" "5px", placeholder "Minor version"] []  else text ""
-            , if (hasVersion condition.os ) then input [ onInput (\s -> UpdateCondition call.id {condition | os = updateVersion  (String.toInt s) condition.os}  ), type_ "number",style "display" "inline-block", style "width" "auto", class "form-control", style "margin-left" "5px", placeholder "Version"] []  else text ""
-            , if (hasSP condition.os ) then input [ onInput (\s -> UpdateCondition call.id {condition | os = updateSP condition.os (String.toInt s)}  ), type_ "number", style "display" "inline-block", style "width" "auto", class "form-control", style "margin-left" "5px", placeholder "Service pack"] []  else text ""
+            , if (hasMajorMinorVersion condition.os ) then input [value (Maybe.withDefault "" (Maybe.map String.fromInt (getMajorVersion condition.os) )), onInput (\s -> UpdateCondition call.id {condition | os = updateMajorVersion  (String.toInt s) condition.os}  ),type_ "number", style "display" "inline-block", style "width" "auto", style "margin-left" "5px",  class "form-control", placeholder "Major version"] [] else text ""
+            , if (hasMajorMinorVersion condition.os ) then input [value (Maybe.withDefault "" (Maybe.map String.fromInt (getMinorVersion condition.os) )), onInput (\s -> UpdateCondition call.id {condition | os = updateMinorVersion  (String.toInt s) condition.os}  ), type_ "number", style "display" "inline-block", style "width" "auto", class "form-control", style "margin-left" "5px", placeholder "Minor version"] []  else text ""
+            , if (hasVersion condition.os ) then input [value (Maybe.withDefault "" (Maybe.map String.fromInt (getVersion condition.os) )), onInput (\s -> UpdateCondition call.id {condition | os = updateVersion  (String.toInt s) condition.os}  ), type_ "number",style "display" "inline-block", style "width" "auto", class "form-control", style "margin-left" "5px", placeholder "Version"] []  else text ""
+            , if (hasSP condition.os ) then input [value (Maybe.withDefault "" (Maybe.map String.fromInt (getSP condition.os) )), onInput (\s -> UpdateCondition call.id {condition | os = updateSP condition.os (String.toInt s)}  ), type_ "number", style "display" "inline-block", style "width" "auto", class "form-control", style "margin-left" "5px", placeholder "Service pack"] []  else text ""
 
             ]
           ]

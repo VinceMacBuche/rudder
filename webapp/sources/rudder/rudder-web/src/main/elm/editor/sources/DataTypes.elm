@@ -187,7 +187,7 @@ type Tab =  General |  Parameters | Resources | None
 
 type Mode = Introduction | TechniqueDetails Technique TechniqueState TechniqueUIInfo
 
-type OS = AIX | Linux (Maybe LinuxOS)  | Solaris | Windows
+type OS = AIX { version : Maybe  Int }| Linux (Maybe LinuxOS)  | Solaris { major : Maybe  Int, minor : Maybe Int } | Windows
 
 
 osName: Maybe OS -> String
@@ -196,8 +196,8 @@ osName maybeOs =
     Nothing -> "All"
     Just os ->
       case os of
-        AIX -> "AIX"
-        Solaris -> "Solaris"
+        AIX _ -> "AIX"
+        Solaris _ -> "Solaris"
         Windows -> "Windows"
         Linux Nothing -> "Linux"
         Linux (Just linux) ->
@@ -207,37 +207,51 @@ osName maybeOs =
             RH _ -> "Red hat (and derivatives)"
             Centos _ -> "CentOS"
             Fedora _ -> "Fedora"
-            Oracle _ -> "Oracle Linux"
+            Oracle -> "Oracle Linux"
             Amazon   -> "Amazon Linux"
             Suse -> "SuSE family"
             SLES _ -> "SLES"
             SLED _ -> "SLED"
             OpenSuse _ -> "OpenSuSE"
-            Slackware -> "Slackware"
+            Slackware _ -> "Slackware"
 
+majorMinorVersionCondition: String -> { major : Maybe Int, minor : Maybe Int} -> String
+majorMinorVersionCondition s v =
+  case (v.major, v.minor) of
+    (Just major, Nothing) -> s ++ "_" ++ (String.fromInt major)
+    (Just major, Just minor) -> s ++ "_" ++ (String.fromInt major)++ "_" ++ (String.fromInt minor)
+    _ -> s
+
+
+versionSPCondition: String -> { version : Maybe Int, sp : Maybe Int} -> String
+versionSPCondition s v =
+  case (v.version, v.sp) of
+    (Just major, Nothing) -> s ++ "_" ++ (String.fromInt major)
+    (Just major, Just minor) -> s ++ "_" ++ (String.fromInt major)++ "_" ++ (String.fromInt minor)
+    _ -> s
 
 conditionLinux: LinuxOS -> String
 conditionLinux os =
   case os of
-    Debian v -> "debian"
-    Ubuntu v -> "ubuntu"
-    RH v -> "redhat"
-    Centos v -> "centos"
-    Fedora v -> "fedora"
-    Oracle v -> "oracle"
-    Amazon -> "amazon"
-    Suse -> "SUSE"
-    SLES v -> "sles"
-    SLED v -> "sled"
-    OpenSuse v -> "opensuse"
-    Slackware -> "slackware"
+    Debian v -> majorMinorVersionCondition "debian" v
+    Ubuntu v -> majorMinorVersionCondition "ubuntu" v
+    RH v -> majorMinorVersionCondition "redhat" v
+    Centos v -> majorMinorVersionCondition "centos" v
+    Fedora v -> Maybe.withDefault "fedora" (Maybe.map (String.fromInt >> (++) "fedora_") v.version)
+    Oracle ->  "oracle_linux"
+    Amazon -> "amazon_linux"
+    Suse -> "suse"
+    SLES v -> versionSPCondition "sles" v
+    SLED v -> versionSPCondition "sled" v
+    OpenSuse v -> majorMinorVersionCondition "opensuse" v
+    Slackware v -> majorMinorVersionCondition "slackware" v
 
 conditionOs : OS -> String
 conditionOs os =
   case os of
-    AIX -> "aix"
+    AIX v ->  Maybe.withDefault "aix" (Maybe.map (String.fromInt >> (++) "aix_") v.version)
     Linux Nothing -> "linux"
-    Solaris -> "solaris"
+    Solaris v -> majorMinorVersionCondition "solaris" v
     Windows -> "windows"
     Linux (Just linuxOs) -> conditionLinux linuxOs
 
@@ -258,13 +272,13 @@ type LinuxOS = Debian { major : Maybe  Int, minor : Maybe Int }
              | Centos { major : Maybe  Int, minor : Maybe Int }
              | Fedora { version : Maybe  Int}
              | Ubuntu { major : Maybe  Int, minor : Maybe Int }
-             | Slackware
+             | Slackware { major : Maybe  Int, minor : Maybe Int }
              | Suse
-             | Oracle { major : Maybe  Int, minor : Maybe Int }
+             | Oracle
              | Amazon
              | SLES { version : Maybe  Int, sp : Maybe Int }
              | SLED { version : Maybe  Int, sp : Maybe Int }
-             | OpenSuse { version : Maybe  Int }
+             | OpenSuse  { major : Maybe  Int, minor : Maybe Int }
 
 type Msg =
     SelectTechnique Technique
