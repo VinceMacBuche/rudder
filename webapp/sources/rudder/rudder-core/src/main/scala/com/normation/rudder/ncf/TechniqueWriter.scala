@@ -223,7 +223,7 @@ class TechniqueWriter (
         <LONGDESCRIPTION>{parameter.description}</LONGDESCRIPTION>
         <CONSTRAINT>
           <TYPE>textarea</TYPE>
-          <MAYBEEMPTY>false</MAYBEEMPTY>
+          <MAYBEEMPTY>true</MAYBEEMPTY>
         </CONSTRAINT>
       </INPUT>
     }

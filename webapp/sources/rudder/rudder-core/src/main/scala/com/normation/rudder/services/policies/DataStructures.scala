@@ -59,6 +59,7 @@ import com.normation.cfclerk.domain.TrackerVariableSpec
 import com.normation.cfclerk.domain.SectionSpec
 import com.normation.cfclerk.domain.TechniqueResourceId
 import com.normation.cfclerk.domain.AgentConfig
+import com.normation.cfclerk.domain.SystemVariable
 import com.normation.cfclerk.domain.TechniqueGenerationMode
 import com.normation.cfclerk.domain.TechniqueVersion
 import com.normation.errors._
@@ -540,11 +541,14 @@ final case class BoundPolicyDraft(
    */
   def toPolicy(agent: AgentType): Either[String, Policy] = {
     PolicyTechnique.forAgent(technique, agent).flatMap { pt =>
-      expandedVars.collectFirst { case (_, v) if(!v.spec.constraint.mayBeEmpty && v.values.exists(_ == "")) => v } match {
-        case Some(v) =>
-          Left(s"Error for policy for directive '${directiveName}' [${id.directiveId.value}] in rule '${ruleName}' [${id.ruleId.value}]: " +
-               s"a non optional value is missing for parameter '${v.spec.description}' [param ID: ${v.spec.name}]")
-        case None =>
+      expandedVars.foreach(v => println(v))
+      expandedVars.values.flatMap {
+        case _ : SystemVariable => None
+        case _ : TrackerVariable => None
+        case v if(!v.spec.constraint.mayBeEmpty && v.values.exists(_ == "") || v.values.isEmpty) => Some(v)
+        case _ => None
+      } match {
+        case Nil =>
           Right(Policy(
               id
             , ruleName
@@ -564,6 +568,9 @@ final case class BoundPolicyDraft(
             , directiveOrder
             , overrides
           ))
+        case list =>
+          Left(s"Error for policy for directive '${directiveName}' [${id.directiveId.value}] in rule '${ruleName}' [${id.ruleId.value}]: " +
+            s"a non optional value is missing for parameter '${list.head.spec.description}' [param ID: ${list.head.spec.name}]")
       }
     }
   }

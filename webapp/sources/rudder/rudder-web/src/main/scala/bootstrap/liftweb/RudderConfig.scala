@@ -1676,7 +1676,7 @@ object RudderConfig extends Loggable {
         roLdapDirectiveRepository
       )
 
-      techniqueRepositoryImpl.registerCallback(new SaveDirectivesOnTechniqueCallback("SaveDirectivesOnTechniqueCallback", 100, directiveEditorServiceImpl, roLdapDirectiveRepository, repo))
+      //techniqueRepositoryImpl.registerCallback(new SaveDirectivesOnTechniqueCallback("SaveDirectivesOnTechniqueCallback", 100, directiveEditorServiceImpl, roLdapDirectiveRepository, repo))
 
       repo
     }
