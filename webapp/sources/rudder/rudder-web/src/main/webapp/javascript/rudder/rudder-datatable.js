@@ -917,7 +917,7 @@ function createComponentTable(isTopLevel, isNodeView, contextPath) {
     , "mDataProp": "component"
     , "sTitle": "Component"
     , "fnCreatedCell" : function (nTd, sData, oData, iRow, iCol) {
-        if(! oData.noExpand || isNodeView ) {
+        if(! oData.noExpand || isNodeView || oData.composition !== undefined ) {
           $(nTd).addClass("listopen");
         } else {
           $(nTd).addClass("noExpand");
@@ -941,6 +941,7 @@ function createComponentTable(isTopLevel, isNodeView, contextPath) {
     , "bInfo" : false
     , "aaSorting": [[ 0, "asc" ]]
     , "fnDrawCallback" : function( oSettings ) {
+        console.log(oSettings)
         if(isNodeView) {
           createInnerTable(this, createNodeComponentValueTable(contextPath));
         } else {

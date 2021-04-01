@@ -162,6 +162,11 @@ class SectionSpecParser(variableParser:VariableSpecParser) extends Loggable {
       case null | Some("") => None
       case x => x
     }
+    val composition = (root \ ("@composition")).headOption.map( _.text) match {
+      case Some("worst") => Some(WorstReport)
+      case null | Some("") => None
+      case x => None
+    }
 
     // Checking if we have predefined values
     for {
@@ -190,10 +195,10 @@ class SectionSpecParser(variableParser:VariableSpecParser) extends Loggable {
     /**
      * A key must be define if and only if we are in a multivalued, component section.
      */
-    _ <-          if(isMultivalued && isComponent && effectiveComponentKey.isEmpty) {
+    _ <-          if(isMultivalued && isComponent && effectiveComponentKey.isEmpty && composition.isEmpty) {
                     Left(LoadTechniqueError.Parsing("Section '%s' is multivalued and is component. A componentKey attribute must be specified".format(name)))
                   } else Right("ok")
-      sectionSpec = SectionSpec(name, isMultivalued, isComponent, effectiveComponentKey, displayPriority, description, children)
+      sectionSpec = SectionSpec(name, isMultivalued, isComponent, effectiveComponentKey, displayPriority, description, children, composition)
       res <- if (isMultivalued) sectionSpec.cloneVariablesInMultivalued
              else Right(sectionSpec)
     } yield {

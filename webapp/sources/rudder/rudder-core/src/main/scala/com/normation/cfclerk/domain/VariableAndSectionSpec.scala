@@ -100,6 +100,7 @@ final case class SectionSpec(
   , displayPriority : DisplayPriority = HighDisplayPriority
   , description     : String = ""
   , children        : Seq[SectionChildSpec] = Seq()
+  , compositionRule: Option[CompositionRule ] = None
 ) extends SectionChildSpec {
 
   lazy val getDirectVariables : Seq[VariableSpec] = {
@@ -437,3 +438,6 @@ object DisplayPriority {
     }
   }
 }
+
+sealed  trait CompositionRule
+case object WorstReport extends CompositionRule
