@@ -441,3 +441,5 @@ object DisplayPriority {
 
 sealed  trait CompositionRule
 case object WorstReport extends CompositionRule
+case object SumReport extends CompositionRule
+case class ComponentReport(component : String) extends CompositionRule

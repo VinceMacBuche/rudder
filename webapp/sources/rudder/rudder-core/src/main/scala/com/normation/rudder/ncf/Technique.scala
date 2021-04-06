@@ -38,11 +38,14 @@
 package com.normation.rudder.ncf
 
 import java.util.regex.Pattern
-
 import better.files.File
 import com.normation.errors.PureResult
 import com.normation.errors.Unexpected
 import cats.data.NonEmptyList
+import com.normation.cfclerk.domain.ComponentReport
+import com.normation.cfclerk.domain.CompositionRule
+import com.normation.cfclerk.domain.SumReport
+import com.normation.cfclerk.domain.WorstReport
 import com.normation.cfclerk.services.GitRepositoryProvider
 import com.normation.errors.IOResult
 import com.normation.inventory.domain.Version
@@ -99,12 +102,21 @@ final case class Technique(
     bundleName  : BundleName
   , name        : String
   , category    : String
-  , methodCalls : Seq[MethodCall]
+  , methodCalls : Seq[Method]
   , version     : Version
   , description : String
   , parameters  : Seq[TechniqueParameter]
   , ressources  : Seq[ResourceFile]
 )
+
+trait Method
+
+final case class MethodBlock(
+    component: String
+  , compositionRule: CompositionRule
+  , condition : String
+  , calls : List[Method]
+) extends Method
 
 final case class MethodCall(
     methodId   : BundleName
@@ -112,7 +124,7 @@ final case class MethodCall(
   , parameters : List[(ParameterId,String)]
   , condition  : String
   , component  : String
-)
+) extends  Method
 
 final case class GenericMethod(
     id             : BundleName
@@ -319,6 +331,28 @@ class TechniqueSerializer(parameterTypeService: ParameterTypeService) {
       )
     }
 
+    def serializeMethod(method : Method): JValue = {
+      method match {
+        case c : MethodCall => serializeMethodCall(c)
+        case b : MethodBlock => serializeMethodBlock(b)
+      }
+    }
+
+    def serializeCompositionRule(compositionRule: CompositionRule) :JValue = {
+      compositionRule match {
+        case WorstReport =>  ("type"-> "worst")
+        case SumReport =>  ("type"-> "sum")
+        case ComponentReport(component)  => ("type"  -> "component") ~ ("value" -> component)
+      }
+    }
+    def serializeMethodBlock(block: MethodBlock): JValue = {
+      (  ("condition" -> block.condition)
+        ~ ("component" -> block.component)
+        ~ ("compositionRule" -> serializeCompositionRule(block.compositionRule))
+        ~ ("calls" -> block.calls.map(serializeMethod))
+        )
+    }
+
     def serializeMethodCall(call: MethodCall): JValue = {
       val params: JValue = call.parameters.map {
         case (parameterName, value) =>
@@ -343,7 +377,7 @@ class TechniqueSerializer(parameterTypeService: ParameterTypeService) {
 
     val resource = technique.ressources.map(serializeResource)
     val parameters = technique.parameters.map(serializeTechniqueParameter).toList
-    val calls = technique.methodCalls.map(serializeMethodCall).toList
+    val calls = technique.methodCalls.map(serializeMethod).toList
     ( ("bundle_name" -> technique.bundleName.value)
     ~ ("version" -> technique.version.value)
     ~ ("category" -> technique.category)

@@ -164,6 +164,8 @@ class SectionSpecParser(variableParser:VariableSpecParser) extends Loggable {
     }
     val composition = (root \ ("@composition")).headOption.map( _.text) match {
       case Some("worst") => Some(WorstReport)
+      case Some("sum") => Some(SumReport)
+      case Some(s"component:${a}") => Some(ComponentReport(a))
       case null | Some("") => None
       case x => None
     }

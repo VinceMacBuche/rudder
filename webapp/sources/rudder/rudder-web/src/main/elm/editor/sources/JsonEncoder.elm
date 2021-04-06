@@ -13,7 +13,7 @@ encodeTechnique technique =
   , ("description" , string technique.description )
   , ("category"    , string technique.category )
   , ("parameter"   , list encodeTechniqueParameters technique.parameters )
-  , ("method_calls", list encodeMethodCall technique.calls )
+  , ("method_calls", list encodeX technique.calls )
   , ("resources"   , list encodeResource technique.resources )
   ]
 
@@ -38,6 +38,11 @@ encodeTechniqueParameters param =
   , ("description", string param.description)
   ]
 
+encodeX: X -> Value
+encodeX call =
+  case call of
+    Block b -> encodeMethodBlock b
+    Call c -> encodeMethodCall c
 
 encodeMethodCall: MethodCall -> Value
 encodeMethodCall call =
@@ -47,6 +52,25 @@ encodeMethodCall call =
   , ("class_context",  string <| conditionStr call.condition)
   , ("component"    , string call.component)
   , ("parameters"   , list encodeCallParameters call.parameters)
+  ]
+
+encodeCompositionRule: CompositionRule -> Value
+encodeCompositionRule composition =
+  case composition of
+    WorstReport ->
+      object [ ("type", string "worst")]
+    SumReport ->
+      object [ ("type", string "sum")]
+    ComponentReport value ->
+      object [ ("type", string "component"), ("value", string value)]
+
+encodeMethodBlock: MethodBlock -> Value
+encodeMethodBlock call =
+  object [
+    ("compositionRule"  , encodeCompositionRule call.compositionRule)
+  , ("condition",  string <| conditionStr call.condition)
+  , ("component"    , string call.component)
+  , ("calls"   , list encodeX call.calls)
   ]
 
 encodeCallParameters: CallParameter -> Value

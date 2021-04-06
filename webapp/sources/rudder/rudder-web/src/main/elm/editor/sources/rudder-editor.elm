@@ -20,6 +20,7 @@ import Task
 import UUID
 import ViewTechnique exposing ( view, checkTechniqueName, checkTechniqueId )
 import ViewMethod exposing ( accumulateErrorConstraint )
+import ViewTechniqueList exposing (allMethodCalls)
 
 --
 -- Port for interacting with external JS
@@ -97,7 +98,7 @@ defaultMethodUiInfo = MethodCallUiInfo Closed CallParameters Dict.empty
 selectTechnique: Model -> Technique -> (Model, Cmd Msg)
 selectTechnique model technique =
   let
-    ui = TechniqueUiInfo General (Dict.fromList (List.map (\c -> (c.id.value, defaultMethodUiInfo)) technique.calls)) [] False ValidState ValidState
+    ui = TechniqueUiInfo General (Dict.fromList (List.map (\c -> (c.id.value, defaultMethodUiInfo)) (List.concatMap allMethodCalls technique.calls))) [] False ValidState ValidState
   in
     ({ model | mode = TechniqueDetails technique  (Edit technique) ui } )
       |> update OpenMethods
@@ -172,7 +173,7 @@ update msg model =
         Ok t ->
           let
             mode = TechniqueDetails t (Creation t.id) (
-                     TechniqueUiInfo General (Dict.fromList (List.map (\c -> (c.id.value, defaultMethodUiInfo)) t.calls)) [] False (checkTechniqueName t model) (checkTechniqueId (Creation t.id) t model)
+                     TechniqueUiInfo General (Dict.fromList (List.map (\c -> (c.id.value, defaultMethodUiInfo)) (List.concatMap allMethodCalls t.calls))) [] False (checkTechniqueName t model) (checkTechniqueId (Creation t.id) t model)
                    )
             (newModel, cmd) = (update (CallApi ( getRessources (Creation t.id) ))  {model | mode = mode })
           in
@@ -228,7 +229,7 @@ update msg model =
                 (Nothing, Nothing) -> infoNotification "Technique reloaded from cache"
               state = Maybe.withDefault (Creation newId)  (Maybe.map Edit originTechnique)
 
-              ui = TechniqueUiInfo General (Dict.fromList (List.map (\c -> (c.id.value, defaultMethodUiInfo)) technique.calls)) [] False (checkTechniqueName technique model) (checkTechniqueId state technique model)
+              ui = TechniqueUiInfo General (Dict.fromList (List.map (\c -> (c.id.value, defaultMethodUiInfo)) (List.concatMap allMethodCalls technique.calls))) [] False (checkTechniqueName technique model) (checkTechniqueId state technique model)
             in
               ({ model | mode = TechniqueDetails technique state ui } )
                 |> update OpenMethods
@@ -236,7 +237,7 @@ update msg model =
 
     CloneTechnique technique internalId ->
       let
-        ui = TechniqueUiInfo General (Dict.fromList (List.map (\c -> (c.id.value, defaultMethodUiInfo)) technique.calls)) [] False Untouched Untouched
+        ui = TechniqueUiInfo General (Dict.fromList (List.map (\c -> (c.id.value, defaultMethodUiInfo)) (List.concatMap allMethodCalls technique.calls))) [] False Untouched Untouched
       in
         ({ model | mode = TechniqueDetails technique  (Clone technique internalId) ui } )
           |> update OpenMethods
@@ -503,7 +504,7 @@ update msg model =
           case model.mode of
             TechniqueDetails t o ui ->
               let
-                technique =  { t | calls = newCall :: t.calls }
+                technique =  { t | calls = (Call newCall) :: t.calls }
                 newUi = { ui | callsUI = Dict.update newId.value (always (Just defaultMethodUiInfo) ) ui.callsUI }
               in
               { model | mode = TechniqueDetails technique o newUi }

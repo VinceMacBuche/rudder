@@ -37,8 +37,9 @@
 
 package com.normation.rudder.domain.reports
 
-import cats.data.NonEmptyList
+import com.normation.cfclerk.domain.ComponentReport
 import com.normation.cfclerk.domain.CompositionRule
+import com.normation.cfclerk.domain.SumReport
 import com.normation.cfclerk.domain.TechniqueVersion
 import com.normation.cfclerk.domain.WorstReport
 import com.normation.inventory.domain.NodeId
@@ -271,6 +272,8 @@ object ExpectedReportsSerialisation {
         (("componentName" -> c.componentName)
           ~ ("composition" -> (c.compositionRule match {
           case WorstReport => "worst"
+          case SumReport => "sum"
+          case ComponentReport(component) => s"component:${component}"
         }))
           ~ ("subComponents" -> c.subComponents.map(jsonComponentExpectedReport))
           )

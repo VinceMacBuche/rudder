@@ -42,16 +42,19 @@ import com.normation.rudder.domain.logger.ComplianceDebugLogger
 import com.normation.rudder.domain.logger.ComplianceDebugLogger._
 import com.normation.rudder.domain.logger.TimingDebugLogger
 import com.normation.inventory.domain.NodeId
+import com.normation.rudder.domain.policies.DirectiveId
 import com.normation.rudder.domain.reports._
 import com.normation.rudder.reports._
 import com.normation.rudder.reports.execution.AgentRunId
 import net.liftweb.common.Loggable
-import java.util.regex.Pattern
 
+import java.util.regex.Pattern
 import com.normation.rudder.domain.policies.PolicyMode
 import com.normation.rudder.domain.reports.ReportType.BadPolicyMode
 import com.normation.rudder.reports.execution.AgentRunWithNodeConfig
 import com.normation.rudder.domain.policies.RuleId
+
+import scala.collection.immutable
 
 /*
  *  we want to retrieve for each node the expected reports that matches it LAST
@@ -866,9 +869,12 @@ final case class ContextForNoAnswer(
 
     var u1, u2, u3, u4 = 0L
 
-
-    println("reports")
-    println(executionReports)
+    def getExpectedComponents(component : ComponentExpectedReport) : List[String] = {
+      component match {
+        case c : UniqueComponentExpectedReport => c.componentName :: Nil
+        case c : GroupComponentExpectedReport => c.subComponents.flatMap(getExpectedComponents)
+      }
+    }
 
     val t0 = System.currentTimeMillis
     val reportsPerRule = executionReports.groupBy(_.ruleId)
@@ -882,7 +888,7 @@ final case class ContextForNoAnswer(
 
                                    val reports = reportsForThatNodeRule.groupBy(x => (x.directiveId, x.component) )
 
-                                   val expectedComponents = (for {
+                                   val expectedComponents: Map[(DirectiveId, List[String]), (PolicyMode, ReportType, ComponentExpectedReport)] = (for {
                                      directive  <- directives
                                      policyMode =  PolicyMode.directivePolicyMode(
                                                           lastRunNodeConfig.modes.globalPolicyMode
@@ -897,9 +903,10 @@ final case class ContextForNoAnswer(
                                      missingReportStatus = missingReportType(lastRunNodeConfig.complianceMode, policyMode)
 
                                      component  <- directive.components
+
                                    } yield {
 
-                                     ((directive.directiveId, component.componentName), (policyMode, missingReportStatus, component))
+                                     ((directive.directiveId, getExpectedComponents(component)), (policyMode, missingReportStatus, component))
                                    }).toMap
                                    val t2 = System.nanoTime
                                    u1 += t2-t1
@@ -911,13 +918,14 @@ final case class ContextForNoAnswer(
                                     * - both expected component and reports => check
                                     */
                                    val reportKeys = reports.keySet
-                                   val expectedKeys = expectedComponents.keySet
+                                   val expectedKeys = expectedComponents.keySet.flatMap(c => c._2.map(d => (c._1, d)))
                                    val okKeys = reportKeys.intersect(expectedKeys)
+
 
                                    // If okKeys.size == reportKeys.size, there is no unexpected reports
                                    // If okKeys.size == expectedKeys.size, there is no missing reports
                                    val missing = (if (okKeys.size != expectedKeys.size) {
-                                     expectedComponents.filter(k => !reportKeys.contains(k._1)).map { case ((d, _), (pm, mrs, c)) =>
+                                     expectedComponents.filter(k => !reportKeys.exists(r => r._1 == k._1._1 && k._1._2.contains(r._2))).map { case ((d, _), (pm, mrs, c)) =>
 
                                        DirectiveStatusReport(d, Map(c.componentName ->
                                          /*
@@ -945,6 +953,7 @@ final case class ContextForNoAnswer(
 
                                    //unexpected contains the one with unexpected key and all non matching serial/version
                                    val unexpected = (if (okKeys.size != reportKeys.size) {
+                                     logger.info("unexpected :(")
                                      buildUnexpectedDirectives(
                                        reports.filter(k => !expectedKeys.contains(k._1)).values.flatten.toSeq
                                      )
@@ -956,14 +965,24 @@ final case class ContextForNoAnswer(
                                    u3 += t4-t3
 
                                    // okKeys is DirectiveId, ComponentName
-                                   val expected = okKeys.groupBy(_._1).map { case (directiveId, cptName) =>
+                                   val expected: Iterable[DirectiveStatusReport] =
+                                     expectedComponents.groupBy(_._1._1).map {
+                                       case (directiveId, expectedComponentsForDirective) =>
+                                         DirectiveStatusReport(directiveId, expectedComponentsForDirective.map {
+                                           case ((directiveId, components), (policyMode, missingReportStatus, component)) =>
+                                             val filteredReports = components.flatMap(c => reports.getOrElse((directiveId, c), Seq()))
+
+                                             (component.componentName, checkExpectedComponentWithReports(component, filteredReports, missingReportStatus, policyMode, unexpectedInterpretation))
+                                         })
+                                     }
+        /* okKeys.groupBy(_._1).map { case (directiveId, cptName) =>
                                       DirectiveStatusReport(directiveId, cptName.toSeq.map { case (_, cpt) =>
                                         val k = (directiveId, cpt)
-                                        val (policyMode, missingReportStatus, components) = expectedComponents(k)
+                                        val (policyMode, missingReportStatus, component) = expectedComponents.find(r => k._1 == r._1._1 && r._1._2.contains(k._2)).get._2
 
-                                        (cpt, checkExpectedComponentWithReports(components, reports(k), missingReportStatus, policyMode, unexpectedInterpretation))
+                                        (cpt, checkExpectedComponentWithReports(component, reports(k), missingReportStatus, policyMode, unexpectedInterpretation))
                                       }.toMap)
-                                    }
+                                    }*/
 
                                    val t5 = System.nanoTime
                                    u4 += t5-t4
@@ -1138,7 +1157,9 @@ final case class ContextForNoAnswer(
 
     expectedComponent match {
       case g: GroupComponentExpectedReport =>
-        GroupComponentStatusReport(g.componentName, g.compositionRule, g.subComponents.map(e => checkExpectedComponentWithReports(e,filteredReports, noAnswerType, policyMode, unexpectedInterpretation)))
+        GroupComponentStatusReport(g.componentName, g.compositionRule, g.subComponents.map{case e : UniqueComponentExpectedReport =>
+          checkExpectedComponentWithReports(e,filteredReports.filter(_.component == e.componentName), noAnswerType, policyMode, unexpectedInterpretation)
+        case e => checkExpectedComponentWithReports(e,filteredReports, noAnswerType, policyMode, unexpectedInterpretation)})
       case expectedComponent: UniqueComponentExpectedReport =>
         // an utility class that store an expected value and the list of mathing reports for it
         final case class Value(

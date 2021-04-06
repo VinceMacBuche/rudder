@@ -32,6 +32,27 @@ parseCondition class_context =
            Nothing ->  Condition Nothing class_context
            os -> Condition os (String.join "." rest)
 
+decodeX : Decoder X
+decodeX =
+
+  oneOf [(map Call decodeMethodCall), (map Block decodeBlock) ]
+
+decodeCompositionRule : Decoder CompositionRule
+decodeCompositionRule =
+  andThen (\v ->
+    case v of
+      "worst" -> succeed WorstReport
+      "sum"      -> succeed SumReport
+      _          -> fail (v ++ " is not a valid composition Rule")
+  ) string
+
+decodeBlock : Decoder MethodBlock
+decodeBlock =
+  succeed MethodBlock
+    |> required "component"  string
+    |> required "condition"  (map parseCondition string)
+    |> required "compositionRule" decodeCompositionRule
+    |> required "calls" (list (lazy (\_ -> decodeX)))
 
 decodeMethodCall : Decoder MethodCall
 decodeMethodCall =
@@ -50,7 +71,7 @@ decodeTechnique =
     |> required "name"  string
     |> required "description"  string
     |> required "category"  string
-    |> required "method_calls" (list decodeMethodCall)
+    |> required "method_calls" (list decodeX)
     |> required "parameter" (list decodeTechniqueParameter)
     |> required "resources" (list decodeResource)
 

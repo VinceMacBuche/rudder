@@ -64,9 +64,20 @@ type alias Technique =
   , name        : String
   , description : String
   , category    : String
-  , calls       : List MethodCall
+  , calls       : List X
   , parameters  : List TechniqueParameter
   , resources   : List Resource
+  }
+
+type X = Call MethodCall | Block MethodBlock
+
+type CompositionRule = WorstReport | SumReport | ComponentReport String
+
+type alias MethodBlock =
+  { component : String
+  , condition : Condition
+  , compositionRule : CompositionRule
+  , calls : List X
   }
 
 type alias MethodCall =
@@ -93,7 +104,7 @@ type alias TechniqueCategory =
   , name : String
   }
 
-config : DnDList.Groups.Config (Either Method MethodCall)
+config : DnDList.Groups.Config (Either Method X)
 config =
     { beforeUpdate = \_ _ list -> list
     , listen       = DnDList.Groups.OnDrag
@@ -112,13 +123,13 @@ config =
            (\drag drop ->
                case (drag,drop) of
                  ( Right _ , Left method ) ->
-                   Right (MethodCall (CallId "") method.id (List.map (\p -> CallParameter p.name "") method.parameters) (Condition Nothing "") "")
+                   Right (Call (MethodCall (CallId "") method.id (List.map (\p -> CallParameter p.name "") method.parameters) (Condition Nothing "") ""))
                  _                         -> drop
           )
         }
     }
 
-dndSystem : DnDList.Groups.System (Either Method MethodCall) Msg
+dndSystem : DnDList.Groups.System (Either Method X) Msg
 dndSystem =
   DnDList.Groups.create config DndEvent
 

@@ -37,7 +37,9 @@
 
 package com.normation.rudder.domain.reports
 
+import com.normation.cfclerk.domain.ComponentReport
 import com.normation.cfclerk.domain.CompositionRule
+import com.normation.cfclerk.domain.SumReport
 import com.normation.cfclerk.domain.WorstReport
 import org.joda.time.DateTime
 import com.normation.inventory.domain.NodeId
@@ -289,7 +291,33 @@ final case class GroupComponentStatusReport (
   , compositionRule: CompositionRule
   , subComponents : List[ComponentStatusReport]
 ) extends  ComponentStatusReport {
-  def compliance: ComplianceLevel = ComplianceLevel.sum(subComponents.map(_.compliance))
+  def findChildren(componentName : String): List[ComponentStatusReport] = {
+    subComponents.find(_.componentName == componentName).toList :::
+    subComponents.collect{case g :GroupComponentStatusReport => g}.flatMap(_.findChildren(componentName))
+  }
+  def compliance: ComplianceLevel = {
+    val sum = ComplianceLevel.sum(subComponents.map(_.compliance))
+    compositionRule match {
+      case WorstReport =>
+        if      (sum.error > 0)              ComplianceLevel(error = 1)
+        else if (sum.auditError > 1)         ComplianceLevel(auditError = 1)
+        else if (sum.nonCompliant > 1)       ComplianceLevel(nonCompliant = 1)
+        else if (sum.badPolicyMode > 1)      ComplianceLevel(badPolicyMode = 1)
+        else if (sum.noAnswer > 1)           ComplianceLevel(noAnswer = 1)
+        else if (sum.missing > 1)            ComplianceLevel(missing = 1)
+        else if (sum.unexpected > 1)         ComplianceLevel(unexpected = 1)
+        else if (sum.repaired > 1)           ComplianceLevel(repaired = 1)
+        else if (sum.success > 1)            ComplianceLevel(success = 1)
+        else if (sum.compliant > 1)          ComplianceLevel(compliant = 1)
+        else if (sum.notApplicable > 1)      ComplianceLevel(notApplicable = 1)
+        else if (sum.auditNotApplicable > 1) ComplianceLevel(auditNotApplicable = 1)
+        else if (sum.pending > 1)            ComplianceLevel(pending = 1)
+        else                                 ComplianceLevel(reportsDisabled = 1)
+      case SumReport => ComplianceLevel.sum(subComponents.map(_.compliance))
+      case ComponentReport(component) => ComplianceLevel.sum(findChildren(component).map(_.compliance))
+    }
+  }
+
   def getValues(predicate: ComponentValueStatusReport => Boolean): Seq[(String, ComponentValueStatusReport)] = {
     subComponents.flatMap(_.getValues(predicate))
   }
@@ -333,25 +361,18 @@ object ComponentStatusReport extends Loggable {
   def merge(components: Iterable[ComponentStatusReport]): Map[String, ComponentStatusReport] = {
     components.groupBy( _.componentName).flatMap { case (cptName, reports) =>
 
-      println("yo")
-      println(reports)
       val valueComponents = reports.collect{ case c : UniqueComponentStatusReport => c }.toList match {
         case Nil => None
         case r =>
           val newValues = ComponentValueStatusReport.merge(r.flatMap( _.componentValues.values))
           Some(UniqueComponentStatusReport(cptName, newValues))
       }
-
-      println("yo2")
-      println(valueComponents)
       val groupComponent= reports.collect{ case c : GroupComponentStatusReport => c }.toList match {
         case Nil => None
         case r =>
           Some(GroupComponentStatusReport(cptName, WorstReport, ComponentStatusReport.merge(r.flatMap(_.subComponents)).values.toList))
       }
 
-      println("yo3")
-      println(groupComponent)
       (valueComponents,groupComponent) match {
         case (None, None) => Nil
         case (Some(v),None) => (cptName, v) :: Nil
