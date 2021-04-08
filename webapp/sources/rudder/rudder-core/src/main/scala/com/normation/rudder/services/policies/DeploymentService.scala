@@ -101,7 +101,6 @@ import zio.syntax._
 import com.normation.zio._
 import com.softwaremill.quicklens._
 import cats.implicits._
-import com.normation.cfclerk.domain.SectionChildSpec
 import com.normation.cfclerk.domain.SectionSpec
 import com.normation.rudder.domain.reports.GroupComponentExpectedReport
 import com.normation.rudder.domain.reports.UniqueComponentExpectedReport
