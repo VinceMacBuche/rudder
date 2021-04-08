@@ -427,6 +427,28 @@ methodDetail method call ui model =
     ]
   ]
 
+showMethodBlock: Model ->  DnDList.Groups.Model -> Int -> MethodBlock -> Html Msg
+showMethodBlock model dnd index block =
+  let
+    dragAttributes =
+       case dndSystem.info dnd of
+         Just { dragIndex } ->
+           if dragIndex /= index then
+             dndSystem.dropEvents index block.id.value
+           else
+             [ ]
+         Nothing ->
+            dndSystem.dragEvents index block.id.value
+  in
+    if (List.isEmpty dragAttributes) then
+      li [ class "dndPlaceholder"] [ ]
+    else
+      li [ ] [ --     ng-class="{'active': methodIsSelected(method_call), 'missingParameters': checkMissingParameters(method_call.parameters, method.parameter).length > 0, 'errorParameters': checkErrorParameters(method_call.parameters).length > 0, 'is-edited' : canResetMethod(method_call)}"
+        blockBody model block dragAttributes False
+
+      ]
+
+
 showMethodCall: Model -> MethodCallUiInfo -> DnDList.Groups.Model -> Int -> MethodCall -> Html Msg
 showMethodCall model ui dnd index call =
   let
@@ -452,6 +474,57 @@ showMethodCall model ui dnd index call =
          Opened -> div [ class "method-details" ] [ methodDetail method call ui model ]
          Closed -> div [] []
       ]
+
+blockBody : Model -> MethodBlock ->  List (Attribute Msg) -> Bool -> Html Msg
+blockBody model block dragAttributes isGhost =
+  let
+    nbErrors = List.length (List.filter ( List.any ( (/=) Nothing) ) []) -- get errors
+  in
+  div ( class "method" :: id block.id.value :: if isGhost then List.reverse ( style  "z-index" "1" :: style "pointer-events" "all" :: id "ghost" :: style "opacity" "0.7" :: style "background-color" "white" :: dndSystem.ghostStyles model.dnd) else []) [
+    div  (class "cursorMove" :: dragAttributes) [ p [] [ text ":::"] ]
+  , div [ class "method-info"] [
+      div [ hidden (not model.hasWriteRights), class "btn-holder" ] [
+     {-   button [ class "text-success method-action tooltip-bs", onClick ( GenerateId (\s -> CloneMethod call (CallId s)) ), type_ "button"
+               , title "Clone this method", attribute "data-toggle" "tooltip"
+               , attribute "data-trigger" "hover", attribute "data-container" "body", attribute "data-placement" "left"
+               , attribute "data-html" "true", attribute "data-delay" """'{"show":"400", "hide":"100"}'""" ] [
+          i [ class "fa fa-clone"] []
+        ]
+      ,-} button [  class "text-danger method-action", type_ "button", onClick (RemoveMethod block.id) ] [
+          i [ class "fa fa-times-circle" ] []
+        ]
+      ]
+    , div [ class "flex-column" ] [
+        if (block.condition.os == Nothing && block.condition.advanced == "") then
+          text ""
+        else
+          div [ class "method-condition flex-form" ] [
+            label [] [ text "Condition:" ]
+          , textarea [ class "form-control popover-bs", rows 1, readonly True, value (conditionStr block.condition), title (conditionStr block.condition)
+                            --msd-elastic
+                            --ng-click="$event.stopPropagation();"
+                     , attribute "data-toggle" "popover", attribute "data-trigger" "hover", attribute "data-placement" "top"
+                     , attribute "data-title" (conditionStr block.condition), attribute "data-content" "<small>Click <span class='text-info'>3</span> times to copy the whole condition below</small>"
+                     , attribute "data-template" """<div class="popover condition" role="tooltip"><div class="arrow"></div><h3 class="popover-header"></h3><div class="popover-body"></div></div>"""
+                     , attribute "data-html" "true" ] []
+          ]
+        , div [ class "method-name" ] [
+            text block.component
+          ]
+        , div [class "warns" ] [
+             ( if nbErrors > 0 then
+                 span [ class "warn-param error popover-bs", hidden (nbErrors == 0) ] [
+                   b [] [ text (String.fromInt nbErrors) ]
+                 , text (" invalid " ++ (if nbErrors == 1 then "parameter" else "parameters") )
+                 ]
+               else
+                 text ""
+             )
+           ]
+         ]
+        ]
+      ]
+
 
 callBody : Model -> MethodCallUiInfo ->  MethodCall ->  List (Attribute Msg) -> Bool -> Html Msg
 callBody model ui call dragAttributes isGhost =

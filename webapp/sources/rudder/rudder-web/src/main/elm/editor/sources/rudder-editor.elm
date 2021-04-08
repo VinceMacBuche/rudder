@@ -21,6 +21,7 @@ import UUID
 import ViewTechnique exposing ( view, checkTechniqueName, checkTechniqueId )
 import ViewMethod exposing ( accumulateErrorConstraint )
 import ViewTechniqueList exposing (allMethodCalls)
+import Maybe.Extra
 
 --
 -- Port for interacting with external JS
@@ -107,6 +108,23 @@ selectTechnique model technique =
 generator : Random.Generator String
 generator = Random.map (UUID.toString) UUID.generator
 
+
+updateXIf : (X -> Bool) -> ( X -> X) -> List X -> List X
+updateXIf predicate updateFun list =
+  let
+    updateLowerLevel = List.Extra.updateIf predicate updateFun list
+  in
+    List.map (\ x ->
+      case x of
+        Block p b -> Block p {b | calls = updateXIf predicate updateFun b.calls}
+        Call _ _ -> x
+    ) updateLowerLevel
+
+updateParameter: ParameterId -> String -> X -> X
+updateParameter paramId newValue x =
+  case x of
+    Call p c -> Call p { c | parameters =  List.Extra.updateIf (.id >> (==) paramId) (\param -> { param | value = newValue } ) c.parameters }
+    Block p b -> Block p { b | calls = List.map (updateParameter paramId newValue) b.calls}
 --
 -- update loop --
 --
@@ -319,8 +337,8 @@ update msg model =
                     Edit t -> t
                     Clone t _ -> t
                     Creation _ -> base
-                (updatedTechnique, needCheck) = case List.Extra.find (.id >> (==) call.id) technique.calls of
-                         Just resetCall -> ({ base | calls = List.Extra.updateIf (.id >> (==) call.id) (always resetCall) base.calls }, Just resetCall)
+                (updatedTechnique, needCheck) = case List.Extra.find (getId >> (==) call.id) technique.calls of
+                         Just resetCall -> ({ base | calls = updateXIf (getId >> (==) call.id) (always resetCall) base.calls }, Just resetCall)
                          Nothing -> (base,Nothing)
                 callUi =
                   case needCheck of
@@ -337,8 +355,12 @@ update msg model =
                               Just cui -> cui
 
 
-                            newValidation = List.foldl ( \param val ->
-                               Dict.update param.id.value (always (Just (accumulateErrorConstraint  param (Maybe.withDefault [] (Dict.get param.id.value constraints))  )))  val ) b.validation realCall.parameters
+                            newValidation =
+                             case realCall of
+                               Block _ _ -> Dict.empty
+                               Call _ c ->
+                                 List.foldl ( \param val ->
+                                   Dict.update param.id.value (always (Just (accumulateErrorConstraint  param (Maybe.withDefault [] (Dict.get param.id.value constraints))  )))  val ) b.validation c.parameters
                           in
                             Just { b | validation = newValidation }
                       in
@@ -504,7 +526,25 @@ update msg model =
           case model.mode of
             TechniqueDetails t o ui ->
               let
-                technique =  { t | calls = (Call newCall) :: t.calls }
+                technique =  { t | calls = (Call Nothing newCall) :: t.calls }
+                newUi = { ui | callsUI = Dict.update newId.value (always (Just defaultMethodUiInfo) ) ui.callsUI }
+              in
+              { model | mode = TechniqueDetails technique o newUi }
+            _ -> model
+      in
+        (  newModel , updatedStoreTechnique newModel )
+      else
+        (model,Cmd.none)
+
+    AddBlock newId ->
+      if model.hasWriteRights then
+      let
+        newCall = MethodBlock newId "" (Condition Nothing "") SumReport []
+        newModel =
+          case model.mode of
+            TechniqueDetails t o ui ->
+              let
+                technique =  { t | calls = (Block Nothing newCall) :: t.calls }
                 newUi = { ui | callsUI = Dict.update newId.value (always (Just defaultMethodUiInfo) ) ui.callsUI }
               in
               { model | mode = TechniqueDetails technique o newUi }
@@ -521,10 +561,10 @@ update msg model =
                 case model.mode of
                    TechniqueDetails t o ui ->
                     let
-                      (d, calls ) = dndSystem.update dndMsg model.dnd (List.append (List.map (Right) t.calls) (Dict.values model.methods |> List.map (Left)))
+                      (d, calls ) = dndSystem.update dndMsg model.dnd (List.append (List.map (Right) t.calls) ( (Left (Right NewBlock)) :: (Dict.values model.methods |> List.map (Left >> Left))))
                       newMode = TechniqueDetails { t | calls = Either.rights calls } o ui
                     in
-                      if (List.any (\call -> call.id.value == "") t.calls) then
+                      if (List.any (getId >> (==) (CallId "")) t.calls) then
                         update (GenerateId (\id -> SetCallId (CallId id))) { model | dnd = d, mode = newMode }
                       else
                         ( { model | dnd = d, mode = newMode }, Cmd.none)
@@ -540,7 +580,7 @@ update msg model =
           case model.mode of
             TechniqueDetails t o ui ->
               let
-                technique = { t | calls = List.Extra.updateIf (\c -> c.id.value == "") (\c -> { c | id = newId } ) t.calls }
+                technique = { t | calls = updateXIf (getId >> .value >> (==) "") (setId newId) t.calls }
                 newUi = { ui | callsUI = Dict.insert newId.value defaultMethodUiInfo ui.callsUI}
               in
                 TechniqueDetails technique o newUi
@@ -582,7 +622,7 @@ update msg model =
           case model.mode of
            TechniqueDetails t o ui ->
             let
-              technique = { t |  calls = List.filter (\c -> c.id /= callId ) t.calls }
+              technique = { t |  calls = List.filter (getId >> (/=) callId ) t.calls }
               newUi = {ui | callsUI = Dict.remove callId.value  ui.callsUI }
             in
             TechniqueDetails technique o newUi
@@ -600,9 +640,10 @@ update msg model =
               let
                 newMethods =
                   let
-                   (end,beginning) = List.Extra.span (\c -> c.id == call.id ) (List.reverse t.calls)
+                   (end,beginning) = List.Extra.span (getId >> (==) call.id ) (List.reverse t.calls)
+                   endParent = Maybe.Extra.join (Maybe.map getParent (List.Extra.last end))
                   in
-                    List.reverse (List.append end (clone :: beginning))
+                    List.reverse (List.append end ((Call endParent clone) :: beginning))
                 technique = { t |  calls = newMethods}
                 newUi =  { ui | callsUI = Dict.update newId.value (always (Just defaultMethodUiInfo)) ui.callsUI }
               in
@@ -615,7 +656,13 @@ update msg model =
       case model.mode of
         TechniqueDetails t s ui ->
           let
-            newModel = {model | mode = TechniqueDetails {t | calls = List.Extra.updateIf (.id >> (==) callId ) (\c -> { c | condition = condition }) t.calls} s ui}
+            updateCondition =
+              \x ->
+                            case x of
+                              Call p c -> Call p { c | condition = condition }
+                              Block p b -> Block p { b | condition = condition}
+
+            newModel = {model | mode = TechniqueDetails {t | calls = updateXIf (getId >> (==) callId )  updateCondition t.calls} s ui}
           in
           (newModel, Cmd.none )
         _ -> (model,Cmd.none)
@@ -627,7 +674,7 @@ update msg model =
             TechniqueDetails t o ui->
               let
 
-                calls = List.Extra.updateIf (.id >> (==) call.id )  (\c -> { c | parameters =  List.Extra.updateIf (.id >> (==) paramId) (\p -> { p | value = newValue } ) c.parameters } ) t.calls
+                calls = updateXIf (getId >> (==) call.id )  (updateParameter paramId newValue) t.calls
                 constraints = case Dict.get call.methodName.value model.methods of
                            Just m -> Maybe.withDefault [] (Maybe.map (.constraints) (List.Extra.find (.name >> (==) paramId) m.parameters))
                            Nothing -> []

@@ -32,10 +32,10 @@ parseCondition class_context =
            Nothing ->  Condition Nothing class_context
            os -> Condition os (String.join "." rest)
 
-decodeX : Decoder X
-decodeX =
+decodeX : Maybe CallId -> Decoder X
+decodeX parent =
 
-  oneOf [(map Call decodeMethodCall), (map Block decodeBlock) ]
+  oneOf [(map (Call parent) decodeMethodCall), (map (Block parent) decodeBlock) ]
 
 decodeCompositionRule : Decoder CompositionRule
 decodeCompositionRule =
@@ -49,10 +49,17 @@ decodeCompositionRule =
 decodeBlock : Decoder MethodBlock
 decodeBlock =
   succeed MethodBlock
+    |> required "id" (map CallId string)
     |> required "component"  string
     |> required "condition"  (map parseCondition string)
     |> required "compositionRule" decodeCompositionRule
-    |> required "calls" (list (lazy (\_ -> decodeX)))
+    |> required "calls" (list  (decodeX Nothing))
+    >> andThen (\block -> succeed { block | calls = List.map (\x ->
+                                                               case x of
+                                                                 Block _ b -> Block (Just block.id) b
+                                                                 Call _ c -> Call (Just block.id) c
+                                   ) block.calls}
+               )
 
 decodeMethodCall : Decoder MethodCall
 decodeMethodCall =
@@ -71,7 +78,7 @@ decodeTechnique =
     |> required "name"  string
     |> required "description"  string
     |> required "category"  string
-    |> required "method_calls" (list decodeX)
+    |> required "method_calls" (list (decodeX Nothing))
     |> required "parameter" (list decodeTechniqueParameter)
     |> required "resources" (list decodeResource)
 

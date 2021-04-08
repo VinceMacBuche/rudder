@@ -92,6 +92,7 @@ methodsList model =
                div [ class "empty" ] [ text "No method matches the filters." ]
              else
                div [ id "methods-list-container" ] (List.map (showMethodsCategories model) (Dict.toList methodByCategories) )
+           , button [ class "btn btn-default", onClick (GenerateId (\s -> AddBlock (CallId s)))] [ text "add Block"]
            , ul [ id "categories-list" ]
                ( h4 [ id "categories" ] [ text "Categories" ] ::
                  List.map (\(c,b) -> showCategory c b ) (Dict.toList (Dict.map( \k methods -> List.all (\(_,m) -> Maybe.Extra.isJust m.deprecated) methods) methodByCategories))

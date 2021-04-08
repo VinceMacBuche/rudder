@@ -69,12 +69,31 @@ type alias Technique =
   , resources   : List Resource
   }
 
-type X = Call MethodCall | Block MethodBlock
+type X = Call (Maybe CallId) MethodCall | Block (Maybe CallId) MethodBlock
+
+getId : X -> CallId
+getId x =
+  case x of
+    Call _ c -> c.id
+    Block _ b -> b.id
+
+getParent : X -> Maybe CallId
+getParent x =
+  case x of
+    Call p _ -> p
+    Block p _ -> p
+
+setId : CallId -> X -> X
+setId newId x =
+  case x of
+    Call parent c -> Call parent {c | id = newId }
+    Block parent b -> Block parent {b | id = newId }
 
 type CompositionRule = WorstReport | SumReport | ComponentReport String
 
 type alias MethodBlock =
-  { component : String
+  { id : CallId
+  , component : String
   , condition : Condition
   , compositionRule : CompositionRule
   , calls : List X
@@ -104,7 +123,7 @@ type alias TechniqueCategory =
   , name : String
   }
 
-config : DnDList.Groups.Config (Either Method X)
+config : DnDList.Groups.Config (Either (Either Method NewBlock) X)
 config =
     { beforeUpdate = \_ _ list -> list
     , listen       = DnDList.Groups.OnDrag
@@ -122,14 +141,28 @@ config =
         , setter     =
            (\drag drop ->
                case (drag,drop) of
-                 ( Right _ , Left method ) ->
-                   Right (Call (MethodCall (CallId "") method.id (List.map (\p -> CallParameter p.name "") method.parameters) (Condition Nothing "") ""))
+                 ( Right x , Left (Left method) ) ->
+                   let parent =
+                         case x of
+                           Block _ b -> Just b.id
+                           Call p _ -> p
+                   in
+                     Right (Call parent (MethodCall (CallId "") method.id (List.map (\p -> CallParameter p.name "") method.parameters) (Condition Nothing "") ""))
+                 ( Right x , Left (Right NewBlock) ) ->
+                   let parent =
+                         case x of
+                           Block _ b -> Just b.id
+                           Call p _ -> p
+                   in
+                     Right (Block parent (MethodBlock (CallId "") "" (Condition Nothing "") SumReport []))
                  _                         -> drop
           )
         }
     }
 
-dndSystem : DnDList.Groups.System (Either Method X) Msg
+type NewBlock = NewBlock
+
+dndSystem : DnDList.Groups.System (Either (Either Method NewBlock) X) Msg
 dndSystem =
   DnDList.Groups.create config DndEvent
 
@@ -227,6 +260,7 @@ type Msg =
   | NewTechnique TechniqueId
   | Ignore
   | AddMethod Method CallId
+  | AddBlock CallId
   | DndEvent DnDList.Groups.Msg
   | SetCallId CallId
   | StartSaving

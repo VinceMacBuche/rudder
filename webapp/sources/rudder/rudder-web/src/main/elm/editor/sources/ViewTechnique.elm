@@ -164,12 +164,12 @@ showTechnique model technique origin ui =
                 else
                     List.indexedMap (\ index call ->
                         case call of
-                          Call c ->
+                          Call _ c ->
                             let
                               methodUi = Maybe.withDefault (MethodCallUiInfo Closed CallParameters Dict.empty) (Dict.get c.id.value ui.callsUI)
                             in
                               showMethodCall model methodUi model.dnd (index) c
-                          Block b -> text "TODO"
+                          Block _ b -> showMethodBlock model model.dnd index b
                    ) technique.calls
               ))
 
@@ -208,7 +208,7 @@ view model =
     , ( case model.mode of
          TechniqueDetails technique _ _->
            case maybeDragCard model technique.calls of
-             Just (Call c) ->
+             Just (Call _ c) ->
                callBody model (MethodCallUiInfo Closed CallParameters Dict.empty) c  ( List.reverse (class "method" :: [] )) True
              _ ->
                text ""

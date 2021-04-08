@@ -41,8 +41,8 @@ encodeTechniqueParameters param =
 encodeX: X -> Value
 encodeX call =
   case call of
-    Block b -> encodeMethodBlock b
-    Call c -> encodeMethodCall c
+    Block _ b -> encodeMethodBlock b
+    Call _ c -> encodeMethodCall c
 
 encodeMethodCall: MethodCall -> Value
 encodeMethodCall call =

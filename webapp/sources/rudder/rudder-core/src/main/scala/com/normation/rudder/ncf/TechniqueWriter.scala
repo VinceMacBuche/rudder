@@ -180,10 +180,10 @@ class TechniqueWriter (
 
   def techniqueMetadataContent(technique : Technique, methods: Map[BundleName, GenericMethod]) : PureResult[XmlNode] = {
 
-    def reportingValuePerMethod (component: String, calls :Seq[MethodCall]) : PureResult[Seq[XmlNode]] = {
+    def reportingValuePerBlock (component: String, calls :Seq[MethodBlock]) : PureResult[Seq[XmlNode]] = {
 
       for {
-        spec <- calls.toList.traverse { call =>
+        spec <- calls.toList.traverse ( call =>
           for {
             method <- methods.get(call.methodId) match {
               case None => Left(MethodNotFound(s"Cannot find method ${call.methodId.value} when writing a method call of Technique '${technique.bundleName.value}'", None))
@@ -198,7 +198,7 @@ class TechniqueWriter (
             <VALUE>{class_param}</VALUE>
           }
 
-        }
+        )
       } yield {
 
         <SECTION component="true" multivalued="true" name={component}>
@@ -210,6 +210,56 @@ class TechniqueWriter (
       }
     }
 
+    def reportingValuePerMethod (component: String, calls :Seq[MethodCall]) : PureResult[Seq[XmlNode]] = {
+      for {
+        spec <- calls.toList.traverse ( call =>
+          for {
+            method <- methods.get(call.methodId) match {
+              case None => Left(MethodNotFound(s"Cannot find method ${call.methodId.value} when writing a method call of Technique '${technique.bundleName.value}'", None))
+              case Some(m) => Right(m)
+            }
+            class_param <- call.parameters.find(_._1 == method.classParameter) match {
+              case None => Left(MethodNotFound(s"Cannot find call parameter of ${call.methodId.value} when writing a method call of Technique '${technique.bundleName.value}'", None))
+              case Some(m) => Right(m._2)
+            }
+
+          } yield {
+            <VALUE>{class_param}</VALUE>
+          }
+
+        )
+      } yield {
+
+        <SECTION component="true" multivalued="true" name={component}>
+          <REPORTKEYS>
+            {spec}
+          </REPORTKEYS>
+        </SECTION>
+
+      }
+    }
+
+    def reportingSections(sections : List[Method]) = {
+      val expectedReportingMethodsWithValues =
+        for {
+          (component, methodCalls) <- sections.collect{case m : MethodCall => m }.filterNot(_.methodId.value.startsWith("_")).groupBy(_.component).toList.sortBy(_._1)
+        } yield {
+          (component, methodCalls)
+        }
+      val expectedGroupReportingMethodsWithValues =
+        for {
+          (component, methodCalls) <- sections.collect{case m : MethodBlock => m }.groupBy(_.component).toList.sortBy(_._1)
+        } yield {
+          (component, methodCalls)
+        }
+
+      for {
+        uniqueSection <- expectedReportingMethodsWithValues.traverse((reportingValuePerMethod _).tupled)
+        groupSection <- expectedGroupReportingMethodsWithValues.traverse((reportingValuePerBlock _).tupled)
+      } yield {
+        groupSection ::: uniqueSection
+      }
+    }
     def parameterSection(parameter : TechniqueParameter) : Seq[XmlNode] = {
       // Here we translate technique parameters into Rudder variables
       // ncf technique parameters ( having an id and a name, which is used inside the technique) were translated into Rudder variables spec
@@ -229,15 +279,9 @@ class TechniqueWriter (
     }
     // Regroup method calls from which we expect a reporting
     // We filter those starting by _, which are internal methods
-    val expectedReportingMethodsWithValues =
-      for {
-        (component, methodCalls) <- technique.methodCalls.filterNot(_.methodId.value.startsWith("_")).groupBy(_.component).toList.sortBy(_._1)
-      } yield {
-        (component, methodCalls)
-      }
 
     for {
-      reportingSection     <- expectedReportingMethodsWithValues.traverse((reportingValuePerMethod _).tupled)
+      reportingSection <- reportingSections(technique.methodCalls)
       agentSpecificSection <- agentSpecific.traverse(_.agentMetadata(technique, methods))
     } yield {
       <TECHNIQUE name={technique.name}>

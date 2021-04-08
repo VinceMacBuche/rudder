@@ -54,8 +54,8 @@ techniqueList model techniques =
 allMethodCalls: X -> List MethodCall
 allMethodCalls call =
   case call of
-    Call c -> [ c ]
-    Block b -> List.concatMap allMethodCalls b.calls
+    Call _ c -> [ c ]
+    Block _ b -> List.concatMap allMethodCalls b.calls
 
 techniqueItem: Model -> Technique -> Html Msg
 techniqueItem model technique =
