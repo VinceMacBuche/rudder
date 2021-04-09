@@ -85,8 +85,8 @@ getSP os =
     Just (Linux (Just (SLED v))) -> v.sp
     _ -> Nothing
 
-updateSP:   Maybe OS -> Maybe Int -> Maybe OS
-updateSP os newSP =
+updateSP:  Maybe Int -> Maybe OS -> Maybe OS
+updateSP newSP os =
   case os of
     Just (Linux (Just (SLES v))) -> Just (Linux (Just (SLES {v | sp = newSP})))
     Just (Linux (Just (SLED v))) -> Just (Linux (Just (SLED {v | sp = newSP})))
@@ -249,14 +249,19 @@ osClass maybeOs =
         Linux Nothing -> "optGroup"
         Linux (Just _) -> "optChild"
 
-showMethodTab: Model -> Method -> MethodCall -> MethodCallUiInfo -> Html Msg
-showMethodTab model method call uiInfo=
+showMethodTab: Model -> Method -> Maybe CallId ->  MethodCall -> MethodCallUiInfo -> Html Msg
+showMethodTab model method parentId call uiInfo=
   case uiInfo.tab of
     CallParameters ->
       div [ class "tab-parameters"] (List.map2 (\m c -> showParam model call (Maybe.withDefault Untouched (Dict.get c.id.value uiInfo.validation)) m c )  method.parameters call.parameters)
     Conditions ->
       let
         condition = call.condition
+        updateConditonVersion = \f s ->
+                      let
+                        updatedCall = Call parentId { call | condition = {condition | os =  f  (String.toInt s) condition.os } }
+                      in
+                        UpdateMethod call.id updatedCall
       in
       div [ class "tab-conditions"] [
         div [class "form-group condition-form", id "os-form"] [
@@ -269,12 +274,16 @@ showMethodTab model method call uiInfo=
                 , span [ class "caret" ] []
                 ]
               , ul [ class "dropdown-menu", attribute "aria-labelledby" "OsCondition", style "margin-left" "0px" ]
-                 ( List.map (\os -> li [ onClick (UpdateCondition call.id {condition | os = os }), class (osClass os) ] [ a [href "#" ] [ text (osName os) ] ] ) osList )
+                 ( List.map (\os ->
+                     let
+                       updatedCondition = {condition | os = os }
+                     in
+                       li [ onClick (UpdateMethod  call.id (Call parentId {call | condition = updatedCondition })), class (osClass os) ] [ a [href "#" ] [ text (osName os) ] ] ) osList )
               ]
-            , if (hasMajorMinorVersion condition.os ) then input [readonly model.hasWriteRights,value (Maybe.withDefault "" (Maybe.map String.fromInt (getMajorVersion condition.os) )), onInput (\s -> UpdateCondition call.id {condition | os = updateMajorVersion  (String.toInt s) condition.os}  ),type_ "number", style "display" "inline-block", style "width" "auto", style "margin-left" "5px",  class "form-control", placeholder "Major version"] [] else text ""
-            , if (hasMajorMinorVersion condition.os ) then input [readonly model.hasWriteRights, value (Maybe.withDefault "" (Maybe.map String.fromInt (getMinorVersion condition.os) )), onInput (\s -> UpdateCondition call.id {condition | os = updateMinorVersion  (String.toInt s) condition.os}  ), type_ "number", style "display" "inline-block", style "width" "auto", class "form-control", style "margin-left" "5px", placeholder "Minor version"] []  else text ""
-            , if (hasVersion condition.os ) then input [readonly model.hasWriteRights, value (Maybe.withDefault "" (Maybe.map String.fromInt (getVersion condition.os) )), onInput (\s -> UpdateCondition call.id {condition | os = updateVersion  (String.toInt s) condition.os}  ), type_ "number",style "display" "inline-block", style "width" "auto", class "form-control", style "margin-left" "5px", placeholder "Version"] []  else text ""
-            , if (hasSP condition.os ) then input [readonly (not model.hasWriteRights), value (Maybe.withDefault "" (Maybe.map String.fromInt (getSP condition.os) )), onInput (\s -> UpdateCondition call.id {condition | os = updateSP condition.os (String.toInt s)}  ), type_ "number", style "display" "inline-block", style "width" "auto", class "form-control", style "margin-left" "5px", placeholder "Service pack"] []  else text ""
+            , if (hasMajorMinorVersion condition.os ) then input [readonly model.hasWriteRights,value (Maybe.withDefault "" (Maybe.map String.fromInt (getMajorVersion condition.os) )), onInput (updateConditonVersion updateMajorVersion),type_ "number", style "display" "inline-block", style "width" "auto", style "margin-left" "5px",  class "form-control", placeholder "Major version"] [] else text ""
+            , if (hasMajorMinorVersion condition.os ) then input [readonly model.hasWriteRights, value (Maybe.withDefault "" (Maybe.map String.fromInt (getMinorVersion condition.os) )), onInput (updateConditonVersion updateMinorVersion), type_ "number", style "display" "inline-block", style "width" "auto", class "form-control", style "margin-left" "5px", placeholder "Minor version"] []  else text ""
+            , if (hasVersion condition.os ) then input [readonly model.hasWriteRights, value (Maybe.withDefault "" (Maybe.map String.fromInt (getVersion condition.os) )), onInput  (updateConditonVersion updateVersion), type_ "number",style "display" "inline-block", style "width" "auto", class "form-control", style "margin-left" "5px", placeholder "Version"] []  else text ""
+            , if (hasSP condition.os ) then input [readonly (not model.hasWriteRights), value (Maybe.withDefault "" (Maybe.map String.fromInt (getSP condition.os) )), onInput (updateConditonVersion updateSP), type_ "number", style "display" "inline-block", style "width" "auto", class "form-control", style "margin-left" "5px", placeholder "Service pack"] []  else text ""
 
             ]
           ]
@@ -304,7 +313,11 @@ showMethodTab model method call uiInfo=
         ]
       , div [ class "form-group condition-form" ] [
           label [ for "advanced"] [ text "Other conditions:" ]
-        , textarea [  readonly (not model.hasWriteRights), name "advanced", class "form-control", rows 1, id "advanced", value condition.advanced, onInput (\s -> UpdateCondition call.id {condition | advanced = s })  ] [] --ng-pattern="/^[a-zA-Z0-9_!.|${}\[\]()@:]+$/" ng-model="method_call.advanced_class" ng-change="updateClassContext(method_call)"></textarea>
+        , textarea [  readonly (not model.hasWriteRights), name "advanced", class "form-control", rows 1, id "advanced", value condition.advanced, onInput (\s ->
+                     let
+                       updatedCondition = {condition | advanced = s }
+                       updatedCall = Call parentId {call | condition = updatedCondition }
+                     in UpdateMethod call.id updatedCall)  ] [] --ng-pattern="/^[a-zA-Z0-9_!.|${}\[\]()@:]+$/" ng-model="method_call.advanced_class" ng-change="updateClassContext(method_call)"></textarea>
           {-<div ng-messages="CForm.form.cfClasses.$error" role="alert">
                                 <div ng-message="pattern" class="text-danger">This field should only contains alphanumerical characters (a-zA-Z0-9) or the following characters _!.|${}[]()@:</div>
                               </div>
@@ -390,8 +403,8 @@ showMethodTab model method call uiInfo=
         ]
       ]
 
-methodDetail: Method -> MethodCall -> MethodCallUiInfo -> Model -> Html Msg
-methodDetail method call ui model =
+methodDetail: Method -> MethodCall -> Maybe CallId -> MethodCallUiInfo -> Model -> Html Msg
+methodDetail method call parentId ui model =
   let
     activeClass = (\c -> if c == ui.tab then "active" else "" )
   in
@@ -406,7 +419,7 @@ methodDetail method call ui model =
       , li [ class (activeClass Conditions), onClick (SwitchTabMethod call.id Conditions) ] [text "Conditions"]
       , li [class (activeClass Result), onClick (SwitchTabMethod call.id Result) ] [text "Result conditions"]
       ]
-    , div [ class "tabs" ] [ (showMethodTab model method call ui) ]
+    , div [ class "tabs" ] [ (showMethodTab model method parentId call ui) ]
     , div [ class "method-details-footer"] [
           button [ class "btn btn-outline-secondary btn-sm" , type_ "button", onClick (ResetMethodCall call)] [ -- ng-disabled="!canResetMethod(method_call)" ng-click="resetMethod(method_call)"
             text "Reset "
@@ -427,8 +440,8 @@ methodDetail method call ui model =
     ]
   ]
 
-showMethodBlock: Model ->  DnDList.Groups.Model -> Int -> MethodBlock -> Html Msg
-showMethodBlock model dnd index block =
+showMethodBlock: Model ->  MethodCallUiInfo -> DnDList.Groups.Model -> Int -> Maybe CallId -> MethodBlock -> Html Msg
+showMethodBlock model ui dnd index parentId block =
   let
     dragAttributes =
        case dndSystem.info dnd of
@@ -444,13 +457,13 @@ showMethodBlock model dnd index block =
       li [ class "dndPlaceholder"] [ ]
     else
       li [ ] [ --     ng-class="{'active': methodIsSelected(method_call), 'missingParameters': checkMissingParameters(method_call.parameters, method.parameter).length > 0, 'errorParameters': checkErrorParameters(method_call.parameters).length > 0, 'is-edited' : canResetMethod(method_call)}"
-        blockBody model block dragAttributes False
+        blockBody model parentId block ui dragAttributes False
 
       ]
 
 
-showMethodCall: Model -> MethodCallUiInfo -> DnDList.Groups.Model -> Int -> MethodCall -> Html Msg
-showMethodCall model ui dnd index call =
+showMethodCall: Model -> MethodCallUiInfo -> DnDList.Groups.Model -> Int -> Maybe CallId ->  MethodCall -> Html Msg
+showMethodCall model ui dnd index  parentId call =
   let
     method = case Dict.get call.methodName.value model.methods of
                Just m -> m
@@ -471,14 +484,17 @@ showMethodCall model ui dnd index call =
       li [ class (if (ui.mode == Opened) then "active" else "") ] [ --     ng-class="{'active': methodIsSelected(method_call), 'missingParameters': checkMissingParameters(method_call.parameters, method.parameter).length > 0, 'errorParameters': checkErrorParameters(method_call.parameters).length > 0, 'is-edited' : canResetMethod(method_call)}"
         callBody model ui call dragAttributes False
       , case ui.mode of
-         Opened -> div [ class "method-details" ] [ methodDetail method call ui model ]
+         Opened -> div [ class "method-details" ] [ methodDetail method call parentId ui model ]
          Closed -> div [] []
       ]
 
-blockBody : Model -> MethodBlock ->  List (Attribute Msg) -> Bool -> Html Msg
-blockBody model block dragAttributes isGhost =
+blockBody : Model -> Maybe CallId -> MethodBlock -> MethodCallUiInfo ->  List (Attribute Msg) -> Bool -> Html Msg
+blockBody model parentId block ui dragAttributes isGhost =
   let
     nbErrors = List.length (List.filter ( List.any ( (/=) Nothing) ) []) -- get errors
+    editAction = case ui.mode of
+                   Opened -> CloseMethod block.id
+                   Closed -> OpenMethod  block.id
   in
   div ( class "method" :: id block.id.value :: if isGhost then List.reverse ( style  "z-index" "1" :: style "pointer-events" "all" :: id "ghost" :: style "opacity" "0.7" :: style "background-color" "white" :: dndSystem.ghostStyles model.dnd) else []) [
     div  (class "cursorMove" :: dragAttributes) [ p [] [ text ":::"] ]
@@ -507,9 +523,18 @@ blockBody model block dragAttributes isGhost =
                      , attribute "data-title" (conditionStr block.condition), attribute "data-content" "<small>Click <span class='text-info'>3</span> times to copy the whole condition below</small>"
                      , attribute "data-template" """<div class="popover condition" role="tooltip"><div class="arrow"></div><h3 class="popover-header"></h3><div class="popover-body"></div></div>"""
                      , attribute "data-html" "true" ] []
+
           ]
-        , div [ class "method-name" ] [
-            text block.component
+        , div [class "form-group" ] [
+            label [] [ text "Name:" ]
+          , case ui.mode of
+              Opened ->
+                input [ type_ "text", class "form-control popover-bs", value block.component, placeholder "Component name" , onInput (\s -> UpdateMethod block.id (Block parentId {block | component = s}))] []
+              Closed ->
+                if (String.isEmpty block.component) then
+                  div [ class "text-danger" ] [ text "No block name defined"]
+                else
+                  text block.component
           ]
         , div [class "warns" ] [
              ( if nbErrors > 0 then
@@ -523,6 +548,12 @@ blockBody model block dragAttributes isGhost =
            ]
          ]
         ]
+    , div [ class "edit-method popover-bs", onClick editAction
+          , attribute "data-toggle" "popover", attribute "data-trigger" "hover", attribute "data-placement" "left"
+          --, attribute "data-template" "{{getStatusTooltipMessage(method_call)}}", attribute "data-container" "body"
+          , attribute "data-html" "true", attribute "data-delay" """'{"show":"400", "hide":"100"}'""" ] [
+      i [ class "ion ion-edit"] []
+    ]
       ]
 
 

@@ -279,4 +279,4 @@ type Msg =
   | ImportFile File
   | ParseImportedFile File String
   | ScrollCategory String
-  | UpdateCondition CallId Condition
+  | UpdateMethod CallId X

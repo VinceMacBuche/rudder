@@ -652,17 +652,11 @@ update msg model =
       in
         (newModel, updatedStoreTechnique newModel )
 
-    UpdateCondition callId condition ->
+    UpdateMethod callId method ->
       case model.mode of
         TechniqueDetails t s ui ->
           let
-            updateCondition =
-              \x ->
-                            case x of
-                              Call p c -> Call p { c | condition = condition }
-                              Block p b -> Block p { b | condition = condition}
-
-            newModel = {model | mode = TechniqueDetails {t | calls = updateXIf (getId >> (==) callId )  updateCondition t.calls} s ui}
+            newModel = {model | mode = TechniqueDetails {t | calls = updateXIf (getId >> (==) callId ) (always method) t.calls} s ui}
           in
           (newModel, Cmd.none )
         _ -> (model,Cmd.none)

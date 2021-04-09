@@ -5,6 +5,7 @@ module MethodConditions exposing (..)
 -- This file model the "condition" form applied to generic methods
 --
 
+
 type OS = AIX     { version : Maybe  Int }
         | Linux   ( Maybe LinuxOS )
         | Solaris { major : Maybe  Int, minor : Maybe Int }

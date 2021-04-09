@@ -164,12 +164,16 @@ showTechnique model technique origin ui =
                 else
                     List.indexedMap (\ index call ->
                         case call of
-                          Call _ c ->
+                          Call parentId c ->
                             let
                               methodUi = Maybe.withDefault (MethodCallUiInfo Closed CallParameters Dict.empty) (Dict.get c.id.value ui.callsUI)
                             in
-                              showMethodCall model methodUi model.dnd (index) c
-                          Block _ b -> showMethodBlock model model.dnd index b
+                              showMethodCall model methodUi model.dnd (index) parentId c
+                          Block parentId b ->
+                            let
+                              methodUi = Maybe.withDefault (MethodCallUiInfo Closed CallParameters Dict.empty) (Dict.get b.id.value ui.callsUI)
+                            in
+                              showMethodBlock model methodUi model.dnd index parentId b
                    ) technique.calls
               ))
 

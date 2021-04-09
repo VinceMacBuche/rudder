@@ -53,7 +53,7 @@ decodeBlock =
     |> required "component"  string
     |> required "condition"  (map parseCondition string)
     |> required "compositionRule" decodeCompositionRule
-    |> required "calls" (list  (decodeX Nothing))
+    |> required "calls" (list  (lazy (\_ -> decodeX Nothing)))
     >> andThen (\block -> succeed { block | calls = List.map (\x ->
                                                                case x of
                                                                  Block _ b -> Block (Just block.id) b
@@ -78,7 +78,7 @@ decodeTechnique =
     |> required "name"  string
     |> required "description"  string
     |> required "category"  string
-    |> required "method_calls" (list (decodeX Nothing))
+    |> required "method_calls" (list (lazy (\_ -> decodeX Nothing)))
     |> required "parameter" (list decodeTechniqueParameter)
     |> required "resources" (list decodeResource)
 
