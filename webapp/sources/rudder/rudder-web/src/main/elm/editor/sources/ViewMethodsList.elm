@@ -3,7 +3,6 @@ module ViewMethodsList exposing (..)
 import DataTypes exposing (..)
 import Dict
 import Dict.Extra
-import DnDList.Groups
 import Json.Decode
 import Html exposing (..)
 import Html.Attributes exposing (..)
@@ -123,7 +122,7 @@ showMethodsCategories model (category, methods) =
   in
     ul [ class "list-unstyled" ]
       (h5 [ id category ] [ text category ]
-      :: (List.map (\(index,m)  -> showMethod model.methodsUI m (index+addIndex)) methods) )
+      :: (List.map (\(index,m)  -> showMethod model.methodsUI m (index+addIndex+1)) methods) )
 
 
 showCategory: String -> Bool -> Html Msg
@@ -147,7 +146,7 @@ showMethod: MethodListUI -> Method -> Int -> Html Msg
 showMethod ui method index =
   let
     docOpen = List.member method.id ui.docsOpen
-    attributes = class ("method " ++ (if docOpen then "doc-opened" else ""))::  id method.id.value :: dndSystem.dragEvents index method.id.value
+    attributes = class ("method " ++ (if docOpen then "doc-opened" else ""))::  id method.id.value :: []
   in
     li []
       ( div  attributes   --ng-class="{'used':isUsed(method)

@@ -1,14 +1,12 @@
 module DataTypes exposing (..)
 
 import Dict exposing (Dict)
-import DnDList.Groups
-import Either exposing (Either(..))
 import File exposing (File)
 import Http exposing (Error)
 import Json.Decode exposing (Value)
 import MethodConditions exposing (..)
 import Regex
-
+import Dom.DragDrop as DragDrop
 
 --
 -- All our data types
@@ -123,52 +121,13 @@ type alias TechniqueCategory =
   , name : String
   }
 
-config : DnDList.Groups.Config (Either (Either Method NewBlock) X)
-config =
-    { beforeUpdate = \_ _ list -> list
-    , listen       = DnDList.Groups.OnDrag
-    , operation    = DnDList.Groups.Swap
-    , groups       =
-        { listen     = DnDList.Groups.OnDrag
-        , operation  = DnDList.Groups.InsertAfter
-        , comparator =
-           (\drag drop ->
-               case (drag,drop) of
-                 (Left  _ , Left  _ ) -> True
-                 (Right _ , Right _ ) -> True
-                 _                    -> False
-          )
-        , setter     =
-           (\drag drop ->
-               case (drag,drop) of
-                 ( Right x , Left (Left method) ) ->
-                   let parent =
-                         case x of
-                           Block _ b -> Just b.id
-                           Call p _ -> p
-                   in
-                     Right (Call parent (MethodCall (CallId "") method.id (List.map (\p -> CallParameter p.name "") method.parameters) (Condition Nothing "") ""))
-                 ( Right x , Left (Right NewBlock) ) ->
-                   let parent =
-                         case x of
-                           Block _ b -> Just b.id
-                           Call p _ -> p
-                   in
-                     Right (Block parent (MethodBlock (CallId "") "" (Condition Nothing "") SumReport []))
-                 _                         -> drop
-          )
-        }
-    }
-
-type NewBlock = NewBlock
-
-dndSystem : DnDList.Groups.System (Either (Either Method NewBlock) X) Msg
-dndSystem =
-  DnDList.Groups.create config DndEvent
-
 type TechniqueState = Creation TechniqueId | Edit Technique | Clone Technique TechniqueId
 
 type ModalState = DeletionValidation Technique
+
+type DragElement = NewMethod Method | NewBlock | MoveX X
+
+type DropElement = StartList | AfterElem X | InBlock MethodBlock
 
 type alias Model =
   { techniques         : List Technique
@@ -179,7 +138,7 @@ type alias Model =
   , techniqueFilter    : String
   , methodsUI          : MethodListUI
   , genericMethodsOpen : Bool
-  , dnd                : DnDList.Groups.Model
+  , dnd                : DragDrop.State DragElement DropElement
   , modal              : Maybe ModalState
   , hasWriteRights     : Bool
   }
@@ -261,7 +220,6 @@ type Msg =
   | Ignore
   | AddMethod Method CallId
   | AddBlock CallId
-  | DndEvent DnDList.Groups.Msg
   | SetCallId CallId
   | StartSaving
   | Copy String
@@ -280,3 +238,15 @@ type Msg =
   | ParseImportedFile File String
   | ScrollCategory String
   | UpdateMethod CallId X
+  | MoveStarted DragElement
+  | MoveTargetChanged DropElement
+  | MoveCanceled
+  | MoveCompleted DragElement DropElement
+
+dragDropMessages : DragDrop.Messages Msg DragElement DropElement
+dragDropMessages =
+  { dragStarted = MoveStarted
+  , dropTargetChanged = MoveTargetChanged
+  , dragEnded = MoveCanceled
+  , dropped = MoveCompleted
+  }

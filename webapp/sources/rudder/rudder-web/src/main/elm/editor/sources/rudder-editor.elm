@@ -5,7 +5,7 @@ import Browser
 import Browser.Dom
 import DataTypes exposing (..)
 import Dict exposing ( Dict )
-import Either exposing ( Either(..) )
+import Dom.DragDrop as DragDrop
 import File
 import File.Download
 import File.Select
@@ -60,7 +60,7 @@ parseResponse (json, optJson, internalId) =
 mainInit : { contextPath : String, hasWriteRights : Bool  } -> ( Model, Cmd Msg )
 mainInit initValues =
   let
-    model =  Model [] Dict.empty [] Introduction initValues.contextPath "" (MethodListUI (MethodFilter "" False Nothing FilterClosed) []) False dndSystem.model Nothing initValues.hasWriteRights
+    model =  Model [] Dict.empty [] Introduction initValues.contextPath "" (MethodListUI (MethodFilter "" False Nothing FilterClosed) []) False DragDrop.initialState Nothing initValues.hasWriteRights
   in
     (model, Cmd.batch ( [ getMethods model, getTechniquesCategories model ]) )
 
@@ -89,8 +89,7 @@ main =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
-        [ dndSystem.subscriptions model.dnd
-        , response parseResponse
+        [ response parseResponse
         , updateResources (always (updateResourcesResponse model))
         ]
 
@@ -554,25 +553,6 @@ update msg model =
       else
         (model,Cmd.none)
 
-    DndEvent dndMsg ->
-      if model.hasWriteRights then
-            let
-              ( newModel, c ) =
-                case model.mode of
-                   TechniqueDetails t o ui ->
-                    let
-                      (d, calls ) = dndSystem.update dndMsg model.dnd (List.append (List.map (Right) t.calls) ( (Left (Right NewBlock)) :: (Dict.values model.methods |> List.map (Left >> Left))))
-                      newMode = TechniqueDetails { t | calls = Either.rights calls } o ui
-                    in
-                      if (List.any (getId >> (==) (CallId "")) t.calls) then
-                        update (GenerateId (\id -> SetCallId (CallId id))) { model | dnd = d, mode = newMode }
-                      else
-                        ( { model | dnd = d, mode = newMode }, Cmd.none)
-                   _ -> (model, Cmd.none)
-            in
-               (newModel , Cmd.batch [  dndSystem.commands newModel.dnd, c ] )
-      else
-        (model,Cmd.none)
 
     SetCallId newId ->
       let
@@ -687,5 +667,44 @@ update msg model =
               in
                 { model | mode = TechniqueDetails technique o {ui | callsUI = callUi } }
             _ -> model
-     in
-       ( newModel , updatedStoreTechnique newModel  )
+      in
+        ( newModel , updatedStoreTechnique newModel  )
+
+
+    MoveStarted draggedItemId ->
+      ( { model | dnd = DragDrop.startDragging model.dnd draggedItemId }, Cmd.none )
+
+    MoveTargetChanged dropTargetId ->
+      ( { model | dnd = DragDrop.updateDropTarget model.dnd dropTargetId }, Cmd.none)
+
+    MoveCanceled ->
+      ( { model | dnd = DragDrop.stopDragging model.dnd }, Cmd.none)
+
+    MoveCompleted draggedItemId dropTarget ->
+      case model.mode of
+        Introduction -> (model, Cmd.none)
+        TechniqueDetails t u e ->
+          let
+            (baseCalls, newElem) =
+              case draggedItemId of
+                MoveX b -> (List.filter (getId >> (/=) (getId b) ) t.calls, b)
+                NewBlock -> (t.calls, Block Nothing (MethodBlock (CallId "") "" (Condition Nothing "") SumReport []))
+                NewMethod method -> (t.calls, Call Nothing (MethodCall (CallId "") method.id (List.map (\p -> CallParameter p.name "") method.parameters) (Condition Nothing "") ""))
+            updatedCalls =
+              case dropTarget of
+                StartList ->
+                  newElem :: baseCalls
+                AfterElem call ->
+                  case List.Extra.splitWhen (getId >> (/=) (getId newElem)) baseCalls of
+                    Nothing ->
+                      newElem :: baseCalls
+                    Just (head, tail) ->   head ++ (newElem :: tail)
+                InBlock b ->
+                  updateXIf (getId >> (/=) b.id ) (\x -> case x of
+                                                                      Block p k -> Block p { k | calls = newElem :: b.calls }
+                                                                      _ -> x
+                                                             ) baseCalls
+            updateTechnique = { t | calls = updatedCalls}
+          in
+            ({ model | mode = TechniqueDetails updateTechnique u e } , Cmd.none)
+

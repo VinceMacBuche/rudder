@@ -162,18 +162,18 @@ showTechnique model technique origin ui =
                       ]
                     ]
                 else
-                    List.indexedMap (\ index call ->
+                    List.map (\ call ->
                         case call of
                           Call parentId c ->
                             let
                               methodUi = Maybe.withDefault (MethodCallUiInfo Closed CallParameters Dict.empty) (Dict.get c.id.value ui.callsUI)
                             in
-                              showMethodCall model methodUi model.dnd (index) parentId c
+                              showMethodCall model methodUi parentId c
                           Block parentId b ->
                             let
                               methodUi = Maybe.withDefault (MethodCallUiInfo Closed CallParameters Dict.empty) (Dict.get b.id.value ui.callsUI)
                             in
-                              showMethodBlock model methodUi model.dnd index parentId b
+                              showMethodBlock model methodUi parentId b
                    ) technique.calls
               ))
 
@@ -209,7 +209,7 @@ view model =
       techniqueList model model.techniques
     , div [ class "template-main" ] [central]
     , methodsList model
-    , ( case model.mode of
+    {-, ( case model.mode of
          TechniqueDetails technique _ _->
            case maybeDragCard model technique.calls of
              Just (Call _ c) ->
@@ -217,7 +217,7 @@ view model =
              _ ->
                text ""
          _ -> text ""
-       )
+       )-}
     , case model.modal of
         Nothing -> text ""
         Just (DeletionValidation technique) ->
@@ -245,8 +245,3 @@ view model =
           ]
     ]
 
-
-maybeDragCard : Model -> List X -> Maybe X
-maybeDragCard model methods =
-   dndSystem.info model.dnd
-        |> Maybe.andThen (\{ dragIndex } -> methods |> List.drop dragIndex |> List.head)

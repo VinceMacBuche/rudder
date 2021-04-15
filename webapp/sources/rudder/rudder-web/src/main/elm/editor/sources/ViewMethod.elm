@@ -2,7 +2,6 @@ module ViewMethod exposing (..)
 
 import DataTypes exposing (..)
 import Dict
-import DnDList.Groups
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
@@ -10,7 +9,8 @@ import List.Extra
 import MethodConditions exposing (..)
 import Regex
 import String.Extra
-
+import Dom.DragDrop as DragDrop
+import Dom
 --
 -- This file deals with one method container (condition, parameters, etc)
 --
@@ -440,10 +440,10 @@ methodDetail method call parentId ui model =
     ]
   ]
 
-showMethodBlock: Model ->  MethodCallUiInfo -> DnDList.Groups.Model -> Int -> Maybe CallId -> MethodBlock -> Html Msg
-showMethodBlock model ui dnd index parentId block =
+showMethodBlock: Model ->  MethodCallUiInfo -> Maybe CallId -> MethodBlock -> Html Msg
+showMethodBlock model ui parentId block =
   let
-    dragAttributes =
+    dragAttributes = [] {-
        case dndSystem.info dnd of
          Just { dragIndex } ->
            if dragIndex /= index then
@@ -451,7 +451,7 @@ showMethodBlock model ui dnd index parentId block =
            else
              [ ]
          Nothing ->
-            dndSystem.dragEvents index block.id.value
+            dndSystem.dragEvents index block.id.value -}
   in
     if (List.isEmpty dragAttributes) then
       li [ class "dndPlaceholder"] [ ]
@@ -462,27 +462,27 @@ showMethodBlock model ui dnd index parentId block =
       ]
 
 
-showMethodCall: Model -> MethodCallUiInfo -> DnDList.Groups.Model -> Int -> Maybe CallId ->  MethodCall -> Html Msg
-showMethodCall model ui dnd index  parentId call =
+showMethodCall: Model -> MethodCallUiInfo -> Maybe CallId ->  MethodCall -> Html Msg
+showMethodCall model ui  parentId call =
   let
     method = case Dict.get call.methodName.value model.methods of
                Just m -> m
                Nothing -> Method call.methodName call.methodName.value "" "" (Maybe.withDefault (ParameterId "") (Maybe.map .id (List.head call.parameters))) [] [] Nothing Nothing Nothing
-    dragAttributes =
-       case dndSystem.info dnd of
+    dragAttributes = []
+       {-case dndSystem.info dnd of
          Just { dragIndex } ->
            if dragIndex /= index then
              dndSystem.dropEvents index call.id.value
            else
              [ ]
          Nothing ->
-            dndSystem.dragEvents index call.id.value
+            dndSystem.dragEvents index call.id.value-}
   in
     if (List.isEmpty dragAttributes) then
       li [ class "dndPlaceholder"] [ ]
     else
       li [ class (if (ui.mode == Opened) then "active" else "") ] [ --     ng-class="{'active': methodIsSelected(method_call), 'missingParameters': checkMissingParameters(method_call.parameters, method.parameter).length > 0, 'errorParameters': checkErrorParameters(method_call.parameters).length > 0, 'is-edited' : canResetMethod(method_call)}"
-        callBody model ui call dragAttributes False
+        callBody model ui call parentId False
       , case ui.mode of
          Opened -> div [ class "method-details" ] [ methodDetail method call parentId ui model ]
          Closed -> div [] []
@@ -495,8 +495,11 @@ blockBody model parentId block ui dragAttributes isGhost =
     editAction = case ui.mode of
                    Opened -> CloseMethod block.id
                    Closed -> OpenMethod  block.id
+    callsUI = case model.mode of
+                Introduction -> Dict.empty
+                TechniqueDetails _ _ globalUi -> globalUi.callsUI
   in
-  div ( class "method" :: id block.id.value :: if isGhost then List.reverse ( style  "z-index" "1" :: style "pointer-events" "all" :: id "ghost" :: style "opacity" "0.7" :: style "background-color" "white" :: dndSystem.ghostStyles model.dnd) else []) [
+  div ( class "method" :: id block.id.value :: if isGhost then List.reverse ( style  "z-index" "1" :: style "pointer-events" "all" :: id "ghost" :: style "opacity" "0.7" :: style "background-color" "white" :: []) else []) [
     div  (class "cursorMove" :: dragAttributes) [ p [] [ text ":::"] ]
   , div [ class "method-info"] [
       div [ hidden (not model.hasWriteRights), class "btn-holder" ] [
@@ -554,11 +557,35 @@ blockBody model parentId block ui dragAttributes isGhost =
           , attribute "data-html" "true", attribute "data-delay" """'{"show":"400", "hide":"100"}'""" ] [
       i [ class "ion ion-edit"] []
     ]
+           ,  div [ class "row"] [
+                ul [ id "methods", class "list-unstyled" ]
+                  ( ( if List.isEmpty block.calls then
+                        [ li [ id "no-methods" ] [
+                            text "Drag and drop generic methods here from the list on the right to build target configuration for this technique block."
+                          ]
+                        ]
+                    else
+                        List.map (\ call ->
+                            case call of
+                              Call pid c ->
+                                let
+                                  methodUi = Maybe.withDefault (MethodCallUiInfo Closed CallParameters Dict.empty) (Dict.get c.id.value callsUI)
+                                in
+                                  showMethodCall model methodUi pid c
+                              Block pid b ->
+                                let
+                                  methodUi = Maybe.withDefault (MethodCallUiInfo Closed CallParameters Dict.empty) (Dict.get b.id.value callsUI)
+                                in
+                                  showMethodBlock model methodUi pid b
+                       ) block.calls
+                  ))
+
+              ]
       ]
 
 
-callBody : Model -> MethodCallUiInfo ->  MethodCall ->  List (Attribute Msg) -> Bool -> Html Msg
-callBody model ui call dragAttributes isGhost =
+callBody : Model -> MethodCallUiInfo ->  MethodCall -> Maybe CallId -> Bool -> Html Msg
+callBody model ui call pid isGhost =
   let
     method = case Dict.get call.methodName.value model.methods of
                    Just m -> m
@@ -575,9 +602,10 @@ callBody model ui call dragAttributes isGhost =
                    Closed -> OpenMethod  call.id
 
     nbErrors = List.length (List.filter ( List.any ( (/=) Nothing) ) []) -- get errors
+    dragAttributes = Dom.render (Dom.element "div" |> Dom.addClass "cursorMove" |> DragDrop.makeDraggable model.dnd (MoveX (Call pid call)) dragDropMessages |> Dom.appendChild (Dom.element "p" |>  Dom.appendText ":::" ))
   in
-  div ( class "method" :: id call.id.value :: if isGhost then List.reverse ( style  "z-index" "1" :: style "pointer-events" "all" :: id "ghost" :: style "opacity" "0.7" :: style "background-color" "white" :: dndSystem.ghostStyles model.dnd) else []) [
-    div  (class "cursorMove" :: dragAttributes) [ p [] [ text ":::"] ]
+  div ( class "method" :: id call.id.value :: if isGhost then List.reverse ( style  "z-index" "1" :: style "pointer-events" "all" :: id "ghost" :: style "opacity" "0.7" :: style "background-color" "white" :: []) else []) [
+    dragAttributes --div  (class "cursorMove" :: dragAttributes) [ p [] [ text ":::"] ]
   , div [ class "method-info"] [
       div [ hidden (not model.hasWriteRights), class "btn-holder" ] [
         button [ class "text-success method-action tooltip-bs", onClick ( GenerateId (\s -> CloneMethod call (CallId s)) ), type_ "button"
