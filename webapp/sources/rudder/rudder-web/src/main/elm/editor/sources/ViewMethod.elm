@@ -10,7 +10,7 @@ import MethodConditions exposing (..)
 import Regex
 import String.Extra
 import Dom.DragDrop as DragDrop
-import Dom
+import Dom exposing (..)
 --
 -- This file deals with one method container (condition, parameters, etc)
 --
@@ -602,8 +602,24 @@ callBody model ui call pid isGhost =
                    Closed -> OpenMethod  call.id
 
     nbErrors = List.length (List.filter ( List.any ( (/=) Nothing) ) []) -- get errors
-    dragAttributes = Dom.render (Dom.element "div" |> Dom.addClass "cursorMove" |> DragDrop.makeDraggable model.dnd (MoveX (Call pid call)) dragDropMessages |> Dom.appendChild (Dom.element "p" |>  Dom.appendText ":::" ))
+    dragElem =  Dom.element "div" |>
+                  Dom.addClass "cursorMove" |>
+                  DragDrop.makeDraggable model.dnd (MoveX (Call pid call)) dragDropMessages |>
+                  Dom.appendChild (Dom.element "p" |>  Dom.appendText ":::" )
   in
+
+  element "div" |>
+    addClass "method" |>
+    addAttribute (id call.id.value) |>
+    DragDrop.makeDroppable model.dnd (AfterElem (Call pid call)) dragDropMessages |>
+    Dom.appendChildList
+     [ dragElem
+     , element "div" |>
+        addClass "method-info" |>
+        appendChildList [
+          element ""
+        ]
+     ]
   div ( class "method" :: id call.id.value :: if isGhost then List.reverse ( style  "z-index" "1" :: style "pointer-events" "all" :: id "ghost" :: style "opacity" "0.7" :: style "background-color" "white" :: []) else []) [
     dragAttributes --div  (class "cursorMove" :: dragAttributes) [ p [] [ text ":::"] ]
   , div [ class "method-info"] [
