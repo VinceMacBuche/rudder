@@ -482,7 +482,7 @@ showMethodCall model ui  parentId call =
       li [ class "dndPlaceholder"] [ ]
     else
       li [ class (if (ui.mode == Opened) then "active" else "") ] [ --     ng-class="{'active': methodIsSelected(method_call), 'missingParameters': checkMissingParameters(method_call.parameters, method.parameter).length > 0, 'errorParameters': checkErrorParameters(method_call.parameters).length > 0, 'is-edited' : canResetMethod(method_call)}"
-        callBody model ui call parentId False
+        render (callBody model ui call parentId )
       , case ui.mode of
          Opened -> div [ class "method-details" ] [ methodDetail method call parentId ui model ]
          Closed -> div [] []
@@ -584,8 +584,8 @@ blockBody model parentId block ui dragAttributes isGhost =
       ]
 
 
-callBody : Model -> MethodCallUiInfo ->  MethodCall -> Maybe CallId -> Bool -> Html Msg
-callBody model ui call pid isGhost =
+callBody : Model -> MethodCallUiInfo ->  MethodCall -> Maybe CallId -> Element Msg
+callBody model ui call pid =
   let
     method = case Dict.get call.methodName.value model.methods of
                    Just m -> m
@@ -602,117 +602,109 @@ callBody model ui call pid isGhost =
                    Closed -> OpenMethod  call.id
 
     nbErrors = List.length (List.filter ( List.any ( (/=) Nothing) ) []) -- get errors
-    dragElem =  Dom.element "div" |>
-                  Dom.addClass "cursorMove" |>
-                  DragDrop.makeDraggable model.dnd (MoveX (Call pid call)) dragDropMessages |>
-                  Dom.appendChild (Dom.element "p" |>  Dom.appendText ":::" )
-  in
-
-  element "div" |>
-    addClass "method" |>
-    addAttribute (id call.id.value) |>
-    DragDrop.makeDroppable model.dnd (AfterElem (Call pid call)) dragDropMessages |>
-    Dom.appendChildList
-     [ dragElem
-     , element "div" |>
-        addClass "method-info" |>
-        appendChildList [
-          element ""
-        ]
-     ]
-  div ( class "method" :: id call.id.value :: if isGhost then List.reverse ( style  "z-index" "1" :: style "pointer-events" "all" :: id "ghost" :: style "opacity" "0.7" :: style "background-color" "white" :: []) else []) [
-    dragAttributes --div  (class "cursorMove" :: dragAttributes) [ p [] [ text ":::"] ]
-  , div [ class "method-info"] [
-      div [ hidden (not model.hasWriteRights), class "btn-holder" ] [
-        button [ class "text-success method-action tooltip-bs", onClick ( GenerateId (\s -> CloneMethod call (CallId s)) ), type_ "button"
-               , title "Clone this method", attribute "data-toggle" "tooltip"
-               , attribute "data-trigger" "hover", attribute "data-container" "body", attribute "data-placement" "left"
-               , attribute "data-html" "true", attribute "data-delay" """'{"show":"400", "hide":"100"}'""" ] [
-          i [ class "fa fa-clone"] []
-        ]
-      , button [  class "text-danger method-action", type_ "button", onClick (RemoveMethod call.id) ] [
-          i [ class "fa fa-times-circle" ] []
-        ]
-      ]
-    , div [ class "flex-column" ] [
-        if (call.condition.os == Nothing && call.condition.advanced == "") then
-          text ""
-        else
-          div [ class "method-condition flex-form" ] [
-            label [] [ text "Condition:" ]
-          , textarea [ class "form-control popover-bs", rows 1, readonly True, value (conditionStr call.condition), title (conditionStr call.condition)
+    dragElem =  element "div"
+                |> addClass "cursorMove"
+                |> DragDrop.makeDraggable model.dnd (MoveX (Call pid call)) dragDropMessages
+                |> Dom.appendChild (Dom.element "p" |>  Dom.appendText ":::" )
+    cloneIcon = element "i" |> addClass "fa fa-clone"
+    cloneButton = element "button"
+                  |> addClass "text-success method-action tooltip-bs"
+                  |> addAction ("click", GenerateId (\s -> CloneMethod call (CallId s)))
+                  |> addAttributeList
+                     [ type_ "button", title "Clone this method", attribute "data-toggle" "tooltip"
+                     , attribute "data-trigger" "hover", attribute "data-container" "body", attribute "data-placement" "left"
+                     , attribute "data-html" "true", attribute "data-delay" """'{"show":"400", "hide":"100"}'"""
+                     ]
+                  |> appendChild cloneIcon
+    removeIcon = element "i" |> addClass "fa fa-times-circle"
+    removeButton = element "button"
+                  |> addClass "text-success method-action tooltip-bs"
+                  |> addAction ("click", RemoveMethod call.id)
+                  |> addAttribute (type_ "button")
+                  |> appendChild removeIcon
+    condition = element "div"
+                |> addClass "method-condition flex-form"
+                |> appendChildList
+                   [ element "label"
+                     |> appendText "Condition:"
+                   , element "texarea"
+                     |> addAttributeList
+                        [ class "form-control popover-bs", rows 1, readonly True, value (conditionStr call.condition), title (conditionStr call.condition)
                             --msd-elastic
                             --ng-click="$event.stopPropagation();"
-                     , attribute "data-toggle" "popover", attribute "data-trigger" "hover", attribute "data-placement" "top"
-                     , attribute "data-title" (conditionStr call.condition), attribute "data-content" "<small>Click <span class='text-info'>3</span> times to copy the whole condition below</small>"
-                     , attribute "data-template" """<div class="popover condition" role="tooltip"><div class="arrow"></div><h3 class="popover-header"></h3><div class="popover-body"></div></div>"""
-                     , attribute "data-html" "true" ] []
-          ]
-        , div [ class "method-name" ] [
-            text (if (String.isEmpty call.component) then method.name else call.component)
-          , span [ class "cursor-help" ] [
-              i [ class deprecatedClass
-                , attribute "data-toggle" "popover", attribute "data-trigger" "hover", attribute "data-container" "body"
-                , attribute "data-placement" "auto", attribute "data-title" method.name, attribute "data-content" "{{getTooltipContent(method_call)}}"
-                , attribute "data-html" "true" ]  []
-            ]
-          ]
-        , div [ class "method-content"] [
-            div [ class "method-param flex-form" ] [ --  ng-if="getClassParameter(method_call).value && checkMissingParameters(method_call.parameters, method.parameter).length<=0 && checkErrorParameters(method_call.parameters).length<=0"
-              label [] [ text ((parameterName classParameter) ++ ":")]
-            , textarea [ class "form-control", rows 1, readonly True, value paramValue ] [] -- msd elastic  ng-click="$event.stopPropagation();"
-            ]
-          ]
-        , div [class "warns" ] [
-             ( if nbErrors > 0 then
-                 span [ class "warn-param error popover-bs", hidden (nbErrors == 0) ] [
-                   b [] [ text (String.fromInt nbErrors) ]
-                 , text (" invalid " ++ (if nbErrors == 1 then "parameter" else "parameters") )
-                 ]
-               else
-                 text ""
-             )
-              {-
-                                  ng-click="selectMethod(method_call)"
-                                  data-toggle="popover"
-                                  data-trigger="hover"
-                                  data-container="body"
-                                   data-placement="top"
-                                  data-title="<b>{{checkErrorParameters(method_call.parameters).length}}</b> invalid parameter{{checkErrorParameters(method_call.parameters).length > 1 ? 's' : ''}}"
-                                  data-content="{{getErrorTooltipMessage(checkErrorParameters(method_call.parameters))}}"
-                                  data-html="true"
-                                  >
-                                  <b>{{checkErrorParameters(method_call.parameters).length}}</b> invalid parameter{{checkErrorParameters(method_call.parameters).length > 1 ? "s" : ""}}
-                                </span>
-                              </div> -}
-            ]
-              -- here used to be one entry for each for each param but we can be smart with elm
+                        , attribute "data-toggle" "popover", attribute "data-trigger" "hover", attribute "data-placement" "top"
+                        , attribute "data-title" (conditionStr call.condition), attribute "data-content" "<small>Click <span class='text-info'>3</span> times to copy the whole condition below</small>"
+                        , attribute "data-template" """<div class="popover condition" role="tooltip"><div class="arrow"></div><h3 class="popover-header"></h3><div class="popover-body"></div></div>"""
+                        , attribute "data-html" "true"
+                        ]
+                  ]
+    methodName = element "div"
+                 |> addClass "method-name"
+                 |> appendText  (if (String.isEmpty call.component) then method.name else call.component)
+                 |> appendChild
+                    ( element "span"
+                      |> appendChild
+                         ( element "i"
+                           |> addAttributeList
+                              [ class deprecatedClass
+                              , attribute "data-toggle" "popover", attribute "data-trigger" "hover", attribute "data-container" "body"
+                              , attribute "data-placement" "auto", attribute "data-title" method.name, attribute "data-content" "{{getTooltipContent(method_call)}}"
+                              , attribute "data-html" "true"
+                              ]
+                         )
+                    )
 
-{- error display <div class="warns" ng-if="!getClassParameter(method_call).value || checkMissingParameters(method_call.parameters, method.parameter).length>0 || checkErrorParameters(method_call.parameters).length>0">
-                                <span
-                                  class="warn-param warning popover-bs"
-                                  ng-click="selectMethod(method_call)"
-                                  data-toggle="popover"
-                                  data-trigger="hover"
-                                  data-container="body"
-                                  data-placement="top"
-                                  data-title="<b>{{checkMissingParameters(method_call.parameters, method.parameter).length}}</b> required parameter{{checkMissingParameters(method_call.parameters, method.parameter).length > 1 ? 's' : ''}} missing"
-                                  data-content="{{getWarningTooltipMessage(checkMissingParameters(method_call.parameters, method.parameter))}}"
-                                  data-html="true"
-                                  >
-                                  <b>{{checkMissingParameters(method_call.parameters, method.parameter).length}}</b> required parameter{{checkMissingParameters(method_call.parameters, method.parameter).length > 1 ? 's' : ''}} missing
-                                </span>
-                                <span -}
+    methodContent = element "div"
+                    |> addClass "method-content"
+                    |> appendChild
+                       ( element "div"
+                         |> addClass  "method-param flex-form"
+                         |> appendChildList
+                            [ element "label" |> appendText ((parameterName classParameter) ++ ":")
+                            , element "textarea"
+                              |> addAttributeList [ class "form-control", rows 1, readonly True, value paramValue ]
+                            ]
+                       )
+    warns = element "div"
+            |> addClass "warns"
+            |> appendChild
+               ( element "span"
+                 |> addClass  "warn-param error popover-bs"
+                 |> appendChild (element "b" |> appendText (String.fromInt nbErrors)  )
+                 |> appendText (" invalid " ++ (if nbErrors == 1 then "parameter" else "parameters") )
+               )
+  in
+  element "div"
+  |> addClass "method"
+  |> addAttribute (id call.id.value)
+  |> DragDrop.makeDroppable model.dnd (AfterElem (Call pid call)) dragDropMessages
+  |> Dom.appendChildList
+     [ dragElem
+     , element "div"
+       |> addClass "method-info"
+       |> appendChildList
+          [ element "div"
+            |> addClass "btn-holder"
+            |> addAttribute (hidden (not model.hasWriteRights))
+            |> appendChildList
+               [ cloneButton
+               , removeButton
+               ]
+          , element "div"
+            |> addClass "flex-column"
+            |> appendChildConditional condition  (call.condition.os == Nothing && call.condition.advanced == "")
+            |> appendChildList
+               [ methodName
+               , methodContent
+               ]
+            |> appendChildConditional warns (nbErrors > 0)
         ]
-      ]
+       , element "div"
+         |> addAttributeList [ class "edit-method popover-bs", onClick editAction
+                 , attribute "data-toggle" "popover", attribute "data-trigger" "hover", attribute "data-placement" "left"
+                 --, attribute "data-template" "{{getStatusTooltipMessage(method_call)}}", attribute "data-container" "body"
+                 , attribute "data-html" "true", attribute "data-delay" """'{"show":"400", "hide":"100"}'""" ]
+         |> appendChild (element "i" |> addClass "ion ion-edit" )
 
-
-
-  , div [ class "edit-method popover-bs", onClick editAction
-          , attribute "data-toggle" "popover", attribute "data-trigger" "hover", attribute "data-placement" "left"
-          --, attribute "data-template" "{{getStatusTooltipMessage(method_call)}}", attribute "data-container" "body"
-          , attribute "data-html" "true", attribute "data-delay" """'{"show":"400", "hide":"100"}'""" ] [
-      i [ class "ion ion-edit"] []
-    ]
-  ]
+     ]
 
