@@ -440,29 +440,14 @@ methodDetail method call parentId ui model =
     ]
   ]
 
-showMethodBlock: Model ->  MethodCallUiInfo -> Maybe CallId -> MethodBlock -> Html Msg
+showMethodBlock: Model ->  MethodCallUiInfo -> Maybe CallId -> MethodBlock -> Element Msg
 showMethodBlock model ui parentId block =
-  let
-    dragAttributes = [] {-
-       case dndSystem.info dnd of
-         Just { dragIndex } ->
-           if dragIndex /= index then
-             dndSystem.dropEvents index block.id.value
-           else
-             [ ]
-         Nothing ->
-            dndSystem.dragEvents index block.id.value -}
-  in
-    if (List.isEmpty dragAttributes) then
-      li [ class "dndPlaceholder"] [ ]
-    else
-      li [ ] [ --     ng-class="{'active': methodIsSelected(method_call), 'missingParameters': checkMissingParameters(method_call.parameters, method.parameter).length > 0, 'errorParameters': checkErrorParameters(method_call.parameters).length > 0, 'is-edited' : canResetMethod(method_call)}"
-        blockBody model parentId block ui dragAttributes False
-
-      ]
+  element "li"
+    |> appendNode  --     ng-class="{'active': methodIsSelected(method_call), 'missingParameters': checkMissingParameters(method_call.parameters, method.parameter).length > 0, 'errorParameters': checkErrorParameters(method_call.parameters).length > 0, 'is-edited' : canResetMethod(method_call)}"
+       ( blockBody model parentId block ui False )
 
 
-showMethodCall: Model -> MethodCallUiInfo -> Maybe CallId ->  MethodCall -> Html Msg
+showMethodCall: Model -> MethodCallUiInfo -> Maybe CallId ->  MethodCall -> Element Msg
 showMethodCall model ui  parentId call =
   let
     method = case Dict.get call.methodName.value model.methods of
@@ -478,18 +463,18 @@ showMethodCall model ui  parentId call =
          Nothing ->
             dndSystem.dragEvents index call.id.value-}
   in
-    if (List.isEmpty dragAttributes) then
-      li [ class "dndPlaceholder"] [ ]
-    else
-      li [ class (if (ui.mode == Opened) then "active" else "") ] [ --     ng-class="{'active': methodIsSelected(method_call), 'missingParameters': checkMissingParameters(method_call.parameters, method.parameter).length > 0, 'errorParameters': checkErrorParameters(method_call.parameters).length > 0, 'is-edited' : canResetMethod(method_call)}"
-        render (callBody model ui call parentId )
-      , case ui.mode of
-         Opened -> div [ class "method-details" ] [ methodDetail method call parentId ui model ]
-         Closed -> div [] []
-      ]
+      element "li"
+      |> addClass (if (ui.mode == Opened) then "active" else "") --     ng-class="{'active': methodIsSelected(method_call), 'missingParameters': checkMissingParameters(method_call.parameters, method.parameter).length > 0, 'errorParameters': checkErrorParameters(method_call.parameters).length > 0, 'is-edited' : canResetMethod(method_call)}"
+      |> appendChild (callBody model ui call parentId)
+      |> appendChildConditional
+         ( element "div"
+           |> addClass "method-details"
+           |> appendNode (methodDetail method call parentId ui model )
+         ) (ui.mode == Opened)
 
-blockBody : Model -> Maybe CallId -> MethodBlock -> MethodCallUiInfo ->  List (Attribute Msg) -> Bool -> Html Msg
-blockBody model parentId block ui dragAttributes isGhost =
+
+blockBody : Model -> Maybe CallId -> MethodBlock -> MethodCallUiInfo -> Bool -> Html Msg
+blockBody model parentId block ui isGhost =
   let
     nbErrors = List.length (List.filter ( List.any ( (/=) Nothing) ) []) -- get errors
     editAction = case ui.mode of
@@ -500,7 +485,7 @@ blockBody model parentId block ui dragAttributes isGhost =
                 TechniqueDetails _ _ globalUi -> globalUi.callsUI
   in
   div ( class "method" :: id block.id.value :: if isGhost then List.reverse ( style  "z-index" "1" :: style "pointer-events" "all" :: id "ghost" :: style "opacity" "0.7" :: style "background-color" "white" :: []) else []) [
-    div  (class "cursorMove" :: dragAttributes) [ p [] [ text ":::"] ]
+    div  (class "cursorMove" :: []) [ p [] [ text ":::"] ]
   , div [ class "method-info"] [
       div [ hidden (not model.hasWriteRights), class "btn-holder" ] [
      {-   button [ class "text-success method-action tooltip-bs", onClick ( GenerateId (\s -> CloneMethod call (CallId s)) ), type_ "button"
@@ -571,12 +556,12 @@ blockBody model parentId block ui dragAttributes isGhost =
                                 let
                                   methodUi = Maybe.withDefault (MethodCallUiInfo Closed CallParameters Dict.empty) (Dict.get c.id.value callsUI)
                                 in
-                                  showMethodCall model methodUi pid c
+                                  render (showMethodCall model methodUi pid c)
                               Block pid b ->
                                 let
                                   methodUi = Maybe.withDefault (MethodCallUiInfo Closed CallParameters Dict.empty) (Dict.get b.id.value callsUI)
                                 in
-                                  showMethodBlock model methodUi pid b
+                                  render (showMethodBlock model methodUi pid b)
                        ) block.calls
                   ))
 
@@ -604,7 +589,6 @@ callBody model ui call pid =
     nbErrors = List.length (List.filter ( List.any ( (/=) Nothing) ) []) -- get errors
     dragElem =  element "div"
                 |> addClass "cursorMove"
-                |> DragDrop.makeDraggable model.dnd (MoveX (Call pid call)) dragDropMessages
                 |> Dom.appendChild (Dom.element "p" |>  Dom.appendText ":::" )
     cloneIcon = element "i" |> addClass "fa fa-clone"
     cloneButton = element "button"
@@ -678,6 +662,7 @@ callBody model ui call pid =
   |> addClass "method"
   |> addAttribute (id call.id.value)
   |> DragDrop.makeDroppable model.dnd (AfterElem (Call pid call)) dragDropMessages
+  |> DragDrop.makeDraggable model.dnd (MoveX (Call pid call)) dragDropMessages
   |> Dom.appendChildList
      [ dragElem
      , element "div"

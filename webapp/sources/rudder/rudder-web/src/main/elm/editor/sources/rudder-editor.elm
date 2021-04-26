@@ -695,10 +695,12 @@ update msg model =
                 StartList ->
                   newElem :: baseCalls
                 AfterElem call ->
-                  case List.Extra.splitWhen (getId >> (/=) (getId newElem)) baseCalls of
+                  case List.Extra.splitWhen (getId >> (==) (getId call)) baseCalls of
                     Nothing ->
                       newElem :: baseCalls
-                    Just (head, tail) ->   head ++ (newElem :: tail)
+                    Just (head, c :: tail) -> head ++ (c :: newElem :: tail)
+                    -- should not happen since if we got a Just then we should have matched a non empty list and empty case should be treated
+                    Just (head, tail) -> head ++ (newElem :: tail)
                 InBlock b ->
                   updateXIf (getId >> (/=) b.id ) (\x -> case x of
                                                                       Block p k -> Block p { k | calls = newElem :: b.calls }
@@ -706,5 +708,5 @@ update msg model =
                                                              ) baseCalls
             updateTechnique = { t | calls = updatedCalls}
           in
-            ({ model | mode = TechniqueDetails updateTechnique u e } , Cmd.none)
+            ({ model | mode = TechniqueDetails updateTechnique u e , dnd = DragDrop.initialState} , Cmd.none)
 

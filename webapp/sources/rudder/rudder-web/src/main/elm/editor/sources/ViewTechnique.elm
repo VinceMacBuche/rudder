@@ -10,6 +10,8 @@ import ViewMethod exposing (..)
 import ViewMethodsList exposing (..)
 import ViewTechniqueTabs exposing (..)
 import ViewTechniqueList exposing (..)
+import Dom exposing (..)
+import Dom.DragDrop as DragDrop
 
 --
 -- This file deals with the UI of one technique
@@ -82,6 +84,32 @@ showTechnique model technique origin ui =
               [ i [] [ text "New Technique" ] ]
             else
               [ span [class "technique-version" ] [ text technique.version ] , text (" - " ++ technique.name) ]
+
+    methodsList =
+      element "ul"
+      |> addAttributeList [ id "methods", class "list-unstyled" ]
+      |> appendChildConditional
+           ( element "li"
+             |> addAttribute (id "no-methods")
+             |> appendText "Drag and drop generic methods here from the list on the right to build target configuration for this technique."
+             |> DragDrop.makeDroppable model.dnd StartList dragDropMessages
+           ) (List.isEmpty technique.calls)
+      |> appendChildList
+           ( List.map ( \ call ->
+               case call of
+                 Call parentId c ->
+                   let
+                     methodUi = Maybe.withDefault (MethodCallUiInfo Closed CallParameters Dict.empty) (Dict.get c.id.value ui.callsUI)
+                   in
+                     showMethodCall model methodUi parentId c
+                 Block parentId b ->
+                   let
+                     methodUi = Maybe.withDefault (MethodCallUiInfo Closed CallParameters Dict.empty) (Dict.get b.id.value ui.callsUI)
+                   in
+                     showMethodBlock model methodUi parentId b
+             ) technique.calls
+           )
+
   in
     div [ class "main-container" ] [
       div [ class "main-header" ] [
@@ -155,28 +183,7 @@ showTechnique model technique origin ui =
                 ]
           ]
        ,  div [ class "row"] [
-            ul [ id "methods", class "list-unstyled" ]
-              ( ( if List.isEmpty technique.calls then
-                    [ li [ id "no-methods" ] [
-                        text "Drag and drop generic methods here from the list on the right to build target configuration for this technique."
-                      ]
-                    ]
-                else
-                    List.map (\ call ->
-                        case call of
-                          Call parentId c ->
-                            let
-                              methodUi = Maybe.withDefault (MethodCallUiInfo Closed CallParameters Dict.empty) (Dict.get c.id.value ui.callsUI)
-                            in
-                              showMethodCall model methodUi parentId c
-                          Block parentId b ->
-                            let
-                              methodUi = Maybe.withDefault (MethodCallUiInfo Closed CallParameters Dict.empty) (Dict.get b.id.value ui.callsUI)
-                            in
-                              showMethodBlock model methodUi parentId b
-                   ) technique.calls
-              ))
-
+            render methodsList
           ]
         ]
       ]
@@ -209,15 +216,6 @@ view model =
       techniqueList model model.techniques
     , div [ class "template-main" ] [central]
     , methodsList model
-    {-, ( case model.mode of
-         TechniqueDetails technique _ _->
-           case maybeDragCard model technique.calls of
-             Just (Call _ c) ->
-               callBody model (MethodCallUiInfo Closed CallParameters Dict.empty) c  ( List.reverse (class "method" :: [] )) True
-             _ ->
-               text ""
-         _ -> text ""
-       )-}
     , case model.modal of
         Nothing -> text ""
         Just (DeletionValidation technique) ->
