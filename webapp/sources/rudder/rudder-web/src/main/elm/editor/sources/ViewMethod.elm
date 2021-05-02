@@ -9,6 +9,7 @@ import List.Extra
 import MethodConditions exposing (..)
 import Regex
 import String.Extra
+import Maybe.Extra
 import Dom.DragDrop as DragDrop
 import Dom exposing (..)
 --
@@ -639,14 +640,13 @@ callBody model ui call pid =
                     )
 
     methodContent = element "div"
-                    |> addClass "method-content"
                     |> appendChild
                        ( element "div"
                          |> addClass  "method-param flex-form"
                          |> appendChildList
                             [ element "label" |> appendText ((parameterName classParameter) ++ ":")
-                            , element "textarea"
-                              |> addAttributeList [ class "form-control", rows 1, readonly True, value paramValue ]
+                            , element "span"
+                              |> appendText paramValue
                             ]
                        )
     warns = element "div"
@@ -661,7 +661,6 @@ callBody model ui call pid =
   element "div"
   |> addClass "method"
   |> addAttribute (id call.id.value)
-  |> DragDrop.makeDroppable model.dnd (AfterElem (Call pid call)) dragDropMessages
   |> DragDrop.makeDraggable model.dnd (MoveX (Call pid call)) dragDropMessages
   |> Dom.appendChildList
      [ dragElem

@@ -12,6 +12,7 @@ import ViewTechniqueTabs exposing (..)
 import ViewTechniqueList exposing (..)
 import Dom exposing (..)
 import Dom.DragDrop as DragDrop
+import Maybe.Extra
 
 --
 -- This file deals with the UI of one technique
@@ -95,18 +96,25 @@ showTechnique model technique origin ui =
              |> DragDrop.makeDroppable model.dnd StartList dragDropMessages
            ) (List.isEmpty technique.calls)
       |> appendChildList
-           ( List.map ( \ call ->
+           ( List.concatMap ( \ call ->
                case call of
                  Call parentId c ->
                    let
                      methodUi = Maybe.withDefault (MethodCallUiInfo Closed CallParameters Dict.empty) (Dict.get c.id.value ui.callsUI)
+                     base =     [ showMethodCall model methodUi parentId c ]
+                     dropTarget =  element "li"
+                                   |> addAttribute (id "no-methods") |> addStyle ("padding", "3px 15px")
+
+                                   |> appendText "Drop"
+                                   |> DragDrop.makeDroppable model.dnd (AfterElem (Call parentId c)) dragDropMessages
                    in
-                     showMethodCall model methodUi parentId c
+                     if (Maybe.Extra.isJust (DragDrop.currentlyDraggedObject model.dnd)) then  List.reverse (dropTarget :: base) else base
+
                  Block parentId b ->
                    let
                      methodUi = Maybe.withDefault (MethodCallUiInfo Closed CallParameters Dict.empty) (Dict.get b.id.value ui.callsUI)
                    in
-                     showMethodBlock model methodUi parentId b
+                     [ showMethodBlock model methodUi parentId b ]
              ) technique.calls
            )
 
