@@ -672,13 +672,13 @@ update msg model =
 
 
     MoveStarted draggedItemId ->
-      ( { model | dnd = DragDrop.startDragging model.dnd draggedItemId }, Cmd.none )
+      ( { model | dnd = DragDrop.startDragging model.dnd draggedItemId },Cmd.none )
 
     MoveTargetChanged dropTargetId ->
-      ( { model | dnd = DragDrop.updateDropTarget model.dnd dropTargetId }, Cmd.none)
+      ( { model | dnd = DragDrop.updateDropTarget model.dnd dropTargetId }, Cmd.none  )
 
     MoveCanceled ->
-      ( { model | dnd = DragDrop.stopDragging model.dnd }, Cmd.none)
+      ( { model | dnd = DragDrop.stopDragging model.dnd }, Cmd.none )
 
     MoveCompleted draggedItemId dropTarget ->
       case model.mode of
@@ -703,10 +703,10 @@ update msg model =
                     Just (head, tail) -> head ++ (newElem :: tail)
                 InBlock b ->
                   updateXIf (getId >> (/=) b.id ) (\x -> case x of
-                                                                      Block p k -> Block p { k | calls = newElem :: b.calls }
-                                                                      _ -> x
-                                                             ) baseCalls
+                                                    Block p k -> Block p { k | calls = newElem :: b.calls }
+                                                    _ -> x
+                                                  ) baseCalls
             updateTechnique = { t | calls = updatedCalls}
           in
-            ({ model | mode = TechniqueDetails updateTechnique u e , dnd = DragDrop.initialState} , Cmd.none)
+            ({ model | mode = TechniqueDetails updateTechnique u e , dnd = DragDrop.initialState}, Cmd.none )
 

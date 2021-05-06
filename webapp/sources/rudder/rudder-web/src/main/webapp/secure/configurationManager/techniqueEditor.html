@@ -68,7 +68,6 @@ $(document).ready(function(){
 
 
   app.ports.store.subscribe(function(kv) {
-    console.log(kv);
     var key = kv[0];
     var json = kv[1];
     localStorage.setItem(key, JSON.stringify(json));
@@ -90,8 +89,6 @@ $(document).ready(function(){
 
   });
 
-  console.log(app)
-  console.log(app.ports)
   app.ports.successNotification.subscribe(function(str) {
     createSuccessNotification(str)
   });

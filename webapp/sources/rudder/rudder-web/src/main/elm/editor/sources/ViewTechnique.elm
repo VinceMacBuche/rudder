@@ -12,7 +12,6 @@ import ViewTechniqueTabs exposing (..)
 import ViewTechniqueList exposing (..)
 import Dom exposing (..)
 import Dom.DragDrop as DragDrop
-import Maybe.Extra
 
 --
 -- This file deals with the UI of one technique
@@ -89,27 +88,42 @@ showTechnique model technique origin ui =
     methodsList =
       element "ul"
       |> addAttributeList [ id "methods", class "list-unstyled" ]
-      |> appendChildConditional
+      |> appendChild
            ( element "li"
              |> addAttribute (id "no-methods")
              |> appendText "Drag and drop generic methods here from the list on the right to build target configuration for this technique."
              |> DragDrop.makeDroppable model.dnd StartList dragDropMessages
-           ) (List.isEmpty technique.calls)
+             |> addAttribute (hidden (not (List.isEmpty technique.calls)))
+           )
+      |> appendChild
+           ( element "li"
+             |> addAttribute (id "no-methods")
+             |> appendText "Drag and drop generic methods here from the list on the right to build target configuration for this technique."
+             |> DragDrop.makeDroppable model.dnd StartList dragDropMessages
+             |> addAttribute (hidden (case DragDrop.currentlyDraggedObject model.dnd of
+                                                   Nothing -> True
+                                                   Just (MoveX x) ->Maybe.withDefault True (Maybe.map (\c->  (getId x) == (getId c)) (List.head technique.calls))
+                                                   Just _ -> False
+                             ) )
+           )
       |> appendChildList
            ( List.concatMap ( \ call ->
                case call of
                  Call parentId c ->
                    let
                      methodUi = Maybe.withDefault (MethodCallUiInfo Closed CallParameters Dict.empty) (Dict.get c.id.value ui.callsUI)
+                     currentDrag = case DragDrop.currentlyDraggedObject model.dnd of
+                                     Nothing -> True
+                                     Just (MoveX x) ->(getId x) == c.id
+                                     Just _ -> False
                      base =     [ showMethodCall model methodUi parentId c ]
                      dropTarget =  element "li"
                                    |> addAttribute (id "no-methods") |> addStyle ("padding", "3px 15px")
-
                                    |> appendText "Drop"
                                    |> DragDrop.makeDroppable model.dnd (AfterElem (Call parentId c)) dragDropMessages
+                                   |> addAttribute (hidden currentDrag)
                    in
-                     if (Maybe.Extra.isJust (DragDrop.currentlyDraggedObject model.dnd)) then  List.reverse (dropTarget :: base) else base
-
+                      List.reverse (dropTarget :: base)
                  Block parentId b ->
                    let
                      methodUi = Maybe.withDefault (MethodCallUiInfo Closed CallParameters Dict.empty) (Dict.get b.id.value ui.callsUI)

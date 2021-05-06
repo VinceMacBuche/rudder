@@ -657,10 +657,15 @@ callBody model ui call pid =
                  |> appendChild (element "b" |> appendText (String.fromInt nbErrors)  )
                  |> appendText (" invalid " ++ (if nbErrors == 1 then "parameter" else "parameters") )
                )
+    currentDrag = case DragDrop.currentlyDraggedObject model.dnd of
+                    Just (MoveX x) -> getId x == call.id
+                    Nothing -> False
+                    _ -> False
   in
   element "div"
   |> addClass "method"
   |> addAttribute (id call.id.value)
+  |> addAttribute (hidden currentDrag)
   |> DragDrop.makeDraggable model.dnd (MoveX (Call pid call)) dragDropMessages
   |> Dom.appendChildList
      [ dragElem
