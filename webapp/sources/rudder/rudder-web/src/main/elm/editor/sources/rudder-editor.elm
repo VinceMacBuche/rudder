@@ -632,14 +632,15 @@ update msg model =
       in
         (newModel, updatedStoreTechnique newModel )
 
-    UpdateMethod callId method ->
+    MethodCallModified method ->
       case model.mode of
         TechniqueDetails t s ui ->
           let
-            newModel = {model | mode = TechniqueDetails {t | calls = updateXIf (getId >> (==) callId ) (always method) t.calls} s ui}
+            newModel = {model | mode = TechniqueDetails {t | calls = updateXIf (getId >> (==) (getId method) ) (always method) t.calls} s ui}
           in
           (newModel, Cmd.none )
         _ -> (model,Cmd.none)
+
 
     MethodCallParameterModified call paramId newValue ->
       let

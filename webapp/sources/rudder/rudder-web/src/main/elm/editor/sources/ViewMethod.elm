@@ -262,7 +262,7 @@ showMethodTab model method parentId call uiInfo=
                       let
                         updatedCall = Call parentId { call | condition = {condition | os =  f  (String.toInt s) condition.os } }
                       in
-                        UpdateMethod call.id updatedCall
+                        MethodCallModified updatedCall
       in
       div [ class "tab-conditions"] [
         div [class "form-group condition-form", id "os-form"] [
@@ -279,7 +279,7 @@ showMethodTab model method parentId call uiInfo=
                      let
                        updatedCondition = {condition | os = os }
                      in
-                       li [ onClick (UpdateMethod  call.id (Call parentId {call | condition = updatedCondition })), class (osClass os) ] [ a [href "#" ] [ text (osName os) ] ] ) osList )
+                       li [ onClick (MethodCallModified (Call parentId {call | condition = updatedCondition })), class (osClass os) ] [ a [href "#" ] [ text (osName os) ] ] ) osList )
               ]
             , if (hasMajorMinorVersion condition.os ) then input [readonly model.hasWriteRights,value (Maybe.withDefault "" (Maybe.map String.fromInt (getMajorVersion condition.os) )), onInput (updateConditonVersion updateMajorVersion),type_ "number", style "display" "inline-block", style "width" "auto", style "margin-left" "5px",  class "form-control", placeholder "Major version"] [] else text ""
             , if (hasMajorMinorVersion condition.os ) then input [readonly model.hasWriteRights, value (Maybe.withDefault "" (Maybe.map String.fromInt (getMinorVersion condition.os) )), onInput (updateConditonVersion updateMinorVersion), type_ "number", style "display" "inline-block", style "width" "auto", class "form-control", style "margin-left" "5px", placeholder "Minor version"] []  else text ""
@@ -318,7 +318,7 @@ showMethodTab model method parentId call uiInfo=
                      let
                        updatedCondition = {condition | advanced = s }
                        updatedCall = Call parentId {call | condition = updatedCondition }
-                     in UpdateMethod call.id updatedCall)  ] [] --ng-pattern="/^[a-zA-Z0-9_!.|${}\[\]()@:]+$/" ng-model="method_call.advanced_class" ng-change="updateClassContext(method_call)"></textarea>
+                     in MethodCallModified updatedCall)  ] [] --ng-pattern="/^[a-zA-Z0-9_!.|${}\[\]()@:]+$/" ng-model="method_call.advanced_class" ng-change="updateClassContext(method_call)"></textarea>
           {-<div ng-messages="CForm.form.cfClasses.$error" role="alert">
                                 <div ng-message="pattern" class="text-danger">This field should only contains alphanumerical characters (a-zA-Z0-9) or the following characters _!.|${}[]()@:</div>
                               </div>
@@ -413,7 +413,7 @@ methodDetail method call parentId ui model =
     div [] [
       div [ class "form-group"] [
         label [ for "component"] [ text "Report component:"]
-      , input [ readonly (not model.hasWriteRights), type_ "text", name "component", class "form-control", value call.component,  placeholder method.name] []
+      , input [ readonly (not model.hasWriteRights), type_ "text", name "component", class "form-control", value call.component,  placeholder method.name,  onInput  (\s -> MethodCallModified (Call parentId {call  | component = s }))] []
       ]
     , ul [ class "tabs-list"] [
         li [ class (activeClass CallParameters), onClick (SwitchTabMethod call.id CallParameters) ] [text "Parameters"] -- click select param tabs, class active if selected
@@ -444,8 +444,8 @@ methodDetail method call parentId ui model =
 showMethodBlock: Model ->  MethodCallUiInfo -> Maybe CallId -> MethodBlock -> Element Msg
 showMethodBlock model ui parentId block =
   element "li"
-    |> appendNode  --     ng-class="{'active': methodIsSelected(method_call), 'missingParameters': checkMissingParameters(method_call.parameters, method.parameter).length > 0, 'errorParameters': checkErrorParameters(method_call.parameters).length > 0, 'is-edited' : canResetMethod(method_call)}"
-       ( blockBody model parentId block ui False )
+    |> appendChild  --     ng-class="{'active': methodIsSelected(method_call), 'missingParameters': checkMissingParameters(method_call.parameters, method.parameter).length > 0, 'errorParameters': checkErrorParameters(method_call.parameters).length > 0, 'is-edited' : canResetMethod(method_call)}"
+       ( blockBody model parentId block ui  )
 
 
 showMethodCall: Model -> MethodCallUiInfo -> Maybe CallId ->  MethodCall -> Element Msg
@@ -454,15 +454,6 @@ showMethodCall model ui  parentId call =
     method = case Dict.get call.methodName.value model.methods of
                Just m -> m
                Nothing -> Method call.methodName call.methodName.value "" "" (Maybe.withDefault (ParameterId "") (Maybe.map .id (List.head call.parameters))) [] [] Nothing Nothing Nothing
-    dragAttributes = []
-       {-case dndSystem.info dnd of
-         Just { dragIndex } ->
-           if dragIndex /= index then
-             dndSystem.dropEvents index call.id.value
-           else
-             [ ]
-         Nothing ->
-            dndSystem.dragEvents index call.id.value-}
   in
       element "li"
       |> addClass (if (ui.mode == Opened) then "active" else "") --     ng-class="{'active': methodIsSelected(method_call), 'missingParameters': checkMissingParameters(method_call.parameters, method.parameter).length > 0, 'errorParameters': checkErrorParameters(method_call.parameters).length > 0, 'is-edited' : canResetMethod(method_call)}"
@@ -474,100 +465,102 @@ showMethodCall model ui  parentId call =
          ) (ui.mode == Opened)
 
 
-blockBody : Model -> Maybe CallId -> MethodBlock -> MethodCallUiInfo -> Bool -> Html Msg
-blockBody model parentId block ui isGhost =
+blockBody : Model -> Maybe CallId -> MethodBlock -> MethodCallUiInfo  -> Element Msg
+blockBody model parentId block ui =
   let
-    nbErrors = List.length (List.filter ( List.any ( (/=) Nothing) ) []) -- get errors
+
     editAction = case ui.mode of
                    Opened -> CloseMethod block.id
                    Closed -> OpenMethod  block.id
-    callsUI = case model.mode of
-                Introduction -> Dict.empty
-                TechniqueDetails _ _ globalUi -> globalUi.callsUI
-  in
-  div ( class "method" :: id block.id.value :: if isGhost then List.reverse ( style  "z-index" "1" :: style "pointer-events" "all" :: id "ghost" :: style "opacity" "0.7" :: style "background-color" "white" :: []) else []) [
-    div  (class "cursorMove" :: []) [ p [] [ text ":::"] ]
-  , div [ class "method-info"] [
-      div [ hidden (not model.hasWriteRights), class "btn-holder" ] [
-     {-   button [ class "text-success method-action tooltip-bs", onClick ( GenerateId (\s -> CloneMethod call (CallId s)) ), type_ "button"
-               , title "Clone this method", attribute "data-toggle" "tooltip"
-               , attribute "data-trigger" "hover", attribute "data-container" "body", attribute "data-placement" "left"
-               , attribute "data-html" "true", attribute "data-delay" """'{"show":"400", "hide":"100"}'""" ] [
-          i [ class "fa fa-clone"] []
-        ]
-      ,-} button [  class "text-danger method-action", type_ "button", onClick (RemoveMethod block.id) ] [
-          i [ class "fa fa-times-circle" ] []
-        ]
-      ]
-    , div [ class "flex-column" ] [
-        if (block.condition.os == Nothing && block.condition.advanced == "") then
-          text ""
-        else
-          div [ class "method-condition flex-form" ] [
-            label [] [ text "Condition:" ]
-          , textarea [ class "form-control popover-bs", rows 1, readonly True, value (conditionStr block.condition), title (conditionStr block.condition)
+
+    nbErrors = List.length (List.filter ( List.any ( (/=) Nothing) ) []) -- get errors
+    dragElem =  element "div"
+                |> addClass "cursorMove"
+                |> Dom.appendChild (Dom.element "p" |>  Dom.appendText ":::" )
+    cloneIcon = element "i" |> addClass "fa fa-clone"
+    cloneButton = element "button"
+                  |> addClass "text-success method-action tooltip-bs"
+                  --|> addAction ("click", GenerateId (\s -> CloneMethod block (CallId s)))
+                  |> addAttributeList
+                     [ type_ "button", title "Clone this method", attribute "data-toggle" "tooltip"
+                     , attribute "data-trigger" "hover", attribute "data-container" "body", attribute "data-placement" "left"
+                     , attribute "data-html" "true", attribute "data-delay" """'{"show":"400", "hide":"100"}'"""
+                     ]
+                  |> appendChild cloneIcon
+    removeIcon = element "i" |> addClass "fa fa-times-circle"
+    removeButton = element "button"
+                  |> addClass "text-danger method-action tooltip-bs"
+                  |> addAction ("click", RemoveMethod block.id)
+                  |> addAttribute (type_ "button")
+                  |> appendChild removeIcon
+    condition = element "div"
+                |> addClass "method-condition flex-form"
+                |> appendChildList
+                   [ element "label"
+                     |> appendText "Condition:"
+                   , element "texarea"
+                     |> addAttributeList
+                        [ class "form-control popover-bs", rows 1, readonly True, value (conditionStr block.condition), title (conditionStr block.condition)
                             --msd-elastic
                             --ng-click="$event.stopPropagation();"
-                     , attribute "data-toggle" "popover", attribute "data-trigger" "hover", attribute "data-placement" "top"
-                     , attribute "data-title" (conditionStr block.condition), attribute "data-content" "<small>Click <span class='text-info'>3</span> times to copy the whole condition below</small>"
-                     , attribute "data-template" """<div class="popover condition" role="tooltip"><div class="arrow"></div><h3 class="popover-header"></h3><div class="popover-body"></div></div>"""
-                     , attribute "data-html" "true" ] []
-
-          ]
-        , div [class "form-group" ] [
-            label [] [ text "Name:" ]
-          , case ui.mode of
-              Opened ->
-                input [ type_ "text", class "form-control popover-bs", value block.component, placeholder "Component name" , onInput (\s -> UpdateMethod block.id (Block parentId {block | component = s}))] []
-              Closed ->
-                if (String.isEmpty block.component) then
-                  div [ class "text-danger" ] [ text "No block name defined"]
-                else
-                  text block.component
-          ]
-        , div [class "warns" ] [
-             ( if nbErrors > 0 then
-                 span [ class "warn-param error popover-bs", hidden (nbErrors == 0) ] [
-                   b [] [ text (String.fromInt nbErrors) ]
-                 , text (" invalid " ++ (if nbErrors == 1 then "parameter" else "parameters") )
-                 ]
-               else
-                 text ""
-             )
-           ]
-         ]
-        ]
-    , div [ class "edit-method popover-bs", onClick editAction
-          , attribute "data-toggle" "popover", attribute "data-trigger" "hover", attribute "data-placement" "left"
-          --, attribute "data-template" "{{getStatusTooltipMessage(method_call)}}", attribute "data-container" "body"
-          , attribute "data-html" "true", attribute "data-delay" """'{"show":"400", "hide":"100"}'""" ] [
-      i [ class "ion ion-edit"] []
-    ]
-           ,  div [ class "row"] [
-                ul [ id "methods", class "list-unstyled" ]
-                  ( ( if List.isEmpty block.calls then
-                        [ li [ id "no-methods" ] [
-                            text "Drag and drop generic methods here from the list on the right to build target configuration for this technique block."
-                          ]
+                        , attribute "data-toggle" "popover", attribute "data-trigger" "hover", attribute "data-placement" "top"
+                        , attribute "data-title" (conditionStr block.condition), attribute "data-content" "<small>Click <span class='text-info'>3</span> times to copy the whole condition below</small>"
+                        , attribute "data-template" """<div class="popover condition" role="tooltip"><div class="arrow"></div><h3 class="popover-header"></h3><div class="popover-body"></div></div>"""
+                        , attribute "data-html" "true"
                         ]
-                    else
-                        List.map (\ call ->
-                            case call of
-                              Call pid c ->
-                                let
-                                  methodUi = Maybe.withDefault (MethodCallUiInfo Closed CallParameters Dict.empty) (Dict.get c.id.value callsUI)
-                                in
-                                  render (showMethodCall model methodUi pid c)
-                              Block pid b ->
-                                let
-                                  methodUi = Maybe.withDefault (MethodCallUiInfo Closed CallParameters Dict.empty) (Dict.get b.id.value callsUI)
-                                in
-                                  render (showMethodBlock model methodUi pid b)
-                       ) block.calls
-                  ))
+                  ]
+    methodName = element "div"
+                 |> addClass "method-name"
+                 |> appendText  (if (String.isEmpty block.component) then "" else block.component)
 
-              ]
-      ]
+
+    warns = element "div"
+            |> addClass "warns"
+            |> appendChild
+               ( element "span"
+                 |> addClass  "warn-param error popover-bs"
+                 |> appendChild (element "b" |> appendText (String.fromInt nbErrors)  )
+                 |> appendText (" invalid " ++ (if nbErrors == 1 then "parameter" else "parameters") )
+               )
+    currentDrag = case DragDrop.currentlyDraggedObject model.dnd of
+                    Just (MoveX x) -> getId x == block.id
+                    Nothing -> False
+                    _ -> False
+  in
+  element "div"
+  |> addClass "method"
+  |> addAttribute (id block.id.value)
+  |> addAttribute (hidden currentDrag)
+  |> DragDrop.makeDraggable model.dnd (MoveX (Block parentId block)) dragDropMessages
+  |> Dom.appendChildList
+     [ dragElem
+     , element "div"
+       |> addClass "method-info"
+       |> appendChildList
+          [ element "div"
+            |> addClass "btn-holder"
+            |> addAttribute (hidden (not model.hasWriteRights))
+            |> appendChildList
+               [ cloneButton
+               , removeButton
+               ]
+          , element "div"
+            |> addClass "flex-column"
+            |> appendChildConditional condition  (block.condition.os == Nothing && block.condition.advanced == "")
+            |> appendChildList
+               [ methodName
+
+               ]
+            |> appendChildConditional warns (nbErrors > 0)
+        ]
+       , element "div"
+         |> addAttributeList [ class "edit-method popover-bs", onClick editAction
+                 , attribute "data-toggle" "popover", attribute "data-trigger" "hover", attribute "data-placement" "left"
+                 --, attribute "data-template" "{{getStatusTooltipMessage(method_call)}}", attribute "data-container" "body"
+                 , attribute "data-html" "true", attribute "data-delay" """'{"show":"400", "hide":"100"}'""" ]
+         |> appendChild (element "i" |> addClass "ion ion-edit" )
+
+     ]
 
 
 callBody : Model -> MethodCallUiInfo ->  MethodCall -> Maybe CallId -> Element Msg
@@ -603,7 +596,7 @@ callBody model ui call pid =
                   |> appendChild cloneIcon
     removeIcon = element "i" |> addClass "fa fa-times-circle"
     removeButton = element "button"
-                  |> addClass "text-success method-action tooltip-bs"
+                  |> addClass "text-danger method-action tooltip-bs"
                   |> addAction ("click", RemoveMethod call.id)
                   |> addAttribute (type_ "button")
                   |> appendChild removeIcon

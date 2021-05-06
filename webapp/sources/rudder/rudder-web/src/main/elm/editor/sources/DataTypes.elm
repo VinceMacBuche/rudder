@@ -203,6 +203,7 @@ type Msg =
   | RemoveMethod CallId
   | CloneMethod  MethodCall CallId
   | MethodCallParameterModified MethodCall ParameterId String
+  | MethodCallModified X
   | TechniqueParameterModified ParameterId TechniqueParameter
   | TechniqueParameterRemoved ParameterId
   | TechniqueParameterAdded ParameterId
@@ -237,7 +238,6 @@ type Msg =
   | ImportFile File
   | ParseImportedFile File String
   | ScrollCategory String
-  | UpdateMethod CallId X
   | MoveStarted DragElement
   | MoveTargetChanged DropElement
   | MoveCanceled

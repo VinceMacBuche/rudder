@@ -40,6 +40,37 @@ methodsList model =
         filterMethods = List.filter ( filterMethod filter )  (Dict.values model.methods)
         methodByCategories = Dict.Extra.groupBy (\m -> Maybe.withDefault m.id.value (List.head (String.split "_" m.id.value)) |> String.Extra.toTitleCase) (filterMethods)
         dscIcon = if filter.agent == Just Dsc then "dsc-icon-white.svg" else "dsc-icon.svg"
+
+        block = element "li"
+              |> DragDrop.makeDraggable model.dnd NewBlock dragDropMessages
+              |> appendChild
+                 ( element "div"
+                   |> addClass "method"
+                   |> appendChildList
+                      [ element "div"
+                        |> addClass "cursorMove"
+                        |> appendChild
+                           ( element "b"
+                             |> appendText ":::"
+                           )
+                      , element "div"
+                        |> addAttributeList [ class "method-name col",  onClick (GenerateId (\s -> AddBlock (CallId s))) ]
+                        |> appendText "New block"
+                      ]
+                 )
+        blockHeader = element "h5"
+                        |> addAttribute ( id "block" )
+                        |> appendText "Block"
+        methodsElem = element "div"
+                      |> addAttribute (id "methods-list-container")
+                      |> appendChild
+                         ( element "ul"
+                           |> addClass "list-unstyled"
+                           |> appendChildList
+                              [ blockHeader, block ]
+                         )
+                      |> appendChildList
+                         (List.map (showMethodsCategories model) (Dict.toList methodByCategories) )
       in
         div [ class "template-sidebar sidebar-right col-methods", onClick OpenMethods ] [
          div [ class "sidebar-header" ] [
@@ -92,16 +123,15 @@ methodsList model =
              if List.isEmpty (Dict.toList model.methods) then
                div [ class "empty" ] [ text "No method matches the filters." ]
              else
-               div [ id "methods-list-container" ] (List.map (showMethodsCategories model) (Dict.toList methodByCategories) )
-           , button [ class "btn btn-default", onClick (GenerateId (\s -> AddBlock (CallId s)))] [ text "add Block"]
+               (render methodsElem)
            , ul [ id "categories-list" ]
 
 
                ( h4 [ id "categories" ] [ text "Categories" ] ::
                  li [ class ("active") ] [
-                   a [  onClick (ScrollCategory "block") ] [ text "block" ]
+                   a [  onClick (ScrollCategory "block") ] [ text "Block" ]
                  ] ::
-                 List.map (\(c,b) -> showCategory c b ) (Dict.toList (Dict.map( \k methods -> List.all (\m -> Maybe.Extra.isJust m.deprecated) methods) methodByCategories))
+                 List.map (\(c,b) -> showCategory c b ) (Dict.toList (Dict.map( \_ methods -> List.all (\m -> Maybe.Extra.isJust m.deprecated) methods) methodByCategories))
                )
 
            ]
@@ -120,35 +150,22 @@ filterMethod filter method =
              _ -> False
          )
 
-showMethodsCategories : Model -> (String, List  Method) -> Html Msg
+showMethodsCategories : Model -> (String, List  Method) -> Element Msg
 showMethodsCategories model (category, methods) =
   let
     addIndex = case model.mode of
       TechniqueDetails t _ _ -> List.length t.calls
       _ -> 0
-    block = element "li"
-              |> DragDrop.makeDraggable model.dnd NewBlock dragDropMessages
-              |> appendChild
-                 ( element "div"
-                   |> addClass "method"
-                   |> appendChildList
-                      [ element "div"
-                        |> addClass "cursorMove"
-                        |> appendChild
-                           ( element "b"
-                             |> appendText ":::"
-                           )
-                      , element "div"
-                        |> addAttributeList [ class "method-name col",  onClick (GenerateId (\s -> AddBlock (CallId s))) ]
-                        |> appendText "New block"
-                      ]
-                 )
+    header = element "h5"
+             |> addAttribute ( id category )
+             |> appendText category
+    methodsElem = List.map (\m  -> showMethod model.methodsUI m model.dnd) methods
   in
-    ul [ class "list-unstyled" ]
-      (  h5 [ id "block" ] [ text "Block" ]
-      :: render block
-      :: h5 [ id category ] [ text category ]
-      :: (List.map (\m  -> render (showMethod model.methodsUI m model.dnd)) methods) )
+    element "ul"
+    |> addClass "list-unstyled"
+    |> appendChildList
+       ( header :: methodsElem)
+
 
 
 showCategory: String -> Bool -> Html Msg
@@ -213,11 +230,14 @@ showMethod ui method dnd =
               |> addAttributeList [ class "show-doc", onClick (ToggleDoc method.id)]
               |> appendChild
                    (element "i" |> addClass "fa fa-book" )
-            ) (List.member Dsc method.agentSupport)
-       |> appendChildConditional
-            ( element "div"
-              |> addClass "markdown"
-              |> appendNode ( Html.map (\_ -> Ignore) (Markdown.Render.toHtml Standard (Maybe.withDefault "" method.documentation)))
-            ) (docOpen && (Maybe.Extra.isJust method.documentation ) )
+            ) (Maybe.Extra.isJust method.documentation)
        )
-
+    |> if docOpen then
+         ( appendChild
+           ( element "div"
+             |> addClass "markdown"
+             |> appendNode ( Html.map (\_ -> Ignore) (Markdown.Render.toHtml Standard (Maybe.withDefault "" method.documentation)))
+           )
+         )
+       else
+         identity
