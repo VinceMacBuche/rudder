@@ -12,6 +12,7 @@ import String.Extra
 import Maybe.Extra
 import Dom.DragDrop as DragDrop
 import Dom exposing (..)
+import Json.Decode
 --
 -- This file deals with one method container (condition, parameters, etc)
 --
@@ -498,9 +499,10 @@ blockBody model parentId block ui =
                 |> appendChildList
                    [ element "label"
                      |> appendText "Condition:"
-                   , element "texarea"
+                   , element "span"
+                     |> appendText (conditionStr block.condition)
                      |> addAttributeList
-                        [ class "form-control popover-bs", rows 1, readonly True, value (conditionStr block.condition), title (conditionStr block.condition)
+                        [ class "popover-bs", title (conditionStr block.condition)
                             --msd-elastic
                             --ng-click="$event.stopPropagation();"
                         , attribute "data-toggle" "popover", attribute "data-trigger" "hover", attribute "data-placement" "top"
@@ -546,7 +548,7 @@ blockBody model parentId block ui =
                ]
           , element "div"
             |> addClass "flex-column"
-            |> appendChildConditional condition  (block.condition.os == Nothing && block.condition.advanced == "")
+            |> appendChildConditional condition  (block.condition.os /= Nothing || block.condition.advanced /= "")
             |> appendChildList
                [ methodName
 
@@ -605,11 +607,10 @@ callBody model ui call pid =
                 |> appendChildList
                    [ element "label"
                      |> appendText "Condition:"
-                   , element "texarea"
+                   , element "span"
+                     |> appendText (conditionStr call.condition)
                      |> addAttributeList
-                        [ class "form-control popover-bs", rows 1, readonly True, value (conditionStr call.condition), title (conditionStr call.condition)
-                            --msd-elastic
-                            --ng-click="$event.stopPropagation();"
+                        [ class "popover-bs", title (conditionStr call.condition)
                         , attribute "data-toggle" "popover", attribute "data-trigger" "hover", attribute "data-placement" "top"
                         , attribute "data-title" (conditionStr call.condition), attribute "data-content" "<small>Click <span class='text-info'>3</span> times to copy the whole condition below</small>"
                         , attribute "data-template" """<div class="popover condition" role="tooltip"><div class="arrow"></div><h3 class="popover-header"></h3><div class="popover-body"></div></div>"""
@@ -633,15 +634,16 @@ callBody model ui call pid =
                     )
 
     methodContent = element "div"
-                    |> appendChild
-                       ( element "div"
-                         |> addClass  "method-param flex-form"
-                         |> appendChildList
-                            [ element "label" |> appendText ((parameterName classParameter) ++ ":")
-                            , element "span"
-                              |> appendText paramValue
-                            ]
-                       )
+                    |> addClass  "method-param flex-form"
+                    |> addActionStopAndPrevent ("ondragstart", Ignore)
+                    |> addActionStopAndPrevent ("dragstart", Ignore)
+                    |> addListenerStopAndPrevent ("dragStart", Json.Decode.succeed Ignore)
+                    |> appendChildList
+                       [ element "label" |> appendText ((parameterName classParameter) ++ ":")
+                       , element "span"
+                         |> appendText paramValue
+                       ]
+
     warns = element "div"
             |> addClass "warns"
             |> appendChild
@@ -674,7 +676,7 @@ callBody model ui call pid =
                ]
           , element "div"
             |> addClass "flex-column"
-            |> appendChildConditional condition  (call.condition.os == Nothing && call.condition.advanced == "")
+            |> appendChildConditional condition (call.condition.os /= Nothing || call.condition.advanced /= "")
             |> appendChildList
                [ methodName
                , methodContent

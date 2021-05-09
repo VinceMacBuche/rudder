@@ -27,7 +27,6 @@
 
 
 document.body.addEventListener("dragstart", event => {
-  console.log(event)
   if (event.target && event.target.draggable) {
     // absurdly, this is needed for Firefox; see https://medium.com/elm-shorts/elm-drag-and-drop-game-630205556d2
     event.dataTransfer.setData("text/html", "blank");

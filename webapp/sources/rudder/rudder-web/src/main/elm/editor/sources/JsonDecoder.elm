@@ -23,10 +23,16 @@ parseCondition : String -> Condition
 parseCondition class_context =
      case String.split "." class_context of
        [] -> Condition Nothing ""
+       [ "any" ] -> Condition Nothing ""
        [_] ->
          case parseOs class_context of
            Nothing ->  Condition Nothing class_context
            os -> Condition os ""
+       [ head , "any" ] ->
+         case parseOs head of
+           Nothing ->  Condition Nothing head
+           os -> Condition os ""
+
        head :: rest ->
          case parseOs head of
            Nothing ->  Condition Nothing class_context

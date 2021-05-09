@@ -91,14 +91,27 @@ showTechnique model technique origin ui =
       |> appendChild
            ( element "li"
              |> addAttribute (id "no-methods")
-             |> appendText "Drag and drop generic methods here from the list on the right to build target configuration for this technique."
+             |> appendChildList
+                [ element "i"
+                  |> addClass "fas fa-sign-in-alt"
+                  |> addStyle ("transform", "rotate(90deg)")
+                , element "span"
+                  |> appendText " Drag and drop generic methods here from the list on the right to build target configuration for this technique."
+                ]
              |> DragDrop.makeDroppable model.dnd StartList dragDropMessages
              |> addAttribute (hidden (not (List.isEmpty technique.calls)))
            )
       |> appendChild
            ( element "li"
              |> addAttribute (id "no-methods")
-             |> appendText "Drag and drop generic methods here from the list on the right to build target configuration for this technique."
+             |> addStyle ("text-align", "center")
+             |> addStyle ("opacity", (if (DragDrop.isCurrentDropTarget model.dnd StartList) then "1" else  "0.4"))
+             |> appendChild
+                ( element "i"
+                  |> addClass "fas fa-sign-in-alt"
+                  |> addStyle ("transform", "rotate(90deg)")
+                )
+             |> addStyle ("padding", "3px 15px")
              |> DragDrop.makeDroppable model.dnd StartList dragDropMessages
              |> addAttribute (hidden (case DragDrop.currentlyDraggedObject model.dnd of
                                                    Nothing -> True
@@ -117,11 +130,18 @@ showTechnique model technique origin ui =
                                      Just (MoveX x) ->(getId x) == c.id
                                      Just _ -> False
                      base =     [ showMethodCall model methodUi parentId c ]
+                     dropElem = AfterElem (Call parentId c)
                      dropTarget =  element "li"
                                    |> addAttribute (id "no-methods") |> addStyle ("padding", "3px 15px")
-                                   |> appendText "Drop"
-                                   |> DragDrop.makeDroppable model.dnd (AfterElem (Call parentId c)) dragDropMessages
+                                   |> addStyle ("text-align", "center")
+                                   |> addStyle ("opacity", (if (DragDrop.isCurrentDropTarget model.dnd dropElem) then "1" else  "0.4"))
+                                   |> DragDrop.makeDroppable model.dnd dropElem dragDropMessages
                                    |> addAttribute (hidden currentDrag)
+                                   |> appendChild
+                                      ( element "i"
+                                        |> addClass "fas fa-sign-in-alt"
+                                        |> addStyle ("transform", "rotate(90deg)")
+                                      )
                    in
                       List.reverse (dropTarget :: base)
                  Block parentId b ->

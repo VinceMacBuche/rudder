@@ -488,6 +488,9 @@ ul.tabs-list > li > .badge.empty{
   color: #0519258c;
   background-color: #f3f8ff;
   cursor: pointer;
+  transition-property: opacity;
+  transition-duration: .5s;
+  text-align:center
 }
 
 /* FILEMANAGER */
@@ -1001,6 +1004,7 @@ ul.list-unstyled > li{
   border: 1px solid #e5e5e5;
   border-radius: 4px;
   display: flex;
+
 }
 .active .method {
   border-top-color: #a7d0f1;
@@ -1063,27 +1067,21 @@ ul.list-unstyled > li{
   width: 100%;
   align-items: baseline;
 }
-
-#ghost .cursorMove {
- cursor : grabbing;
- z-index : 1;
- pointer-events: all;
+.cursorMove p {
+  margin : 0;
 }
 .method .method-condition ~ div:before,
-.method .method-condition > label:before {
+.method .method-condition ~ label:before {
   content: "";
   position: absolute;
   top: 0;
   bottom: 0;
-  left: 5px;
+  left: 0;
   width: 3px;
   background-color: #337ab7;
 }
-.method .method-condition > label:before{
-  top: 25px;
-}
 .method .method-condition ~ div{
-  padding-left: 15px;
+  padding-left: 10px;
 }
 .method .method-name {
   font-size: 16px;
