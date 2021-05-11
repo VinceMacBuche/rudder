@@ -127,7 +127,7 @@ type ModalState = DeletionValidation Technique
 
 type DragElement = NewMethod Method | NewBlock | MoveX X
 
-type DropElement = StartList | AfterElem X | InBlock MethodBlock
+type DropElement = StartList | AfterElem (Maybe CallId) X | InBlock MethodBlock
 
 type alias Model =
   { techniques         : List Technique

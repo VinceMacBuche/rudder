@@ -251,6 +251,66 @@ osClass maybeOs =
         Linux Nothing -> "optGroup"
         Linux (Just _) -> "optChild"
 
+
+
+showBlockTab: Model -> Maybe CallId ->  MethodBlock -> MethodCallUiInfo -> Html Msg
+showBlockTab model parentId call uiInfo=
+  case uiInfo.tab of
+    CallParameters -> text ""
+    Conditions ->
+      let
+        condition = call.condition
+        updateConditonVersion = \f s ->
+                      let
+                        updatedCall = Block parentId { call | condition = {condition | os =  f  (String.toInt s) condition.os } }
+                      in
+                        MethodCallModified updatedCall
+      in
+      div [ class "tab-conditions"] [
+        div [class "form-group condition-form", id "os-form"] [
+          div [ class "form-inline" ] [ -- form
+            div [ class "form-group" ] [
+              label [ style "display" "inline-block",  class "", for "OsCondition"] [ text "Operating system: " ]
+            , div [ style "display" "inline-block", style "width" "auto", style "margin-left" "5px",class "btn-group"] [
+                button [ class "btn btn-default dropdown-toggle", id "OsCondition", attribute  "data-toggle" "dropdown", attribute  "aria-haspopup" "true", attribute "aria-expanded" "true" ] [
+                  text ((osName condition.os) ++ " ")
+                , span [ class "caret" ] []
+                ]
+              , ul [ class "dropdown-menu", attribute "aria-labelledby" "OsCondition", style "margin-left" "0px" ]
+                 ( List.map (\os ->
+                     let
+                       updatedCondition = {condition | os = os }
+                     in
+                       li [ onClick (MethodCallModified (Block parentId {call | condition = updatedCondition })), class (osClass os) ] [ a [href "#" ] [ text (osName os) ] ] ) osList )
+              ]
+            , if (hasMajorMinorVersion condition.os ) then input [readonly model.hasWriteRights,value (Maybe.withDefault "" (Maybe.map String.fromInt (getMajorVersion condition.os) )), onInput (updateConditonVersion updateMajorVersion),type_ "number", style "display" "inline-block", style "width" "auto", style "margin-left" "5px",  class "form-control", placeholder "Major version"] [] else text ""
+            , if (hasMajorMinorVersion condition.os ) then input [readonly model.hasWriteRights, value (Maybe.withDefault "" (Maybe.map String.fromInt (getMinorVersion condition.os) )), onInput (updateConditonVersion updateMinorVersion), type_ "number", style "display" "inline-block", style "width" "auto", class "form-control", style "margin-left" "5px", placeholder "Minor version"] []  else text ""
+            , if (hasVersion condition.os ) then input [readonly model.hasWriteRights, value (Maybe.withDefault "" (Maybe.map String.fromInt (getVersion condition.os) )), onInput  (updateConditonVersion updateVersion), type_ "number",style "display" "inline-block", style "width" "auto", class "form-control", style "margin-left" "5px", placeholder "Version"] []  else text ""
+            , if (hasSP condition.os ) then input [readonly (not model.hasWriteRights), value (Maybe.withDefault "" (Maybe.map String.fromInt (getSP condition.os) )), onInput (updateConditonVersion updateSP), type_ "number", style "display" "inline-block", style "width" "auto", class "form-control", style "margin-left" "5px", placeholder "Service pack"] []  else text ""
+
+            ]
+          ]
+        ]
+      , div [ class "form-group condition-form" ] [
+          label [ for "advanced"] [ text "Other conditions:" ]
+        , textarea [  readonly (not model.hasWriteRights), name "advanced", class "form-control", rows 1, id "advanced", value condition.advanced, onInput (\s ->
+                     let
+                       updatedCondition = {condition | advanced = s }
+                       updatedCall = Block parentId {call | condition = updatedCondition }
+                     in MethodCallModified updatedCall)  ] [] --ng-pattern="/^[a-zA-Z0-9_!.|${}\[\]()@:]+$/" ng-model="method_call.advanced_class" ng-change="updateClassContext(method_call)"></textarea>
+
+       ]
+      , div [ class "form-group condition-form" ] [
+          label [ for "class_context" ] [ text "Applied condition expression:" ]
+        , textarea [ readonly (not model.hasWriteRights),  name "class_context",  class "form-control",  rows 1, id "advanced", value (conditionStr condition), readonly True ] []
+        , if String.length (conditionStr condition) > 2048 then
+            span [ class "text-danger" ] [text "Classes over 2048 characters are currently not supported." ]
+          else
+            text ""
+        ]
+      ]
+    Result     -> text ""
+
 showMethodTab: Model -> Method -> Maybe CallId ->  MethodCall -> MethodCallUiInfo -> Html Msg
 showMethodTab model method parentId call uiInfo=
   case uiInfo.tab of
@@ -405,6 +465,31 @@ showMethodTab model method parentId call uiInfo=
         ]
       ]
 
+blockDetail: MethodBlock -> Maybe CallId -> MethodCallUiInfo -> Model -> Html Msg
+blockDetail block parentId ui model =
+  let
+    activeClass = (\c -> if c == ui.tab then "active" else "" )
+  in
+  div [ class "method-details" ] [
+    div [] [
+      div [ class "form-group"] [
+        label [ for "component"] [ text "Report component:"]
+      , input [ readonly (not model.hasWriteRights), type_ "text", name "component", class "form-control", value block.component,  placeholder "Enter a component name",  onInput  (\s -> MethodCallModified (Block parentId {block  | component = s }))] []
+      ]
+    , ul [ class "tabs-list"] [
+        li [ class (activeClass Conditions), onClick (SwitchTabMethod block.id Conditions) ] [text "Conditions"]
+      ]
+    , div [ class "tabs" ] [ (showBlockTab model parentId block ui) ]
+    , div [ class "method-details-footer"] [
+          button [ class "btn btn-outline-secondary btn-sm" , type_ "button", onClick Ignore] [ -- ng-disabled="!canResetMethod(method_call)" ng-click="resetMethod(method_call)"
+            text "Reset "
+          , i [ class "fa fa-undo-all"] []
+          ]
+        ]
+    ]
+  ]
+
+
 methodDetail: Method -> MethodCall -> Maybe CallId -> MethodCallUiInfo -> Model -> Html Msg
 methodDetail method call parentId ui model =
   let
@@ -442,11 +527,91 @@ methodDetail method call parentId ui model =
     ]
   ]
 
-showMethodBlock: Model ->  MethodCallUiInfo -> Maybe CallId -> MethodBlock -> Element Msg
-showMethodBlock model ui parentId block =
+showMethodBlock: Model -> TechniqueUiInfo ->  MethodCallUiInfo -> Maybe CallId -> MethodBlock -> Element Msg
+showMethodBlock model techniqueUi ui parentId block =
+
   element "li"
     |> appendChild  --     ng-class="{'active': methodIsSelected(method_call), 'missingParameters': checkMissingParameters(method_call.parameters, method.parameter).length > 0, 'errorParameters': checkErrorParameters(method_call.parameters).length > 0, 'is-edited' : canResetMethod(method_call)}"
-       ( blockBody model parentId block ui  )
+       ( blockBody model parentId block ui techniqueUi )
+     |> appendChildConditional
+      ( element "div"
+        |> addClass "method-details"
+        |> appendNode (blockDetail block parentId ui model )
+      ) (ui.mode == Opened)
+    |> appendChild
+      ( element "div"
+        |> addClass "block-child"
+        |> appendChild (
+           element "ul"
+           |> addClass "methods"
+           |> appendChild
+           ( element "li"
+             |> addAttribute (id "no-methods")
+             |> appendChildList
+                [ element "i"
+                  |> addClass "fas fa-sign-in-alt"
+                  |> addStyle ("transform", "rotate(90deg)")
+                , element "span"
+                  |> appendText " Drag and drop generic methods here to fill this component"
+                ]
+             |> DragDrop.makeDroppable model.dnd (InBlock block) dragDropMessages
+             |> addStyle ("opacity", (if (DragDrop.isCurrentDropTarget model.dnd (InBlock block)) then "1" else  "0.4"))
+
+             |> addAttribute (hidden (not (List.isEmpty block.calls)))
+           )
+
+
+           |> appendChild
+                ( element "li"
+                             |> addAttribute (id "no-methods")
+                             |> addStyle ("text-align", "center")
+                             |> addStyle ("opacity", (if (DragDrop.isCurrentDropTarget model.dnd (InBlock block)) then "1" else  "0.4"))
+                             |> appendChild
+                                ( element "i"
+                                  |> addClass "fas fa-sign-in-alt"
+                                  |> addStyle ("transform", "rotate(90deg)")
+                                )
+                             |> addStyle ("padding", "3px 15px")
+                             |> DragDrop.makeDroppable model.dnd (InBlock block) dragDropMessages
+                             |> addAttribute (hidden  ( (case DragDrop.currentlyDraggedObject model.dnd of
+                                                                   Nothing -> True
+                                                                   Just (MoveX x) ->Maybe.withDefault True (Maybe.map (\c->  (getId x) /= (getId c)) (List.head block.calls))
+                                                                   Just _ -> List.isEmpty block.calls
+                                             ) ) )
+                           )
+                |> appendChildList
+                           ( List.concatMap ( \ call ->
+                               case call of
+                                 Call _ c ->
+                                   let
+                                     methodUi = Maybe.withDefault (MethodCallUiInfo Closed CallParameters Dict.empty) (Dict.get c.id.value techniqueUi.callsUI)
+
+
+                                     currentDrag = case DragDrop.currentlyDraggedObject model.dnd of
+                                       Just (MoveX x) -> getId x == c.id
+                                       Nothing -> False
+                                       _ -> False
+                                     base =     [ showMethodCall model methodUi parentId c ]
+                                     dropElem = AfterElem (Just block.id) (Call parentId c)
+                                     dropTarget =  element "li"
+                                                   |> addAttribute (id "no-methods") |> addStyle ("padding", "3px 15px")
+                                                   |> addStyle ("text-align", "center")
+                                                   |> addStyle ("opacity", (if (DragDrop.isCurrentDropTarget model.dnd dropElem) then "1" else  "0.4"))
+                                                   |> DragDrop.makeDroppable model.dnd dropElem dragDropMessages
+                                                   |> addAttribute (hidden currentDrag)
+                                                   |> appendChild
+                                                      ( element "i"
+                                                        |> addClass "fas fa-sign-in-alt"
+                                                        |> addStyle ("transform", "rotate(90deg)")
+                                                      )
+                                   in
+                                      List.reverse (dropTarget :: base)
+                                 Block _ b ->
+                                   let
+                                     methodUi = Maybe.withDefault (MethodCallUiInfo Closed CallParameters Dict.empty) (Dict.get b.id.value techniqueUi.callsUI)
+                                   in
+                                     [ showMethodBlock model techniqueUi methodUi parentId b ]
+                 ) block.calls ) ) )
 
 
 showMethodCall: Model -> MethodCallUiInfo -> Maybe CallId ->  MethodCall -> Element Msg
@@ -466,8 +631,8 @@ showMethodCall model ui  parentId call =
          ) (ui.mode == Opened)
 
 
-blockBody : Model -> Maybe CallId -> MethodBlock -> MethodCallUiInfo  -> Element Msg
-blockBody model parentId block ui =
+blockBody : Model -> Maybe CallId -> MethodBlock -> MethodCallUiInfo -> TechniqueUiInfo -> Element Msg
+blockBody model parentId block ui techniqueUi =
   let
 
     editAction = case ui.mode of
@@ -513,7 +678,8 @@ blockBody model parentId block ui =
                   ]
     methodName = element "div"
                  |> addClass "method-name"
-                 |> appendText  (if (String.isEmpty block.component) then "" else block.component)
+                 |> addStyleListConditional [ ("font-style", "italic"), ("color", "#ccc") ]  (String.isEmpty block.component)
+                 |> appendText  (if (String.isEmpty block.component) then "no component name" else block.component)
 
 
     warns = element "div"
@@ -528,6 +694,7 @@ blockBody model parentId block ui =
                     Just (MoveX x) -> getId x == block.id
                     Nothing -> False
                     _ -> False
+
   in
   element "div"
   |> addClass "method"
@@ -549,10 +716,8 @@ blockBody model parentId block ui =
           , element "div"
             |> addClass "flex-column"
             |> appendChildConditional condition  (block.condition.os /= Nothing || block.condition.advanced /= "")
-            |> appendChildList
-               [ methodName
+            |> appendChild methodName
 
-               ]
             |> appendChildConditional warns (nbErrors > 0)
         ]
        , element "div"

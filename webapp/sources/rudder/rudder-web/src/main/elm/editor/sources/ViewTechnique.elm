@@ -130,7 +130,7 @@ showTechnique model technique origin ui =
                                      Just (MoveX x) ->(getId x) == c.id
                                      Just _ -> False
                      base =     [ showMethodCall model methodUi parentId c ]
-                     dropElem = AfterElem (Call parentId c)
+                     dropElem = AfterElem Nothing (Call parentId c)
                      dropTarget =  element "li"
                                    |> addAttribute (id "no-methods") |> addStyle ("padding", "3px 15px")
                                    |> addStyle ("text-align", "center")
@@ -148,7 +148,7 @@ showTechnique model technique origin ui =
                    let
                      methodUi = Maybe.withDefault (MethodCallUiInfo Closed CallParameters Dict.empty) (Dict.get b.id.value ui.callsUI)
                    in
-                     [ showMethodBlock model methodUi parentId b ]
+                     [ showMethodBlock model ui methodUi parentId b ]
              ) technique.calls
            )
 

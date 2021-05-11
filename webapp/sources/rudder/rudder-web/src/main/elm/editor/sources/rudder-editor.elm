@@ -688,22 +688,50 @@ update msg model =
           let
             (baseCalls, newElem) =
               case draggedItemId of
-                MoveX b -> (List.filter (getId >> (/=) (getId b) ) t.calls, b)
+                MoveX b -> case getParent b of
+                             Nothing -> (List.filter (getId >> (/=) (getId b) ) t.calls, b)
+                             Just parent ->
+                               (updateXIf (getId >> (==) parent )
+                                  (\x -> case x of
+                                    Block p k -> Block p { k | calls = List.filter (getId >> (/=) (getId b) ) k.calls}
+                                    _ -> x
+                                  ) t.calls
+                               , b)
                 NewBlock -> (t.calls, Block Nothing (MethodBlock (CallId "") "" (Condition Nothing "") SumReport []))
                 NewMethod method -> (t.calls, Call Nothing (MethodCall (CallId "") method.id (List.map (\p -> CallParameter p.name "") method.parameters) (Condition Nothing "") ""))
             updatedCalls =
               case dropTarget of
                 StartList ->
                   newElem :: baseCalls
-                AfterElem call ->
-                  case List.Extra.splitWhen (getId >> (==) (getId call)) baseCalls of
+                AfterElem parent call ->
+                  case parent of
                     Nothing ->
-                      newElem :: baseCalls
-                    Just (head, c :: tail) -> head ++ (c :: newElem :: tail)
-                    -- should not happen since if we got a Just then we should have matched a non empty list and empty case should be treated
-                    Just (head, tail) -> head ++ (newElem :: tail)
+                      case List.Extra.splitWhen (getId >> (==) (getId call)) baseCalls of
+                        Nothing ->
+                          newElem :: baseCalls
+                        Just (head, c :: tail) -> head ++ (c :: newElem :: tail)
+                          -- should not happen since if we got a Just then we should have matched a non empty list and empty case should be treated
+                        Just (head, tail) -> head ++ (newElem :: tail)
+                    Just parentId ->
+                      (updateXIf (getId >> (==) parentId )
+                        (\x ->
+                          case x of
+                            Block p k ->
+                              let
+                                calls = case List.Extra.splitWhen (getId >> (==) (getId call)) k.calls of
+                                  Nothing ->
+                                    newElem :: k.calls
+                                  Just (head, c :: tail) -> head ++ (c :: newElem :: tail)
+                                  -- should not happen since if we got a Just then we should have matched a non empty list and empty case should be treated
+                                  Just (head, tail) -> head ++ (newElem :: tail)
+                              in
+                                Block p { k | calls = calls }
+                            _ -> x
+                        )
+                        baseCalls
+                      )
                 InBlock b ->
-                  updateXIf (getId >> (/=) b.id ) (\x -> case x of
+                  updateXIf (getId >> (==) b.id ) (\x -> case x of
                                                     Block p k -> Block p { k | calls = newElem :: b.calls }
                                                     _ -> x
                                                   ) baseCalls

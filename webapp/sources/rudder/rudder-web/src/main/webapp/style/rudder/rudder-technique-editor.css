@@ -895,6 +895,19 @@ button.btn.clipboard:hover {
   animation: pulse 1s forwards;
 }
 
+
+.block-child{
+  border: 1px solid #ddd;
+  border-top: none;
+  border-bottom-left-radius : 4px;
+  border-bottom-right-radius: 4px;
+  background-color: #fff;
+  padding: 10px 10px 0 20px;
+  font-size: 14px;
+  position: relative;
+  margin-left:32px
+}
+
 /* METHOD DETAILS */
 .method-details{
   border: 1px solid #a7d0f1;
@@ -1070,6 +1083,31 @@ ul.list-unstyled > li{
 .cursorMove p {
   margin : 0;
 }
+
+
+.block-child:before{
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 5px;
+  width: 3px;
+  background-color: #337ab7;
+
+}
+
+
+.block-child .block-child:before{
+
+  background-color: #222b32;
+}
+
+
+.block-child .block-child .block-child:before{
+
+  background-color: #8fb92a;
+}
+
 .method .method-condition ~ div:before,
 .method .method-condition ~ label:before {
   content: "";
