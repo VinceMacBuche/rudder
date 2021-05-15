@@ -93,7 +93,7 @@ subscriptions model =
         , updateResources (always (updateResourcesResponse model))
         ]
 
-defaultMethodUiInfo = MethodCallUiInfo Closed CallParameters Dict.empty
+defaultMethodUiInfo = MethodCallUiInfo Closed CallParameters Dict.empty True
 
 selectTechnique: Model -> Technique -> (Model, Cmd Msg)
 selectTechnique model technique =
@@ -350,7 +350,7 @@ update msg model =
                         updateCallUi = \optCui ->
                           let
                             b = case optCui of
-                              Nothing -> MethodCallUiInfo Closed CallParameters Dict.empty
+                              Nothing -> MethodCallUiInfo Closed CallParameters Dict.empty True
                               Just cui -> cui
 
 
@@ -525,7 +525,7 @@ update msg model =
           case model.mode of
             TechniqueDetails t o ui ->
               let
-                technique =  { t | calls = (Call Nothing newCall) :: t.calls }
+                technique =  { t | calls = t.calls ++ [Call Nothing newCall] }
                 newUi = { ui | callsUI = Dict.update newId.value (always (Just defaultMethodUiInfo) ) ui.callsUI }
               in
               { model | mode = TechniqueDetails technique o newUi }
@@ -543,7 +543,7 @@ update msg model =
           case model.mode of
             TechniqueDetails t o ui ->
               let
-                technique =  { t | calls = (Block Nothing newCall) :: t.calls }
+                technique =  { t | calls =  t.calls ++ [Block Nothing newCall]  }
                 newUi = { ui | callsUI = Dict.update newId.value (always (Just defaultMethodUiInfo) ) ui.callsUI }
               in
               { model | mode = TechniqueDetails technique o newUi }
@@ -570,31 +570,19 @@ update msg model =
 
 -- Edit a technique: edit one generic method
 
-    OpenMethod callId ->
+    UIMethodAction callId newMethodUi ->
       let
         newMode =
           case model.mode of
            TechniqueDetails t o ui->
              let
-               newUi = {ui | callsUI = Dict.update  callId.value (Maybe.map (\mui -> {mui | mode = Opened } )) ui.callsUI }
+               newUi = {ui | callsUI = Dict.update  callId.value (Maybe.map (always newMethodUi )) ui.callsUI }
              in
               TechniqueDetails t o newUi
            m -> m
       in
         ({ model | mode = newMode}, Cmd.none )
 
-    CloseMethod callId ->
-      let
-        newMode =
-          case model.mode of
-           TechniqueDetails t o ui->
-            let
-              newUi = {ui | callsUI = Dict.update  callId.value (Maybe.map (\mui -> {mui | mode = Closed })) ui.callsUI }
-            in
-              TechniqueDetails t o newUi
-           m -> m
-      in
-        ({ model | mode = newMode}, Cmd.none )
 
     RemoveMethod callId ->
       let
@@ -657,7 +645,7 @@ update msg model =
                 updateCallUi = \optCui ->
                   let
                     base = case optCui of
-                            Nothing -> MethodCallUiInfo Closed CallParameters Dict.empty
+                            Nothing -> MethodCallUiInfo Closed CallParameters Dict.empty True
                             Just cui -> cui
                     newValidation =  Dict.update paramId.value (always (Just (accumulateErrorConstraint  (CallParameter paramId newValue) constraints )))  base.validation
                   in

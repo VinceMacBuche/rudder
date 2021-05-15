@@ -172,6 +172,7 @@ type alias MethodCallUiInfo =
   { mode       : MethodCallMode
   , tab        : MethodCallTab
   , validation : Dict String  ( ValidationState MethodCallParamError )
+  , showChildDetails : Bool
   }
 
 type alias TechniqueUiInfo =
@@ -198,8 +199,7 @@ type Msg =
   | GetTechniqueResources  (Result Error (List Resource))
   | GetCategories (Result Error (List TechniqueCategory))
   | GetMethods   (Result Error (Dict String Method))
-  | OpenMethod   CallId
-  | CloseMethod  CallId
+  | UIMethodAction CallId MethodCallUiInfo
   | RemoveMethod CallId
   | CloneMethod  MethodCall CallId
   | MethodCallParameterModified MethodCall ParameterId String

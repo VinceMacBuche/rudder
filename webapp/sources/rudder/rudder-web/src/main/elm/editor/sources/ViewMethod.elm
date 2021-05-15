@@ -533,85 +533,14 @@ showMethodBlock model techniqueUi ui parentId block =
   element "li"
     |> appendChild  --     ng-class="{'active': methodIsSelected(method_call), 'missingParameters': checkMissingParameters(method_call.parameters, method.parameter).length > 0, 'errorParameters': checkErrorParameters(method_call.parameters).length > 0, 'is-edited' : canResetMethod(method_call)}"
        ( blockBody model parentId block ui techniqueUi )
-     |> appendChildConditional
+    |> appendChildConditional
       ( element "div"
         |> addClass "method-details"
         |> appendNode (blockDetail block parentId ui model )
       ) (ui.mode == Opened)
-    |> appendChild
-      ( element "div"
-        |> addClass "block-child"
-        |> appendChild (
-           element "ul"
-           |> addClass "methods"
-           |> appendChild
-           ( element "li"
-             |> addAttribute (id "no-methods")
-             |> appendChildList
-                [ element "i"
-                  |> addClass "fas fa-sign-in-alt"
-                  |> addStyle ("transform", "rotate(90deg)")
-                , element "span"
-                  |> appendText " Drag and drop generic methods here to fill this component"
-                ]
-             |> DragDrop.makeDroppable model.dnd (InBlock block) dragDropMessages
-             |> addStyle ("opacity", (if (DragDrop.isCurrentDropTarget model.dnd (InBlock block)) then "1" else  "0.4"))
-
-             |> addAttribute (hidden (not (List.isEmpty block.calls)))
-           )
+    |> addAttribute (hidden (Maybe.withDefault False (Maybe.map ((==) (MoveX (Block parentId  block))) (DragDrop.currentlyDraggedObject model.dnd) )))
 
 
-           |> appendChild
-                ( element "li"
-                             |> addAttribute (id "no-methods")
-                             |> addStyle ("text-align", "center")
-                             |> addStyle ("opacity", (if (DragDrop.isCurrentDropTarget model.dnd (InBlock block)) then "1" else  "0.4"))
-                             |> appendChild
-                                ( element "i"
-                                  |> addClass "fas fa-sign-in-alt"
-                                  |> addStyle ("transform", "rotate(90deg)")
-                                )
-                             |> addStyle ("padding", "3px 15px")
-                             |> DragDrop.makeDroppable model.dnd (InBlock block) dragDropMessages
-                             |> addAttribute (hidden  ( (case DragDrop.currentlyDraggedObject model.dnd of
-                                                                   Nothing -> True
-                                                                   Just (MoveX x) ->Maybe.withDefault True (Maybe.map (\c->  (getId x) /= (getId c)) (List.head block.calls))
-                                                                   Just _ -> List.isEmpty block.calls
-                                             ) ) )
-                           )
-                |> appendChildList
-                           ( List.concatMap ( \ call ->
-                               case call of
-                                 Call _ c ->
-                                   let
-                                     methodUi = Maybe.withDefault (MethodCallUiInfo Closed CallParameters Dict.empty) (Dict.get c.id.value techniqueUi.callsUI)
-
-
-                                     currentDrag = case DragDrop.currentlyDraggedObject model.dnd of
-                                       Just (MoveX x) -> getId x == c.id
-                                       Nothing -> False
-                                       _ -> False
-                                     base =     [ showMethodCall model methodUi parentId c ]
-                                     dropElem = AfterElem (Just block.id) (Call parentId c)
-                                     dropTarget =  element "li"
-                                                   |> addAttribute (id "no-methods") |> addStyle ("padding", "3px 15px")
-                                                   |> addStyle ("text-align", "center")
-                                                   |> addStyle ("opacity", (if (DragDrop.isCurrentDropTarget model.dnd dropElem) then "1" else  "0.4"))
-                                                   |> DragDrop.makeDroppable model.dnd dropElem dragDropMessages
-                                                   |> addAttribute (hidden currentDrag)
-                                                   |> appendChild
-                                                      ( element "i"
-                                                        |> addClass "fas fa-sign-in-alt"
-                                                        |> addStyle ("transform", "rotate(90deg)")
-                                                      )
-                                   in
-                                      List.reverse (dropTarget :: base)
-                                 Block _ b ->
-                                   let
-                                     methodUi = Maybe.withDefault (MethodCallUiInfo Closed CallParameters Dict.empty) (Dict.get b.id.value techniqueUi.callsUI)
-                                   in
-                                     [ showMethodBlock model techniqueUi methodUi parentId b ]
-                 ) block.calls ) ) )
 
 
 showMethodCall: Model -> MethodCallUiInfo -> Maybe CallId ->  MethodCall -> Element Msg
@@ -624,6 +553,7 @@ showMethodCall model ui  parentId call =
       element "li"
       |> addClass (if (ui.mode == Opened) then "active" else "") --     ng-class="{'active': methodIsSelected(method_call), 'missingParameters': checkMissingParameters(method_call.parameters, method.parameter).length > 0, 'errorParameters': checkErrorParameters(method_call.parameters).length > 0, 'is-edited' : canResetMethod(method_call)}"
       |> appendChild (callBody model ui call parentId)
+      |> addAttribute (hidden (Maybe.withDefault False (Maybe.map ((==) (MoveX (Call parentId  call))) (DragDrop.currentlyDraggedObject model.dnd) )))
       |> appendChildConditional
          ( element "div"
            |> addClass "method-details"
@@ -636,8 +566,8 @@ blockBody model parentId block ui techniqueUi =
   let
 
     editAction = case ui.mode of
-                   Opened -> CloseMethod block.id
-                   Closed -> OpenMethod  block.id
+                   Opened -> UIMethodAction block.id {ui | mode = Closed}
+                   Closed -> UIMethodAction block.id {ui | mode = Opened}
 
     nbErrors = List.length (List.filter ( List.any ( (/=) Nothing) ) []) -- get errors
     dragElem =  element "div"
@@ -717,8 +647,87 @@ blockBody model parentId block ui techniqueUi =
             |> addClass "flex-column"
             |> appendChildConditional condition  (block.condition.os /= Nothing || block.condition.advanced /= "")
             |> appendChild methodName
-
             |> appendChildConditional warns (nbErrors > 0)
+
+          , element "div"
+             |> addClass ("expandBlockChild fas fa-chevron-" ++ (if ui.showChildDetails then "down" else "up"))
+             |> addAction ("click", UIMethodAction block.id { ui | showChildDetails = not ui.showChildDetails})
+
+          ,  ( element "div"
+                    |> addClass "block-child"
+                    |> addStyleListConditional [ ("opacity" ,"0"),  ("padding", "0"), ("height", "0"), ("border", "none")] (not ui.showChildDetails)
+
+                    |> appendChild (
+                       element "ul"
+                       |> addClass "methods list-unstyled"
+                       |> appendChild
+                       ( element "li"
+                         |> addAttribute (id "no-methods")
+                         |> appendChildList
+                            [ element "i"
+                              |> addClass "fas fa-sign-in-alt"
+                              |> addStyle ("transform", "rotate(90deg)")
+                            , element "span"
+                              |> appendText " Drag and drop generic methods here to fill this component"
+                            ]
+                         |> DragDrop.makeDroppable model.dnd (InBlock block) dragDropMessages
+                         |> addStyle ("opacity", (if (DragDrop.isCurrentDropTarget model.dnd (InBlock block)) then "1" else  "0.4"))
+                         |> addAttribute (hidden (not (List.isEmpty block.calls)))
+                       )
+
+
+                       |> appendChild
+                            ( element "li"
+                                         |> addAttribute (id "no-methods")
+                                         |> addStyle ("text-align", "center")
+                                         |> addStyle ("opacity", (if (DragDrop.isCurrentDropTarget model.dnd (InBlock block)) then "1" else  "0.4"))
+                                         |> appendChild
+                                            ( element "i"
+                                              |> addClass "fas fa-sign-in-alt"
+                                              |> addStyle ("transform", "rotate(90deg)")
+                                            )
+                                         |> addStyle ("padding", "3px 15px")
+                                         |> DragDrop.makeDroppable model.dnd (InBlock block) dragDropMessages
+                                         |> addAttribute (hidden  ( (case DragDrop.currentlyDraggedObject model.dnd of
+                                                                               Nothing -> True
+                                                                               Just (MoveX x) ->Maybe.withDefault True (Maybe.map (\c->  (getId x) /= (getId c)) (List.head block.calls))
+                                                                               Just _ -> List.isEmpty block.calls
+                                                         ) ) )
+                                       )
+                            |> appendChildList
+                                       ( List.concatMap ( \ call ->
+                                           case call of
+                                             Call _ c ->
+                                               let
+                                                 methodUi = Maybe.withDefault (MethodCallUiInfo Closed CallParameters Dict.empty True) (Dict.get c.id.value techniqueUi.callsUI)
+
+
+                                                 currentDragChild = case DragDrop.currentlyDraggedObject model.dnd of
+                                                   Just (MoveX x) -> getId x == c.id
+                                                   Nothing -> True
+                                                   _ -> False
+                                                 base =     [ showMethodCall model methodUi parentId c ]
+                                                 dropElem = AfterElem (Just block.id) (Call parentId c)
+                                                 dropTarget =  element "li"
+                                                               |> addAttribute (id "no-methods") |> addStyle ("padding", "3px 15px")
+                                                               |> addStyle ("text-align", "center")
+                                                               |> addStyle ("opacity", (if (DragDrop.isCurrentDropTarget model.dnd dropElem) then "1" else  "0.4"))
+                                                               |> DragDrop.makeDroppable model.dnd dropElem dragDropMessages
+                                                               |> addAttribute (hidden currentDragChild)
+                                                               |> appendChild
+                                                                  ( element "i"
+                                                                    |> addClass "fas fa-sign-in-alt"
+                                                                    |> addStyle ("transform", "rotate(90deg)")
+                                                                  )
+                                               in
+                                                  List.reverse (dropTarget :: base)
+                                             Block _ b ->
+                                               let
+                                                 methodUi = Maybe.withDefault (MethodCallUiInfo Closed CallParameters Dict.empty True) (Dict.get b.id.value techniqueUi.callsUI)
+                                               in
+                                                 [ showMethodBlock model techniqueUi methodUi parentId b ]
+                             ) block.calls ) ) )
+
         ]
        , element "div"
          |> addAttributeList [ class "edit-method popover-bs", onClick editAction
@@ -743,9 +752,10 @@ callBody model ui call pid =
                            Nothing -> ""
     classParameter = getClassParameter method
     paramValue = call.parameters |> List.Extra.find (\c -> c.id == classParameter.name) |> Maybe.map (.value)  |> Maybe.withDefault ""
+
     editAction = case ui.mode of
-                   Opened -> CloseMethod call.id
-                   Closed -> OpenMethod  call.id
+                   Opened -> UIMethodAction call.id {ui | mode = Closed}
+                   Closed -> UIMethodAction call.id {ui | mode = Opened}
 
     nbErrors = List.length (List.filter ( List.any ( (/=) Nothing) ) []) -- get errors
     dragElem =  element "div"

@@ -124,7 +124,7 @@ showTechnique model technique origin ui =
                case call of
                  Call parentId c ->
                    let
-                     methodUi = Maybe.withDefault (MethodCallUiInfo Closed CallParameters Dict.empty) (Dict.get c.id.value ui.callsUI)
+                     methodUi = Maybe.withDefault (MethodCallUiInfo Closed CallParameters Dict.empty True) (Dict.get c.id.value ui.callsUI)
                      currentDrag = case DragDrop.currentlyDraggedObject model.dnd of
                                      Nothing -> True
                                      Just (MoveX x) ->(getId x) == c.id
@@ -146,7 +146,7 @@ showTechnique model technique origin ui =
                       List.reverse (dropTarget :: base)
                  Block parentId b ->
                    let
-                     methodUi = Maybe.withDefault (MethodCallUiInfo Closed CallParameters Dict.empty) (Dict.get b.id.value ui.callsUI)
+                     methodUi = Maybe.withDefault (MethodCallUiInfo Closed CallParameters Dict.empty True) (Dict.get b.id.value ui.callsUI)
                    in
                      [ showMethodBlock model ui methodUi parentId b ]
              ) technique.calls
