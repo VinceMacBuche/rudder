@@ -50,8 +50,8 @@ methodsList model =
                       [ element "div"
                         |> addClass "cursorMove"
                         |> appendChild
-                           ( element "b"
-                             |> appendText ":::"
+                           ( element "i"
+                             |> addClass "fas fa-grip-horizontal"
                            )
                       , element "div"
                         |> addAttributeList [ class "method-name col",  onClick (GenerateId (\s -> AddBlock (CallId s))) ]
@@ -200,9 +200,9 @@ showMethod ui method dnd =
           [ element "div"
             |> addClass "cursorMove"
             |> appendChild
-               ( element "b"
-                 |> appendText ":::"
-               )
+                           ( element "i"
+                             |> addClass "fas fa-grip-horizontal"
+                           )
           , element "div"
             |> addAttributeList [ class "method-name col",  onClick (GenerateId (\s -> AddMethod method (CallId s))) ]
             |> appendText method.name

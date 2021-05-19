@@ -283,9 +283,9 @@ showBlockTab model parentId call uiInfo=
                      in
                        li [ onClick (MethodCallModified (Block parentId {call | condition = updatedCondition })), class (osClass os) ] [ a [href "#" ] [ text (osName os) ] ] ) osList )
               ]
-            , if (hasMajorMinorVersion condition.os ) then input [readonly model.hasWriteRights,value (Maybe.withDefault "" (Maybe.map String.fromInt (getMajorVersion condition.os) )), onInput (updateConditonVersion updateMajorVersion),type_ "number", style "display" "inline-block", style "width" "auto", style "margin-left" "5px",  class "form-control", placeholder "Major version"] [] else text ""
-            , if (hasMajorMinorVersion condition.os ) then input [readonly model.hasWriteRights, value (Maybe.withDefault "" (Maybe.map String.fromInt (getMinorVersion condition.os) )), onInput (updateConditonVersion updateMinorVersion), type_ "number", style "display" "inline-block", style "width" "auto", class "form-control", style "margin-left" "5px", placeholder "Minor version"] []  else text ""
-            , if (hasVersion condition.os ) then input [readonly model.hasWriteRights, value (Maybe.withDefault "" (Maybe.map String.fromInt (getVersion condition.os) )), onInput  (updateConditonVersion updateVersion), type_ "number",style "display" "inline-block", style "width" "auto", class "form-control", style "margin-left" "5px", placeholder "Version"] []  else text ""
+            , if (hasMajorMinorVersion condition.os ) then input [readonly (not model.hasWriteRights),value (Maybe.withDefault "" (Maybe.map String.fromInt (getMajorVersion condition.os) )), onInput (updateConditonVersion updateMajorVersion),type_ "number", style "display" "inline-block", style "width" "auto", style "margin-left" "5px",  class "form-control", placeholder "Major version"] [] else text ""
+            , if (hasMajorMinorVersion condition.os ) then input [readonly (not model.hasWriteRights), value (Maybe.withDefault "" (Maybe.map String.fromInt (getMinorVersion condition.os) )), onInput (updateConditonVersion updateMinorVersion), type_ "number", style "display" "inline-block", style "width" "auto", class "form-control", style "margin-left" "5px", placeholder "Minor version"] []  else text ""
+            , if (hasVersion condition.os ) then input [readonly (not model.hasWriteRights), value (Maybe.withDefault "" (Maybe.map String.fromInt (getVersion condition.os) )), onInput  (updateConditonVersion updateVersion), type_ "number",style "display" "inline-block", style "width" "auto", class "form-control", style "margin-left" "5px", placeholder "Version"] []  else text ""
             , if (hasSP condition.os ) then input [readonly (not model.hasWriteRights), value (Maybe.withDefault "" (Maybe.map String.fromInt (getSP condition.os) )), onInput (updateConditonVersion updateSP), type_ "number", style "display" "inline-block", style "width" "auto", class "form-control", style "margin-left" "5px", placeholder "Service pack"] []  else text ""
 
             ]
@@ -476,6 +476,31 @@ blockDetail block parentId ui model =
         label [ for "component"] [ text "Report component:"]
       , input [ readonly (not model.hasWriteRights), type_ "text", name "component", class "form-control", value block.component,  placeholder "Enter a component name",  onInput  (\s -> MethodCallModified (Block parentId {block  | component = s }))] []
       ]
+    , div [ class "form-group"] [
+        label [ for "reporting-rule"] [ text "Reporting composition:"]
+      , div [ style "display" "inline-block", style "width" "auto", style "margin-left" "5px",class "btn-group"] [
+                        button [ class "btn btn-default dropdown-toggle", id "OsCondition", attribute  "data-toggle" "dropdown", attribute  "aria-haspopup" "true", attribute "aria-expanded" "true" ] [
+                          text ((case block.compositionRule of
+                                                                   WorstReport -> "Worst case"
+                                                                   SumReport -> "Sum of methods"
+                                                                   ComponentReport _ -> "Focus on one child method"
+                               ) ++ " ")
+                        , span [ class "caret" ] []
+                        ]
+        , ul [ class "dropdown-menu", attribute "aria-labelledby" "reporting-rule", style "margin-left" "0px" ]
+                 ( List.map (\rule ->
+                    let
+                      content = case rule of
+                                  WorstReport -> "Worst case"
+                                  SumReport -> "Sum of methods"
+                                  ComponentReport _ -> "Focus on one child method"
+                    in
+                       li [ onClick (MethodCallModified (Block parentId {block | compositionRule = rule })) ] [ a [href "#" ] [ text content ] ] )
+                  [  WorstReport, SumReport, ComponentReport "" ]
+                )
+        ]
+
+      ]
     , ul [ class "tabs-list"] [
         li [ class (activeClass Conditions), onClick (SwitchTabMethod block.id Conditions) ] [text "Conditions"]
       ]
@@ -572,7 +597,10 @@ blockBody model parentId block ui techniqueUi =
     nbErrors = List.length (List.filter ( List.any ( (/=) Nothing) ) []) -- get errors
     dragElem =  element "div"
                 |> addClass "cursorMove"
-                |> Dom.appendChild (Dom.element "p" |>  Dom.appendText ":::" )
+                |> Dom.appendChild
+                           ( element "i"
+                             |> addClass "fas fa-grip-horizontal"
+                           )
     cloneIcon = element "i" |> addClass "fa fa-clone"
     cloneButton = element "button"
                   |> addClass "text-success method-action tooltip-bs"
@@ -760,7 +788,10 @@ callBody model ui call pid =
     nbErrors = List.length (List.filter ( List.any ( (/=) Nothing) ) []) -- get errors
     dragElem =  element "div"
                 |> addClass "cursorMove"
-                |> Dom.appendChild (Dom.element "p" |>  Dom.appendText ":::" )
+                |> Dom.appendChild
+                           ( element "i"
+                             |> addClass "fas fa-grip-horizontal"
+                           )
     cloneIcon = element "i" |> addClass "fa fa-clone"
     cloneButton = element "button"
                   |> addClass "text-success method-action tooltip-bs"

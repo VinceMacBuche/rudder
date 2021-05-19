@@ -38,7 +38,6 @@
 package com.normation.rudder.rest
 
 import java.io.StringReader
-
 import com.normation.cfclerk.services.TechniqueRepository
 import com.normation.inventory.domain.NodeId
 import com.normation.rudder.api.{AclPath, ApiAccountId, ApiAccountName, ApiAclElement, HttpAction, ApiAuthorization => ApiAuthz}
@@ -73,6 +72,7 @@ import com.normation.rudder.repository.ldap.NodeStateEncoder
 import com.normation.rudder.ncf.BundleName
 import com.normation.rudder.ncf.GenericMethod
 import com.normation.rudder.ncf.MethodCall
+import com.normation.rudder.ncf.Method
 import com.normation.rudder.ncf.ParameterId
 import com.normation.rudder.ncf.MethodParameter
 import com.normation.rudder.ncf.TechniqueParameter
@@ -87,6 +87,7 @@ import com.normation.cfclerk.domain.Technique
 import com.normation.cfclerk.domain.TechniqueId
 import com.normation.cfclerk.domain.TechniqueName
 import com.normation.cfclerk.domain.TechniqueVersion
+import com.normation.cfclerk.domain.WorstReport
 import com.normation.inventory.domain.InventoryError
 import com.normation.inventory.domain.SecurityToken
 import com.normation.rudder.ncf.Constraint._
@@ -101,6 +102,7 @@ import com.normation.inventory.domain.PublicKey
 import com.normation.rudder.domain.nodes.GenericProperty
 import com.normation.rudder.domain.nodes.GroupProperty
 import com.normation.rudder.domain.nodes.InheritMode
+import com.normation.rudder.ncf.MethodBlock
 import com.normation.rudder.ncf.ParameterType.ParameterTypeService
 import com.normation.rudder.services.policies.PropertyParser
 import com.normation.utils.DateFormaterService
@@ -1174,7 +1176,7 @@ final case class RestExtractorService (
       category    <- OptionnalJson.extractJsonString(json, "category").map(_.filter(_.nonEmpty).getOrElse("ncf_techniques"))
       description <- CompleteJson.extractJsonString(json, "description")
       name        <- CompleteJson.extractJsonString(json, "name")
-      calls       <- CompleteJson.extractJsonArray(json , "method_calls")(extractMethodCall(_, methods, supportMissingId))
+      calls       <- CompleteJson.extractJsonArray(json , "method_calls")(extractMethodElem(_, methods, supportMissingId))
       parameters  <- CompleteJson.extractJsonArray(json , "parameter")(extractTechniqueParameter(creation))
       files       <- OptionnalJson.extractJsonArray(json , "resources")(extractResourceFile).map(_.getOrElse(Nil))
     } yield {
@@ -1190,6 +1192,28 @@ final case class RestExtractorService (
       (parameterId,value)
     }
   }
+
+  def extractMethodElem(json:JValue, methods: Map[BundleName, GenericMethod], supportMissingId : Boolean) : Box[Method] = {
+    json \ "method_name" match {
+      case JString(_) => extractMethodCall(json,methods,supportMissingId)
+      case _ => extractMethodBlock(json,methods,supportMissingId)
+    }
+  }
+
+
+  def extractMethodBlock (json : JValue, methods: Map[BundleName, GenericMethod], supportMissingId : Boolean) : Box[MethodBlock] = {
+
+    for {
+      id        <-    CompleteJson.extractJsonString(json,"id")
+      condition       <- CompleteJson.extractJsonString(json, "condition")
+      component       <- CompleteJson.extractJsonString(json, "component")
+      // Args was removed in 6.1.0 and replaced by parameters. keept it when we are reading old format techniques, ie when migrating from 6.1
+      childs <- CompleteJson.extractJsonArray(json,"calls" )(extractMethodElem(_, methods, supportMissingId))
+    } yield {
+      MethodBlock(id,component, WorstReport, condition, childs)
+    }
+  }
+
 
   def extractMethodCall (json : JValue, methods: Map[BundleName, GenericMethod], supportMissingId : Boolean) : Box[MethodCall] = {
 

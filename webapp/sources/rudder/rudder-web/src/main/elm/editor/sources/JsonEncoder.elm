@@ -46,13 +46,14 @@ encodeX call =
 
 encodeMethodCall: MethodCall -> Value
 encodeMethodCall call =
-  object [
+
+  object (
+    (if ( String.isEmpty call.component) then identity else  (::) ("component"    , string call.component))[
     ("id"           , string call.id.value)
   , ("method_name"  , string call.methodName.value)
   , ("class_context",  string <| conditionStr call.condition)
-  , ("component"    , string call.component)
   , ("parameters"   , list encodeCallParameters call.parameters)
-  ]
+  ] )
 
 encodeCompositionRule: CompositionRule -> Value
 encodeCompositionRule composition =
@@ -71,6 +72,7 @@ encodeMethodBlock call =
   , ("condition",  string <| conditionStr call.condition)
   , ("component"    , string call.component)
   , ("calls"   , list encodeX call.calls)
+  , ("id"   , string call.id.value)
   ]
 
 encodeCallParameters: CallParameter -> Value

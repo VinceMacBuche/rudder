@@ -112,7 +112,8 @@ final case class Technique(
 trait Method
 
 final case class MethodBlock(
-    component: String
+    id : String
+  , component: String
   , compositionRule: CompositionRule
   , condition : String
   , calls : List[Method]
@@ -346,11 +347,12 @@ class TechniqueSerializer(parameterTypeService: ParameterTypeService) {
       }
     }
     def serializeMethodBlock(block: MethodBlock): JValue = {
-      (  ("condition" -> block.condition)
-        ~ ("component" -> block.component)
-        ~ ("compositionRule" -> serializeCompositionRule(block.compositionRule))
-        ~ ("calls" -> block.calls.map(serializeMethod))
-        )
+      ( ("condition" -> block.condition)
+      ~ ("component" -> block.component)
+      ~ ("compositionRule" -> serializeCompositionRule(block.compositionRule))
+      ~ ("calls" -> block.calls.map(serializeMethod))
+      ~ ("id" -> block.id)
+      )
     }
 
     def serializeMethodCall(call: MethodCall): JValue = {

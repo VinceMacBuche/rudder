@@ -137,10 +137,6 @@ final case class SectionSpec(
   private def recCloneMultivalued: Either[LoadTechniqueError, SectionSpec] = {
     val multivaluedChildren = children.toList.traverse { child => child match {
       case s: SectionSpec =>
-        if (s.isMultivalued) LoadTechniqueError.Consistancy(
-          "A multivalued section should not contain other multivalued sections." +
-            " It may contain only imbricated sections or variables.").invalidNel
-        else
           s.recCloneMultivalued.toValidatedNel
       case v: SectionVariableSpec => v.cloneSetMultivalued.validNel
     } }.leftMap(errs => LoadTechniqueError.Accumulated(errs)).toEither

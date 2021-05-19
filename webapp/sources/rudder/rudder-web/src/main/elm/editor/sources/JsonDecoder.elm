@@ -45,12 +45,12 @@ decodeX parent =
 
 decodeCompositionRule : Decoder CompositionRule
 decodeCompositionRule =
-  andThen (\v ->
+  field  "type" (andThen (\v ->
     case v of
       "worst" -> succeed WorstReport
       "sum"      -> succeed SumReport
       _          -> fail (v ++ " is not a valid composition Rule")
-  ) string
+  ) string )
 
 decodeBlock : Decoder MethodBlock
 decodeBlock =

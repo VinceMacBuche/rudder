@@ -242,6 +242,7 @@ type Msg =
   | MoveTargetChanged DropElement
   | MoveCanceled
   | MoveCompleted DragElement DropElement
+  | SetMissingIds String
 
 dragDropMessages : DragDrop.Messages Msg DragElement DropElement
 dragDropMessages =

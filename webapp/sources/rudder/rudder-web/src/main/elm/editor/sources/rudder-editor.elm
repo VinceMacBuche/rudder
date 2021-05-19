@@ -93,6 +93,23 @@ subscriptions model =
         , updateResources (always (updateResourcesResponse model))
         ]
 
+setIdRec : String -> List X -> (List X, Bool)
+setIdRec  newId elems =
+  case elems of
+    [] -> ([], False)
+    head :: tail ->
+      if ((getId head ) == CallId "") then
+        ((setId (CallId newId) head ) :: tail, True)
+      else
+        case head of
+          Block p b ->
+            case setIdRec newId b.calls of
+              (calls, True) ->
+                ((Block p {b | calls = calls} ) :: tail, True)
+              _ ->
+                Tuple.mapFirst ((::) head ) (setIdRec newId tail)
+          _ -> Tuple.mapFirst ((::) head ) (setIdRec newId tail)
+
 defaultMethodUiInfo = MethodCallUiInfo Closed CallParameters Dict.empty True
 
 selectTechnique: Model -> Technique -> (Model, Cmd Msg)
@@ -106,7 +123,6 @@ selectTechnique model technique =
 
 generator : Random.Generator String
 generator = Random.map (UUID.toString) UUID.generator
-
 
 updateXIf : (X -> Bool) -> ( X -> X) -> List X -> List X
 updateXIf predicate updateFun list =
@@ -153,8 +169,8 @@ update msg model =
 
     GetTechniques (Ok  techniques) ->
       ({ model | techniques = techniques},  get () )
-    GetTechniques (Err _) ->
-      ( model , Cmd.none )
+    GetTechniques (Err e) ->
+      ( model , errorNotification (Debug.toString e  ) )
 
     OpenTechniques ->
       ( { model | genericMethodsOpen = False } , Cmd.none )
@@ -659,6 +675,16 @@ update msg model =
       in
         ( newModel , updatedStoreTechnique newModel  )
 
+    SetMissingIds newId ->
+      case model.mode of
+        Introduction -> (model, Cmd.none)
+        TechniqueDetails t e u->
+          let
+           newUi = { u | callsUI = Dict.update newId (always (Just defaultMethodUiInfo) ) u.callsUI }
+          in
+          case setIdRec newId t.calls of
+            (_, False) -> (model, Cmd.none)
+            (newCalls, True) -> update (GenerateId SetMissingIds) { model | mode = TechniqueDetails {t  | calls = newCalls} e newUi }
 
     MoveStarted draggedItemId ->
       ( { model | dnd = DragDrop.startDragging model.dnd draggedItemId },Cmd.none )
@@ -725,5 +751,5 @@ update msg model =
                                                   ) baseCalls
             updateTechnique = { t | calls = updatedCalls}
           in
-            ({ model | mode = TechniqueDetails updateTechnique u e , dnd = DragDrop.initialState}, Cmd.none )
+            update (GenerateId SetMissingIds ) { model | mode = TechniqueDetails updateTechnique u e , dnd = DragDrop.initialState}
 
