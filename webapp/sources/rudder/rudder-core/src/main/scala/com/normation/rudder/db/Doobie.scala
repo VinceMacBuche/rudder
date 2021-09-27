@@ -191,8 +191,20 @@ object Doobie {
   }
 
   implicit val ReportRead: Read[Reports] = {
-    type R = (DateTime, RuleId, DirectiveId, NodeId, Int, String, String, DateTime, String, String)
-    Read[R].map( (t: R) => Reports.factory(t._1,t._2,t._3,t._4,t._5,t._6,t._7,t._8,t._9,t._10) )
+
+    type R = (DateTime, RuleId, String, NodeId, Int, String, String, DateTime, String, String)
+    Read[R].map(
+        (t: R      ) => {
+          val (directiveId, componentId) = t._3.split("__").toList match {
+            case directiveId :: componentId :: Nil => (directiveId, componentId)
+            case _ => (t._3, "")
+          }
+          DirectiveId.parse(directiveId) match {
+              case Right(drid) => Reports.factory(t._1,t._2,drid,t._4,t._5, componentId,t._6,t._7,t._8,t._9,t._10)
+              case Left(err)   => throw new IllegalArgumentException(s"Error when unserializing a report from ruddersysevents base: can not parse directive ID: ${t._3}: ${err}")
+          }
+
+        })
   }
 
   implicit val ReportWrite: Write[Reports] = {

@@ -1467,7 +1467,7 @@ object RuleExpectedReportBuilder extends Loggable {
             section.componentKey match {
               case None =>
                 //a section that is a component without componentKey variable: card=1, value="None"
-                ValueExpectedReport(section.name, List(DEFAULT_COMPONENT_KEY), List(DEFAULT_COMPONENT_KEY)) :: Nil
+                ValueExpectedReport(section.name, section.id, List(DEFAULT_COMPONENT_KEY), List(DEFAULT_COMPONENT_KEY)) :: Nil
               case Some(varName) =>
                 //a section with a componentKey variable: card=variable card
                 // we are maybe not in a block, but we should only take the values matching the current parent path
@@ -1491,6 +1491,7 @@ object RuleExpectedReportBuilder extends Loggable {
                 val innerUnexpandedVars = lookingPath.map(comp => vars.originalVars.get(comp).map(_.values.toList).getOrElse(Nil)).getOrElse(Nil)
 
                 if (innerExpandedVars.size != innerUnexpandedVars.size)
+
                   PolicyGenerationLogger.warn("Caution, the size of unexpanded and expanded variables for autobounding variable in section %s for directive %s are not the same : %s and %s".format(
                     section.componentKey, directiveId.serialize, innerExpandedVars, innerUnexpandedVars))
 
@@ -1504,7 +1505,6 @@ object RuleExpectedReportBuilder extends Loggable {
             val currentPath = section.name :: path
             val children = section.children.collect{case c : SectionSpec => c }.flatMap(c => sectionToExpectedReports(currentPath)(c)).toList
             BlockExpectedReport(section.name, rule, children) :: Nil
-
         }
       } else {
         section.children.collect{case c : SectionSpec => c }.flatMap(c => sectionToExpectedReports( path)(c)).toList
@@ -1522,7 +1522,7 @@ object RuleExpectedReportBuilder extends Loggable {
                                    s"expected report = 1 for directive ${directiveId.debugString}")
 
       val trackingVarCard = getTrackingVariableCardinality
-      List(ValueExpectedReport(technique.id.name.value, trackingVarCard._1.toList, trackingVarCard._2.toList))
+      List(ValueExpectedReport(technique.id.name.value, "default", trackingVarCard._1.toList, trackingVarCard._2.toList))
     } else {
       allComponents
     }

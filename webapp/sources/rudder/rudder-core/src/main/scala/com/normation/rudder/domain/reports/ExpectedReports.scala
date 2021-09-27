@@ -134,17 +134,19 @@ final case class DirectiveExpectedReports (
  */
 sealed trait ComponentExpectedReport {
   def componentName : String
+  def componentId : String
 }
 
 final case class BlockExpectedReport (
   componentName   : String
+, componentId : String
 , reportingLogic : ReportingLogic
 , subComponents : List[ComponentExpectedReport]
 ) extends  ComponentExpectedReport
 
 final case class ValueExpectedReport(
     componentName             : String
-
+  , componentId : String
   //TODO: change that to have a Seq[(String, String).
   //or even better, un Seq[ExpectedValue] where expectedValue is the pair
   , componentsValues          : List[String]
@@ -263,11 +265,13 @@ object ExpectedReportsSerialisation {
     c match {
       case c: ValueExpectedReport =>
         (("componentName" -> c.componentName)
+          ~ ("id" -> c.componentId)
           ~ ("values" -> c.componentsValues)
           ~ ("unexpanded" -> c.unexpandedComponentsValues)
           )
       case c: BlockExpectedReport =>
         (("componentName" -> c.componentName)
+          ~ ("id" -> c.componentId)
           ~ ("reportingLogic" -> (c.reportingLogic.value))
           ~ ("subComponents" -> c.subComponents.map(jsonComponentExpectedReport))
           )
@@ -447,6 +451,7 @@ object ExpectedReportsSerialisation {
     def component(json: JValue): Box[ComponentExpectedReport] = {
       (
           (json \ "componentName" )
+        , (json \ "id")
         , (json \ "values").extractOpt[List[String]]
         , (json \ "unexpanded").extractOpt[List[String]]
         , (json \ "subComponents") match {
@@ -456,13 +461,13 @@ object ExpectedReportsSerialisation {
 
         , (json \ "reportingLogic").extractOpt[String]
      ) match {
-        case (JString(name), Some(values), Some(unexpanded), None, None ) =>
-          Full(ValueExpectedReport(name, values, unexpanded))
-        case (JString(name), _, _, Some(Full(sub)), Some(composition) )=>
+        case (JString(name), JString(id), Some(values), Some(unexpanded), None, None ) =>
+          Full(ValueExpectedReport(name, id, values, unexpanded))
+        case (JString(name), JString(id),  _, _, Some(Full(sub)), Some(composition) )=>
           for {
             reportingLogic <-  ReportingLogic.parse(composition).toBox
           } yield {
-            BlockExpectedReport(name, reportingLogic, sub.toList)
+            BlockExpectedReport(name,  id, reportingLogic, sub.toList)
           }
         case _ =>
           Failure(s"Error when parsing component expected reports from json: '${compactRender(json)}'")

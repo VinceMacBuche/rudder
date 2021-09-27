@@ -751,7 +751,7 @@ class WoLDAPDirectiveRepository(
           deleted         <- ldap.flatMap(_.delete(entry.dn))
           diff            =  DeleteDirectiveDiff(activeTechnique.techniqueName, directive)
           loggedAction    <- { //we can have a missing technique if the technique was deleted but not its directive. In that case, make a fake root section
-                               val rootSection = technique.map( _.rootSection).getOrElse(SectionSpec("Missing technique information"))
+                               val rootSection = technique.map( _.rootSection).getOrElse(SectionSpec("Missing technique information", "missing"))
                                actionLogger.saveDeleteDirective(
                                  modId, principal = actor, deleteDiff = diff, varsRootSectionSpec = rootSection, reason = reason
                                )

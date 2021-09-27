@@ -103,6 +103,7 @@ sealed trait SectionChildSpec {
  */
 final case class SectionSpec(
     name            : String
+  , id              : String
   , isMultivalued   : Boolean = false
   , isComponent     : Boolean = false
   , componentKey    : Option[String] = None
@@ -174,6 +175,7 @@ sealed trait VariableSpec {
   def name: String
   def description: String
   def longDescription: String
+  def id : String
 
   def multivalued: Boolean
 
@@ -207,20 +209,19 @@ sealed trait VariableSpec {
 // A SystemVariable is automatically filled by Rudder
 // It has the RAW constraint, meaning it is *NOT* escaped
 final case class SystemVariableSpec(
-  override val name: String,
-  val description: String,
-  val longDescription: String = "",
-  val valueslabels: Seq[ValueLabel] = Seq(),
-  val multivalued: Boolean,
-
+    override val name: String
+  , val description: String
+  , val longDescription: String = ""
+  , val valueslabels: Seq[ValueLabel] = Seq()
+  , val multivalued: Boolean
   // we expect that by default the variable will be checked
-  val checked: Boolean = true,
+  , val checked: Boolean = true
 
   // A system variable is always of the "raw" type, meaning it won't be escaped
-  val constraint: Constraint = Constraint(RawVType)
+  , val constraint: Constraint = Constraint(RawVType)
 
 ) extends VariableSpec {
-
+  val id = name
   override type T = SystemVariableSpec
   override type V = SystemVariable
   override def cloneSetMultivalued: SystemVariableSpec = this.copy(multivalued = true)
@@ -241,6 +242,7 @@ final case class TrackerVariableSpec(
   override type V = TrackerVariable
 
   override val name: String = TRACKINGKEY
+  val id = TRACKINGKEY
   override val description: String = "Variable which kept information about the policy"
 
   override val checked: Boolean = false
@@ -284,6 +286,7 @@ final case class SelectVariableSpec(
   val checked: Boolean = true,
 
   val constraint: Constraint = Constraint()
+  , id : String
 
 ) extends ValueLabelVariableSpec {
 
@@ -307,6 +310,7 @@ final case class SelectOneVariableSpec(
   val checked: Boolean = true,
 
   val constraint: Constraint = Constraint()
+  , id : String
 
 ) extends ValueLabelVariableSpec {
 
@@ -336,6 +340,7 @@ final case class PredefinedValuesVariableSpec(
   , val checked: Boolean = true
 
   , val constraint: Constraint = Constraint()
+  , id : String
 ) extends SectionVariableSpec {
 
   def nelOfProvidedValues = providedValues._1 :: providedValues._2.toList
@@ -362,6 +367,7 @@ final case class InputVariableSpec(
   val checked: Boolean = true,
 
   val constraint: Constraint = Constraint()
+  , id : String
 
 ) extends SectionVariableSpec {
 
@@ -397,19 +403,20 @@ object SectionVariableSpec {
     checked: Boolean = true,
     constraint: Constraint = Constraint(),
     providedValues: Seq[String]
+    , id : String
   ): SectionVariableSpec = {
 
     markerName match {
       case INPUT => InputVariableSpec(varName, description, longDescription,
-        multivalued, checked, constraint)
+        multivalued, checked, constraint, id)
       case SELECT => SelectVariableSpec(varName, description, longDescription,
-        valueslabels, multivalued, checked, constraint)
+        valueslabels, multivalued, checked, constraint, id)
       case SELECT1 => SelectOneVariableSpec(varName, description, longDescription,
-        valueslabels, multivalued, checked, constraint)
+        valueslabels, multivalued, checked, constraint, id)
       case REPORT_KEYS =>
         if(providedValues.isEmpty) throw EmptyReportKeysValue(varName)
         else PredefinedValuesVariableSpec(varName, description, (providedValues.head, providedValues.tail),
-            longDescription, multivalued, checked, constraint)
+            longDescription, multivalued, checked, constraint, id)
 
       case x => throw new IllegalArgumentException("Unknown variable kind: " + x)
     }

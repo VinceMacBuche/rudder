@@ -40,11 +40,12 @@ package com.normation.cfclerk.xmlparsers
 import cats.implicits._
 import com.normation.cfclerk.domain._
 import com.normation.cfclerk.xmlparsers.CfclerkXmlConstants._
+import com.normation.utils.StringUuidGenerator
 import net.liftweb.common._
 
 import scala.xml._
 
-class SectionSpecParser(variableParser:VariableSpecParser) extends Loggable {
+class SectionSpecParser(variableParser:VariableSpecParser, uuidGenerator: StringUuidGenerator) extends Loggable {
 
 
   def parseSectionsInPolicy(policy: Node, id: TechniqueId, policyName: String): Either[LoadTechniqueError, SectionSpec] = {
@@ -58,10 +59,10 @@ class SectionSpecParser(variableParser:VariableSpecParser) extends Loggable {
       Right("ok")
     }) *> {
       if (sections.isEmpty)
-        Right(SectionSpec(SECTION_ROOT_NAME))
+        Right(SectionSpec(SECTION_ROOT_NAME, "root"))
       else {
         parseChildren(SECTION_ROOT_NAME, sections.head, id, policyName).flatMap { children =>
-          val root = SectionSpec(SECTION_ROOT_NAME, children = children)
+          val root = SectionSpec(SECTION_ROOT_NAME, "root", children = children)
 
           /*
            * check that all section names and all variable names are unique
@@ -150,6 +151,7 @@ class SectionSpecParser(variableParser:VariableSpecParser) extends Loggable {
     // Checking if we have predefined values
     for {
       name     <- optName
+      sectionId = Utils.getAttributeText(root, "id", uuidGenerator.newUuid)
       children <- parseChildren(name, root, id, policyName)
       expectedReportComponentKey = (children.collect { case x : PredefinedValuesVariableSpec => x }) match {
                     case seq if seq.isEmpty               => None
@@ -177,7 +179,7 @@ class SectionSpecParser(variableParser:VariableSpecParser) extends Loggable {
     _ <-          if(isMultivalued && isComponent && effectiveComponentKey.isEmpty && composition.isEmpty) {
                     Left(LoadTechniqueError.Parsing("Section '%s' is multivalued and is component. A componentKey attribute must be specified".format(name)))
                   } else Right("ok")
-      sectionSpec = SectionSpec(name, isMultivalued, isComponent, effectiveComponentKey, displayPriority, description, children, composition)
+      sectionSpec = SectionSpec(name, sectionId, isMultivalued, isComponent, effectiveComponentKey, displayPriority, description, children, composition)
       res <- if (isMultivalued) sectionSpec.cloneVariablesInMultivalued
              else Right(sectionSpec)
     } yield {

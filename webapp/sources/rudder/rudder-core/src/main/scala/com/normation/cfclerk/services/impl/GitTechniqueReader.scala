@@ -55,13 +55,11 @@ import org.eclipse.jgit.lib.ObjectId
 import scala.collection.mutable.{Map => MutMap}
 import com.normation.cfclerk.xmlparsers.TechniqueParser
 import com.normation.cfclerk.services._
-
 import org.eclipse.jgit.diff.DiffFormatter
 import org.eclipse.jgit.errors.MissingObjectException
 import org.eclipse.jgit.diff.DiffEntry.ChangeType
 
 import java.io.IOException
-
 import com.normation.errors._
 import com.normation.zio._
 import zio._
@@ -73,7 +71,7 @@ import com.normation.rudder.git.ExactFileTreeFilter
 import com.normation.rudder.git.GitFindUtils
 import com.normation.rudder.git.GitRepositoryProvider
 import com.normation.rudder.git.GitRevisionProvider
-
+import com.normation.utils.StringUuidGenerator
 import org.eclipse.jgit.lib.Repository
 import org.eclipse.jgit.lib.ObjectStream
 
@@ -145,6 +143,7 @@ class GitTechniqueReader(
   , val categoryDescriptorName : String //full (with extension) name of the descriptor for categories
   , val relativePathToGitRepos : Option[String]
   , val directiveDefaultName   : String //full (with extension) name of the file containing default name for directive (default-directive-names.conf)
+  , uuidGenerator              : StringUuidGenerator
 ) extends TechniqueReader with Loggable {
 
   // semaphore to have consistent read
@@ -684,7 +683,7 @@ class GitTechniqueReader(
   private[this] val dummyTechnique = Technique(
       TechniqueId(TechniqueName("dummy"), TechniqueVersion.parse("1.0").getOrElse(throw new RuntimeException("Version of dummy technique is not parsable")))
     , "dummy", "dummy", Nil, TrackerVariableSpec()
-    , SectionSpec("ROOT"), None
+    , SectionSpec("ROOT", uuidGenerator.newUuid), None
  )
 
   private[this] def processTechnique(

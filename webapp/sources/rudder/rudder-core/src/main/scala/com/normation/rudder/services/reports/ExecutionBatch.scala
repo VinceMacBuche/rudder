@@ -1059,6 +1059,13 @@ final case class ContextForNoAnswer(
 
     val complianceForRun = getComplianceForRun(mergeInfo, executionReports, lastRunNodeConfig, unexpectedInterpretation)
 
+    def getExpectedComponents(component : ComponentExpectedReport) : List[String] = {
+      component match {
+        case c : ValueExpectedReport => c.componentId :: Nil
+        case c : BlockExpectedReport => c.subComponents.flatMap(getExpectedComponents)
+      }
+    }
+
     val t10 = System.currentTimeMillis()
 
     //now, for all current expected reports, choose between the computed value and the default one

@@ -39,10 +39,12 @@ package com.normation.cfclerk.xmlparsers
 
 import com.normation.cfclerk.domain._
 import CfclerkXmlConstants._
+
 import scala.xml._
 import net.liftweb.common._
 import com.normation.utils.Control
 import com.normation.cfclerk.domain.HashAlgoConstraint.DerivedPasswordType
+import com.normation.utils.StringUuidGenerator
 
 object Utils {
   /**
@@ -86,7 +88,7 @@ import Utils._
 
 final case class EmptyReportKeysValue(sectionName: String) extends Exception(s"In '${sectionName}', the element ${REPORT_KEYS} must have a non empty list of provided values: <${REPORT_KEYS}><${REPORT_KEYS_VALUE}>val foo</${REPORT_KEYS_VALUE}><${REPORT_KEYS_VALUE}>...")
 
-class VariableSpecParser extends Loggable {
+class VariableSpecParser(uuidGenerator: StringUuidGenerator) extends Loggable {
 
 
   private[this] val reservedVariableName = DEFAULT_COMPONENT_KEY :: TRACKINGKEY :: Nil
@@ -103,6 +105,7 @@ class VariableSpecParser extends Loggable {
   def parseSectionVariableSpec(parentSectionName: String, elt: Node): Either[LoadTechniqueError, (SectionVariableSpec, List[SectionVariableSpec])] = {
 
     val markerName = elt.label
+    val id = getUniqueNodeText(elt, VAR_NAME, uuidGenerator.newUuid)
     if (!SectionVariableSpec.isVariable(markerName)) {
       Left(LoadTechniqueError.Consistancy(s"The node '${markerName}' is not a variable specification node: it should be one of ${SectionVariableSpec.markerNames.mkString("<", ">, <", ">")}"))
 
@@ -132,6 +135,7 @@ class VariableSpecParser extends Loggable {
         , checked = true
         , constraint = Constraint()
         , p
+        , id
       ), Nil))
     } else { //normal variable
 
@@ -162,7 +166,7 @@ class VariableSpecParser extends Loggable {
                                   case _ => false
                                 }
               varPair        <- (elt \ VAR_CONSTRAINT).toList match {
-                                              case h :: Nil => parseConstraint(name, h)
+                                              case h :: Nil => parseConstraint(name, h, id)
                                               case Nil      => Right((Constraint(), Nil))
                                               case _        => Left(LoadTechniqueError.Consistancy(s"Only one <${VAR_CONSTRAINT}> is authorized"))
                                             }
@@ -178,6 +182,7 @@ class VariableSpecParser extends Loggable {
                 , checked         = checked
                 , constraint      = varPair._1
                 , Nil
+                , id
               ), varPair._2)
             }
         }
@@ -218,7 +223,7 @@ class VariableSpecParser extends Loggable {
      }).map( _.trim ).filter( _.nonEmpty )
   }
 
-  def parseConstraint(varName: String, elt: Node): Either[LoadTechniqueError, (Constraint, List[SectionVariableSpec])] = {
+  def parseConstraint(varName: String, elt: Node, varId : String): Either[LoadTechniqueError, (Constraint, List[SectionVariableSpec])] = {
 
     val passwordHashes = getUniqueNodeText(elt, CONSTRAINT_PASSWORD_HASH, "")
 
@@ -254,6 +259,7 @@ class VariableSpecParser extends Loggable {
       , tpe         : DerivedPasswordType
       , mayBeEmpty  : Boolean
       , defaultValue: Option[String]
+      , parentId    : String
     ): SectionVariableSpec = {
       val (postfix, vtype) = tpe match {
         case DerivedPasswordType.AIX   => ("AIX"  , AixDerivedPasswordVType  )
@@ -267,6 +273,7 @@ class VariableSpecParser extends Loggable {
         , constraint     = Constraint(vtype, defaultValue, mayBeEmpty, Set())
         , valueslabels   = Nil
         , providedValues = Nil
+        , id = s"${parentId}_${postfix}"
       )
     }
 
@@ -278,10 +285,10 @@ class VariableSpecParser extends Loggable {
         case MasterPasswordVType(_) => getUniqueNodeText(elt, CONSTRAINT_PWD_AUTOSUBVARIABLES, "").split(",").flatMap { s =>
             s.toLowerCase.trim match {
               case "aix"  =>
-                Some(derivedPasswordVar(varName, DerivedPasswordType.AIX,   mayBeEmpty, defaultValue))
+                Some(derivedPasswordVar(varName, DerivedPasswordType.AIX,   mayBeEmpty, defaultValue, varId))
 
               case "linux" =>
-                Some(derivedPasswordVar(varName, DerivedPasswordType.Linux, mayBeEmpty, defaultValue))
+                Some(derivedPasswordVar(varName, DerivedPasswordType.Linux, mayBeEmpty, defaultValue, varId))
 
               case _ => None
             }

@@ -44,6 +44,8 @@ import org.specs2.runner._
 import org.xml.sax.SAXParseException
 import com.normation.cfclerk.xmlparsers._
 import CfclerkXmlConstants._
+import com.normation.utils.StringUuidGeneratorImpl
+
 import scala.xml._
 
 @RunWith(classOf[JUnitRunner])
@@ -56,7 +58,7 @@ class SectionTest extends Specification {
   val doc = readFile("testSections.xml")
   def sectionsTag(example:String) = (doc \\ "examples" \ example \ "SECTIONS").head
 
-  val sectionSpecParser = new SectionSpecParser(new VariableSpecParser)
+  val sectionSpecParser = new SectionSpecParser(new VariableSpecParser(new StringUuidGeneratorImpl), new StringUuidGeneratorImpl)
 
   val sectionParser = SectionParser(sectionSpecParser)
 

@@ -1556,8 +1556,8 @@ object RudderConfig extends Loggable {
   // => because of systemVariableSpecService
   // metadata.xml parser
 
-  private[this] lazy val variableSpecParser = new VariableSpecParser
-  private[this] lazy val sectionSpecParser = new SectionSpecParser(variableSpecParser)
+  private[this] lazy val variableSpecParser = new VariableSpecParser(uuidGen)
+  private[this] lazy val sectionSpecParser = new SectionSpecParser(variableSpecParser, uuidGen)
   private[this] lazy val techniqueParser = {
     new TechniqueParser(variableSpecParser,sectionSpecParser,systemVariableSpecService)
   }
@@ -1627,6 +1627,7 @@ object RudderConfig extends Loggable {
       , "category.xml"
       , Some(relativePath)
       , "default-directive-names.conf"
+      , uuidGen
     )
   }
 
