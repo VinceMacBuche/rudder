@@ -23,20 +23,20 @@ checkTechniqueId origin technique model =
   case origin of
     Edit _ -> ValidState
     _ -> if (List.any (.id >> (==) technique.id) model.techniques) then
-           InvalidState AlreadyTakenId
+           InvalidState [ AlreadyTakenId ]
          else if String.length technique.id.value > 255 then
-           InvalidState TooLongId
+           InvalidState [ TooLongId ]
          else if String.startsWith "_" technique.id.value then
-           InvalidState InvalidStartId
+           InvalidState [ InvalidStartId ]
          else
            ValidState
 
 checkTechniqueName technique model =
   if String.isEmpty technique.name then
-   InvalidState EmptyName
+   InvalidState [ EmptyName ]
   else
    if List.any (.name >> (==) technique.name) (List.filter (.id >> (/=) technique.id ) model.techniques) then
-     InvalidState AlreadyTakenName
+     InvalidState [ AlreadyTakenName ]
    else
      ValidState
 
@@ -49,6 +49,7 @@ isValidState state =
 isValid: TechniqueUiInfo -> Bool
 isValid ui =
   (isValidState ui.idState )  && ( isValidState ui.nameState ) && (List.all (isValidState) (List.concatMap (.validation >> Dict.values ) (Dict.values ui.callsUI)))
+  && (List.all (isValidState) (List.map (.validation) (Dict.values ui.blockUI)))
 
 
 showTechnique : Model -> Technique ->  TechniqueState -> TechniqueUiInfo -> Html Msg
@@ -130,7 +131,7 @@ showTechnique model technique origin ui =
                case call of
                  Call parentId c ->
                    let
-                     methodUi = Maybe.withDefault (MethodCallUiInfo Closed Nothing Dict.empty True) (Dict.get c.id.value ui.callsUI)
+                     methodUi = Maybe.withDefault (MethodCallUiInfo Closed Nothing Dict.empty) (Dict.get c.id.value ui.callsUI)
                      currentDrag = case DragDrop.currentlyDraggedObject model.dnd of
                                      Nothing -> True
                                      Just (Move x) ->(getId x) == c.id
@@ -152,7 +153,7 @@ showTechnique model technique origin ui =
                       List.reverse (dropTarget :: base)
                  Block parentId b ->
                    let
-                     methodUi = Maybe.withDefault (MethodCallUiInfo Closed Nothing Dict.empty True) (Dict.get b.id.value ui.callsUI)
+                     methodUi = Maybe.withDefault (MethodBlockUiInfo Closed Nothing ValidState True) (Dict.get b.id.value ui.blockUI)
                    in
                      [ showMethodBlock model ui methodUi parentId b ]
              ) technique.elems

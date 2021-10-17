@@ -18,7 +18,7 @@ appendNodeConditional e test =
     True -> appendNode e
     False -> (\x -> x)
 
-showMethodBlock: Model -> TechniqueUiInfo ->  MethodCallUiInfo -> Maybe CallId -> MethodBlock -> Element Msg
+showMethodBlock: Model -> TechniqueUiInfo ->  MethodBlockUiInfo -> Maybe CallId -> MethodBlock -> Element Msg
 showMethodBlock model techniqueUi ui parentId block =
 
   element "li"
@@ -31,7 +31,7 @@ showMethodBlock model techniqueUi ui parentId block =
 
 
 
-blockDetail: MethodBlock -> Maybe CallId -> MethodCallUiInfo -> Model -> Element Msg
+blockDetail: MethodBlock -> Maybe CallId -> MethodBlockUiInfo -> Model -> Element Msg
 blockDetail block parentId ui model =
   let
     activeClass = (\c -> if c == (Maybe.withDefault Reporting ui.tab) then "active" else "" )
@@ -69,7 +69,7 @@ blockDetail block parentId ui model =
 
 
 
-showBlockTab: Model -> Maybe CallId ->  MethodBlock -> MethodCallUiInfo -> Element Msg
+showBlockTab: Model -> Maybe CallId ->  MethodBlock -> MethodBlockUiInfo -> Element Msg
 showBlockTab model parentId block uiInfo=
   case (Maybe.withDefault Reporting uiInfo.tab) of
     Conditions ->
@@ -171,22 +171,27 @@ showBlockTab model parentId block uiInfo=
                                case reportingLogic of
                                  WorstReport -> "Worst report"
                                  SumReport -> "Sum of reports"
-                                 FocusReport "" -> "Focus on one child method report"
-                                 FocusReport x -> "Focus on one child method: " ++ (focusText x)
+                                 FocusReport _ -> "Focus on one child method report"
                              )
         liCompositionRule =  \rule -> element "li"
                                            |> addActionStopAndPrevent ("click", MethodCallModified (Block parentId {block | reportingLogic = rule }))
                                            |> appendChild (element "a" |> addAttribute (href "#") |> appendText (compositionText rule))
         availableComposition = List.map liCompositionRule [ WorstReport, SumReport, FocusReport "" ]
 
-        focusText  = (\reportingLogic ->
-                         case reportingLogic of
-                           "" -> ""
-                           x -> Maybe.withDefault x (Maybe.map getComponent (List.Extra.find (getId >> .value >> (==) x) block.calls))
-                       )
-        liFocus =  \child -> element "li"
+        liFocus =  \child ->
+                     let
+                       componentValue = getComponent child
+                       component = if componentValue == "" then
+                                     case child of
+                                       Block _ _ -> "< unamed block > "
+                                       Call _ c -> Maybe.withDefault (c.methodName.value) (Maybe.map .name (Dict.get c.methodName.value model.methods))
+                                   else
+                                     componentValue
+
+                     in
+                       element "li"
                                |> addActionStopAndPrevent ("click", MethodCallModified (Block parentId {block | reportingLogic = FocusReport (getId child).value }))
-                               |> appendChild (element "a" |> addAttribute (href "#") |> appendText (getComponent child))
+                               |> appendChild (element "a" |> addAttribute (href "#") |> appendText component)
         availableFocus = List.map liFocus block.calls
 
       in
@@ -264,13 +269,13 @@ showBlockTab model parentId block uiInfo=
                             )
 
 
-blockBody : Model -> Maybe CallId -> MethodBlock -> MethodCallUiInfo -> TechniqueUiInfo -> Element Msg
+blockBody : Model -> Maybe CallId -> MethodBlock -> MethodBlockUiInfo -> TechniqueUiInfo -> Element Msg
 blockBody model parentId block ui techniqueUi =
   let
 
     editAction = case ui.mode of
-                   Opened -> UIMethodAction block.id {ui | mode = Closed}
-                   Closed -> UIMethodAction block.id {ui | mode = Opened}
+                   Opened -> UIBlockAction block.id {ui | mode = Closed}
+                   Closed -> UIBlockAction block.id {ui | mode = Opened}
 
     nbErrors = List.length (List.filter ( List.any ( (/=) Nothing) ) []) -- get errors
     dragElem =  element "div"
@@ -361,7 +366,7 @@ blockBody model parentId block ui techniqueUi =
 
           , element "div"
              |> addClass ("expandBlockChild fas fa-chevron-" ++ (if ui.showChildDetails then "down" else "up"))
-             |> addAction ("click", UIMethodAction block.id { ui | showChildDetails = not ui.showChildDetails})
+             |> addAction ("click", UIBlockAction block.id { ui | showChildDetails = not ui.showChildDetails})
 
           ,  ( element "div"
                     |> addClass "block-child"
@@ -409,7 +414,7 @@ blockBody model parentId block ui techniqueUi =
                                            case call of
                                              Call _ c ->
                                                let
-                                                 methodUi = Maybe.withDefault (MethodCallUiInfo Closed Nothing Dict.empty True) (Dict.get c.id.value techniqueUi.callsUI)
+                                                 methodUi = Maybe.withDefault (MethodCallUiInfo Closed Nothing Dict.empty) (Dict.get c.id.value techniqueUi.callsUI)
 
 
                                                  currentDragChild = case DragDrop.currentlyDraggedObject model.dnd of
@@ -433,7 +438,7 @@ blockBody model parentId block ui techniqueUi =
                                                   List.reverse (dropTarget :: base)
                                              Block _ b ->
                                                let
-                                                 methodUi = Maybe.withDefault (MethodCallUiInfo Closed Nothing Dict.empty True) (Dict.get b.id.value techniqueUi.callsUI)
+                                                 methodUi = Maybe.withDefault (MethodBlockUiInfo Closed Nothing ValidState True) (Dict.get b.id.value techniqueUi.blockUI)
                                                in
                                                  [ showMethodBlock model techniqueUi methodUi parentId b ]
                              ) block.calls ) ) )

@@ -161,21 +161,28 @@ type alias MethodFilter =
   }
 
 type MethodFilterState = FilterOpened | FilterClosed
-type ValidationState error = Unchanged | ValidState | InvalidState error
+type ValidationState error = Unchanged | ValidState | InvalidState (List error)
 type TechniqueNameError = EmptyName | AlreadyTakenName
+type BlockError = EmptyComponent | NoFocusError | EmptyBlock
 type TechniqueIdError = TooLongId | AlreadyTakenId | InvalidStartId
-type MethodCallParamError = ConstraintError (List String)
+type MethodCallParamError = ConstraintError String
 
 type alias MethodCallUiInfo =
   { mode       : MethodCallMode
   , tab        : Maybe MethodCallTab
   , validation : Dict String  ( ValidationState MethodCallParamError )
+  }
+type alias MethodBlockUiInfo =
+  { mode       : MethodCallMode
+  , tab        : Maybe MethodCallTab
+  , validation : ValidationState BlockError
   , showChildDetails : Bool
   }
 
 type alias TechniqueUiInfo =
   { tab              : Tab
   , callsUI          : Dict String MethodCallUiInfo
+  , blockUI          : Dict String MethodBlockUiInfo
   , openedParameters : List ParameterId
   , saving           : Bool
   , nameState        : ValidationState TechniqueNameError
@@ -198,6 +205,7 @@ type Msg =
   | GetCategories (Result Error  TechniqueCategory)
   | GetMethods   (Result Error (Dict String Method))
   | UIMethodAction CallId MethodCallUiInfo
+  | UIBlockAction CallId MethodBlockUiInfo
   | RemoveMethod CallId
   | CloneMethod  MethodCall CallId
   | MethodCallParameterModified MethodCall ParameterId String

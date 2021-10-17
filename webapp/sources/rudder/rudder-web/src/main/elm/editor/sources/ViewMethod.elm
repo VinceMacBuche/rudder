@@ -49,7 +49,10 @@ showParam: Model -> MethodCall -> ValidationState MethodCallParamError -> Method
 showParam model call state methodParam param =
   let
     errors = case state of
-      InvalidState (ConstraintError err) -> err
+      InvalidState constraintErrors -> List.map (\c -> case c of
+                                               ConstraintError err -> err
+                                      )
+                             constraintErrors
       _ -> []
   in
   div [class "form-group method-parameter"] [
@@ -68,7 +71,7 @@ showParam model call state methodParam param =
 accumulateErrorConstraint: CallParameter -> List Constraint -> ValidationState MethodCallParamError
 accumulateErrorConstraint call constraints =
   List.foldl (\c acc -> case (acc,  checkConstraint call c) of
-                          (InvalidState (ConstraintError errAcc),InvalidState (ConstraintError err) ) -> InvalidState (ConstraintError (List.concat [ err, errAcc ] ))
+                          (InvalidState errAcc,InvalidState err ) -> InvalidState (List.concat [ err, errAcc ] )
                           (InvalidState err, _) -> InvalidState err
                           (_, InvalidState err) -> InvalidState err
                           _ -> ValidState
@@ -78,29 +81,29 @@ checkConstraint: CallParameter -> Constraint -> ValidationState MethodCallParamE
 checkConstraint call constraint =
   case constraint of
     AllowEmpty True -> ValidState
-    AllowEmpty False -> if (isEmptyValue call.value) then InvalidState (ConstraintError ["Parameter '"++call.id.value++"' is empty"]) else ValidState
+    AllowEmpty False -> if (isEmptyValue call.value) then InvalidState [ConstraintError ("Parameter '"++call.id.value++"' is empty")] else ValidState
     AllowWhiteSpace True -> ValidState
     AllowWhiteSpace False -> case Regex.fromString "(^\\s)|(\\s$)" of
                                Nothing -> ValidState
-                               Just r -> if Regex.contains r (displayValue call.value) then InvalidState (ConstraintError [ "Parameter '"++call.id.value++"' start or end with whitespace characters" ] ) else ValidState
-    MaxLength max -> if lengthValue call.value >= max then  InvalidState (ConstraintError [ "Parameter '"++call.id.value++"' should be at most " ++ (String.fromInt max) ++ " long"] ) else ValidState
-    MinLength min -> if lengthValue call.value <= min then  InvalidState (ConstraintError ["Parameter '"++call.id.value++"' should be at least " ++ (String.fromInt min) ++ " long"] ) else ValidState
+                               Just r -> if Regex.contains r (displayValue call.value) then InvalidState [ConstraintError ( "Parameter '"++call.id.value++"' start or end with whitespace characters"  ) ] else ValidState
+    MaxLength max -> if lengthValue call.value >= max then  InvalidState [ConstraintError  ("Parameter '"++call.id.value++"' should be at most " ++ (String.fromInt max) ++ " long" ) ]else ValidState
+    MinLength min -> if lengthValue call.value <= min then  InvalidState [ConstraintError ("Parameter '"++call.id.value++"' should be at least " ++ (String.fromInt min) ++ " long") ] else ValidState
     MatchRegex r -> case Regex.fromString r of
                       Nothing ->  ValidState
                       Just regex -> if Regex.contains regex (displayValue call.value) then
                                       ValidState
                                     else
-                                       InvalidState (ConstraintError [ "Parameter '" ++ call.id.value ++"' should match the following regexp: " ++ r ] )
+                                       InvalidState [ConstraintError ( "Parameter '" ++ call.id.value ++"' should match the following regexp: " ++ r  ) ]
     NotMatchRegex r -> case Regex.fromString r of
                       Nothing ->  ValidState
                       Just regex -> if Regex.contains regex (displayValue call.value) then
-                                       InvalidState (ConstraintError ["Parameter '" ++ call.id.value ++"' should not match the following regexp: " ++ r]  )
+                                       InvalidState [ConstraintError ("Parameter '" ++ call.id.value ++"' should not match the following regexp: " ++ r ) ]
                                     else
                                       ValidState
     Select list -> if List.any ( (==) (displayValue call.value) ) list then
                      ValidState
                    else
-                     InvalidState (ConstraintError [ "Parameter '" ++ call.id.value ++ "'  should be one of the value from the following list: " ++ (String.join ", " list)] )
+                     InvalidState [ConstraintError ( "Parameter '" ++ call.id.value ++ "'  should be one of the value from the following list: " ++ (String.join ", " list) ) ]
 
 
 {-

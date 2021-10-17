@@ -3,12 +3,17 @@ module MethodElemUtils exposing (..)
 import DataTypes exposing (..)
 import List.Extra
 
-getAllCalls: MethodElem -> List MethodElem
+getAllCalls: MethodElem -> List MethodCall
 getAllCalls call =
-  call ::
   case call of
     Block _ b -> List.concatMap getAllCalls b.calls
-    _ -> []
+    Call _ c -> [c]
+
+getAllBlocks: MethodElem -> List MethodBlock
+getAllBlocks call =
+  case call of
+    Block _ b -> b :: List.concatMap getAllBlocks b.calls
+    Call _ c -> []
 
 setIdRec : String -> List MethodElem -> (List MethodElem, Bool)
 setIdRec  newId elems =
@@ -74,3 +79,20 @@ setId newId x =
   case x of
     Call parent c -> Call parent {c | id = newId }
     Block parent b -> Block parent {b | id = newId }
+
+checkBlockConstraint : MethodBlock -> ValidationState BlockError
+checkBlockConstraint block =
+  let
+    checkEmptyComponent = if String.isEmpty block.component then InvalidState [ EmptyComponent ] else ValidState
+    checkEmptyBlock = if List.isEmpty block.calls then InvalidState [ EmptyBlock ] else ValidState
+    checkFocusNotSet = case block.reportingLogic of
+                         FocusReport "" -> InvalidState [ NoFocusError ]
+                         _ -> ValidState
+    fold = \acc h -> case (acc,h) of
+                       (InvalidState err1, InvalidState err2) -> InvalidState (List.concat [err1, err2])
+                       (InvalidState err, _) -> acc
+                       (_, InvalidState err) -> h
+                       (_,_) -> acc
+
+  in
+    List.foldl  fold checkEmptyComponent [ checkEmptyBlock, checkFocusNotSet]
