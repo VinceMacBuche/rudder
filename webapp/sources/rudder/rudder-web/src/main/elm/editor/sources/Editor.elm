@@ -137,7 +137,7 @@ subscriptions model =
 
 
 defaultMethodUiInfo  =
-    MethodCallUiInfo Closed Nothing Dict.empty
+    MethodCallUiInfo Closed CallParameters Dict.empty
 
 selectTechnique: Model -> (Either Technique Draft) -> (Model, Cmd Msg)
 selectTechnique model technique =
@@ -158,7 +158,7 @@ selectTechnique model technique =
         in
         (d.technique, st, Cmd.none)
     callState = (Dict.fromList (List.map (\c -> (c.id.value, defaultMethodUiInfo)) (List.concatMap getAllCalls effectiveTechnique.elems)))
-    blockState = (Dict.fromList (List.map (\c -> (c.id.value, MethodBlockUiInfo Closed Nothing ValidState False)) (List.concatMap getAllBlocks effectiveTechnique.elems)))
+    blockState = (Dict.fromList (List.map (\c -> (c.id.value, MethodBlockUiInfo Closed Children ValidState False)) (List.concatMap getAllBlocks effectiveTechnique.elems)))
     ui = TechniqueUiInfo General callState blockState [] False ValidState ValidState
   in
     ({ model | mode = TechniqueDetails effectiveTechnique  state ui } )
@@ -239,7 +239,7 @@ update msg model =
         Ok t ->
           let
             callsState = (Dict.fromList (List.map (\c -> (c.id.value, defaultMethodUiInfo)) (List.concatMap allMethodCalls t.elems)))
-            bloksState = (Dict.fromList (List.map (\c -> (c.id.value, MethodBlockUiInfo Closed Nothing ValidState False)) (List.concatMap getAllBlocks t.elems)))
+            bloksState = (Dict.fromList (List.map (\c -> (c.id.value, MethodBlockUiInfo Closed Children ValidState False)) (List.concatMap getAllBlocks t.elems)))
             mode = TechniqueDetails t (Creation t.id) (
                      TechniqueUiInfo General callsState bloksState [] False (checkTechniqueName t model) (checkTechniqueId (Creation t.id) t model)
                    )
@@ -261,19 +261,6 @@ update msg model =
       in
         ({ model | mode = newMode}, Cmd.none )
 
-    SwitchTabMethod callId newTab ->
-      let
-        newMode =
-          case model.mode of
-            TechniqueDetails t o ui ->
-              let
-                newUi = { ui | callsUI = Dict.update callId.value (Maybe.map (\mui -> {mui | tab = Just newTab })) ui.callsUI  }
-              in
-                TechniqueDetails t o newUi
-            m -> m
-      in
-        ({ model | mode = newMode}, Cmd.none )
-
     UpdateTechnique technique ->
       let
         newModel =
@@ -291,7 +278,7 @@ update msg model =
     CloneTechnique technique internalId ->
       let
         callState =  Dict.fromList (List.map (\c -> (c.id.value, defaultMethodUiInfo)) (List.concatMap allMethodCalls technique.elems))
-        blockState =  Dict.fromList (List.map (\c -> (c.id.value, MethodBlockUiInfo Closed Nothing ValidState False)) (List.concatMap getAllBlocks technique.elems))
+        blockState =  Dict.fromList (List.map (\c -> (c.id.value, MethodBlockUiInfo Closed Children ValidState False)) (List.concatMap getAllBlocks technique.elems))
         ui = TechniqueUiInfo General callState  blockState [] False Unchanged Unchanged
         (newModel,_) = update OpenMethods { model | mode = TechniqueDetails technique  (Clone technique internalId) ui }
       in
@@ -393,7 +380,7 @@ update msg model =
                         updateCallUi = \optCui ->
                           let
                             b = case optCui of
-                              Nothing -> MethodCallUiInfo Closed Nothing Dict.empty
+                              Nothing -> MethodCallUiInfo Closed CallParameters Dict.empty
                               Just cui -> cui
 
 
@@ -588,7 +575,7 @@ update msg model =
             TechniqueDetails t o ui ->
               let
                 technique =  { t | elems =  t.elems ++ [Block Nothing newCall]  }
-                newUi = { ui | blockUI = Dict.update newId.value (always (Just (MethodBlockUiInfo Closed Nothing (InvalidState [EmptyComponent, EmptyBlock]) False)) ) ui.blockUI }
+                newUi = { ui | blockUI = Dict.update newId.value (always (Just (MethodBlockUiInfo Closed Children (InvalidState [EmptyComponent, EmptyBlock]) False)) ) ui.blockUI }
               in
               { model | mode = TechniqueDetails technique o newUi }
             _ -> model
@@ -689,7 +676,7 @@ update msg model =
                    blockState = checkBlockConstraint block
                    updateBlockState = \originUiBlock -> case originUiBlock of
                                                           Just uiBlock -> Just { uiBlock | validation = blockState}
-                                                          Nothing -> Just (MethodBlockUiInfo Closed Nothing blockState False)
+                                                          Nothing -> Just (MethodBlockUiInfo Closed Children blockState False)
                  in
                   { ui | blockUI = Dict.update block.id.value updateBlockState ui.blockUI  }
                 Call _ _ -> ui
@@ -715,7 +702,7 @@ update msg model =
                 updateCallUi = \optCui ->
                   let
                     base = case optCui of
-                            Nothing -> MethodCallUiInfo Closed Nothing Dict.empty
+                            Nothing -> MethodCallUiInfo Closed CallParameters Dict.empty
                             Just cui -> cui
                     newValidation =  Dict.update paramId.value (always (Just (accumulateErrorConstraint  (CallParameter paramId (getAgentValue newValue)) constraints )))  base.validation
                   in

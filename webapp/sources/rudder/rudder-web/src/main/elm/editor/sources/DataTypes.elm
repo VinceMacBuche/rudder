@@ -169,12 +169,12 @@ type MethodCallParamError = ConstraintError String
 
 type alias MethodCallUiInfo =
   { mode       : MethodCallMode
-  , tab        : Maybe MethodCallTab
+  , tab        : MethodCallTab
   , validation : Dict String  ( ValidationState MethodCallParamError )
   }
 type alias MethodBlockUiInfo =
   { mode       : MethodCallMode
-  , tab        : Maybe MethodCallTab
+  , tab        : MethodBlockTab
   , validation : ValidationState BlockError
   , showChildDetails : Bool
   }
@@ -189,7 +189,8 @@ type alias TechniqueUiInfo =
   , idState          : ValidationState TechniqueIdError
   }
 
-type MethodCallTab = CallParameters | Conditions | Result | Reporting
+type MethodCallTab = CallParameters | CallConditions | Result | CallReporting
+type MethodBlockTab = BlockConditions | BlockReporting | Children
 type MethodCallMode = Opened | Closed
 type Tab = General |  Parameters | Resources | None
 type Mode = Introduction | TechniqueDetails Technique TechniqueState TechniqueUiInfo
@@ -215,7 +216,6 @@ type Msg =
   | TechniqueParameterAdded ParameterId
   | TechniqueParameterToggle ParameterId
   | GenerateId (String -> Msg)
-  | SwitchTabMethod CallId MethodCallTab
   | CallApi  (Model -> Cmd Msg)
   | SwitchTab Tab
   | UpdateTechniqueFilter String

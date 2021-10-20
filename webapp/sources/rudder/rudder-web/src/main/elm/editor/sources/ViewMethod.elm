@@ -58,14 +58,15 @@ showParam model call state methodParam param =
   div [class "form-group method-parameter"] [
     label [ for "param-index" ] [
       span [] [
-        text (param.id.value ++ " - ")
+        text (String.Extra.toTitleCase param.id.value ++ " -")
       , span [ class "badge badge-secondary ng-binding" ] [ text methodParam.type_ ]
       ]
-    , small [] [ text methodParam.description ]
+    , small [] [ text ( " " ++ methodParam.description) ]
     ]
   , textarea  [  readonly (not model.hasWriteRights),  name "param", class "form-control", rows  1 , value (displayValue param.value) , onInput  (MethodCallParameterModified call param.id)   ] [] --msd-elastic     ng-trim="{{trimParameter(parameterInfo)}}" ng-model="parameter.value"></textarea>
-  , ul [ class "list-unstyled" ]
+  , if (not (List.isEmpty errors)) then ul [ class "list-unstyled" ]
       (List.map (\e -> li [ class "text-danger" ] [ text e ]) errors)
+    else text ""
   ]
 
 accumulateErrorConstraint: CallParameter -> List Constraint -> ValidationState MethodCallParamError
@@ -114,21 +115,17 @@ checkConstraint call constraint =
 
 showMethodTab: Model -> Method -> Maybe CallId ->  MethodCall -> MethodCallUiInfo -> Html Msg
 showMethodTab model method parentId call uiInfo=
-  case (Maybe.withDefault CallParameters uiInfo.tab) of
-    Reporting ->
+  case uiInfo.tab of
+    CallReporting ->
       div [ class "tab-parameters"] [
         div [ class "form-group"] [
-          label [ for "component"] [ text "Report component:"]
-        , input [ readonly (not model.hasWriteRights), type_ "text", name "component", class "form-control", value call.component,  placeholder method.name,  onInput  (\s -> MethodCallModified (Call parentId {call  | component = s }))] []
-        ]
-      , div [ class "form-group"] [
           label [ for "disable_reporting"] [ text "Disable reporting:"]
         , input [ readonly (not model.hasWriteRights), type_ "checkbox", name "disable_reporting", checked call.disableReporting,  onCheck  (\b -> MethodCallModified (Call parentId {call  | disableReporting = b }))] []
         ]
       ]
     CallParameters ->
       div [ class "tab-parameters"] (List.map2 (\m c -> showParam model call (Maybe.withDefault Unchanged (Dict.get c.id.value uiInfo.validation)) m c )  method.parameters call.parameters)
-    Conditions ->
+    CallConditions ->
       let
         condition = call.condition
         updateConditonVersion = \f s ->
@@ -281,15 +278,15 @@ showMethodTab model method parentId call uiInfo=
 methodDetail: Method -> MethodCall -> Maybe CallId -> MethodCallUiInfo -> Model -> Html Msg
 methodDetail method call parentId ui model =
   let
-    activeClass = (\c -> if c == (Maybe.withDefault CallParameters ui.tab) then "active" else "" )
+    activeClass = (\c -> if c == ui.tab then "active" else "" )
   in
   div [ class "method-details" ] [
     div [] [
       ul [ class "tabs-list"] [
-        li [ class (activeClass CallParameters), onClick (SwitchTabMethod call.id CallParameters) ] [text "Parameters"] -- click select param tabs, class active if selected
-      , li [ class (activeClass Conditions), onClick (SwitchTabMethod call.id Conditions) ] [text "Conditions"]
-      , li [class (activeClass Result), onClick (SwitchTabMethod call.id Result) ] [text "Result conditions"]
-      , li [class (activeClass Reporting), onClick (SwitchTabMethod call.id Reporting) ] [text "Reporting"]
+        li [ class (activeClass CallParameters), onClick (UIMethodAction call.id {ui | tab = CallParameters}) ] [text "Parameters"] -- click select param tabs, class active if selected
+      , li [ class (activeClass CallConditions), onClick (UIMethodAction call.id {ui | tab = CallConditions}) ] [text "Conditions"]
+      , li [class (activeClass Result), onClick (UIMethodAction call.id {ui | tab = Result}) ] [text "Result conditions"]
+      , li [class (activeClass CallReporting), onClick (UIMethodAction call.id {ui | tab = CallReporting}) ] [text "Reporting"]
       ]
     , div [ class "tabs" ] [ (showMethodTab model method parentId call ui) ]
     , div [ class "method-details-footer"] [
@@ -324,11 +321,7 @@ showMethodCall model ui  parentId call =
       |> addClass (if (ui.mode == Opened) then "active" else "") --     ng-class="{'active': methodIsSelected(method_call), 'missingParameters': checkMissingParameters(method_call.parameters, method.parameter).length > 0, 'errorParameters': checkErrorParameters(method_call.parameters).length > 0, 'is-edited' : canResetMethod(method_call)}"
       |> appendChild (callBody model ui call parentId)
       |> addAttribute (hidden (Maybe.withDefault False (Maybe.map ((==) (Move (Call parentId  call))) (DragDrop.currentlyDraggedObject model.dnd) )))
-      |> appendChildConditional
-         ( element "div"
-           |> addClass "method-details"
-           |> appendNode (methodDetail method call parentId ui model )
-         ) (ui.mode == Opened)
+
 
 
 
@@ -339,7 +332,7 @@ callBody model ui call pid =
                    Just m -> m
                    Nothing -> Method call.methodName call.methodName.value "" "" (Maybe.withDefault (ParameterId "") (Maybe.map .id (List.head call.parameters))) [] [] Nothing Nothing Nothing
 
-    deprecatedClass = "fa fa-info-circle tooltip-icon popover-bs" ++
+    deprecatedClass = "fa fa-info-circle method-action text-info popover-bs" ++
                          case method.deprecated of
                            Just _ -> " deprecated-icon"
                            Nothing -> ""
@@ -359,21 +352,21 @@ callBody model ui call pid =
                            )
     cloneIcon = element "i" |> addClass "fa fa-clone"
     cloneButton = element "button"
-                  |> addClass "text-success method-action tooltip-bs"
+                  |> addClass "text-success method-action popover-bs"
                   |> addAction ("click", GenerateId (\s -> CloneMethod call (CallId s)))
                   |> addAttributeList
-                     [ type_ "button", title "Clone this method", attribute "data-toggle" "tooltip"
-                     , attribute "data-trigger" "hover", attribute "data-container" "body", attribute "data-placement" "left"
+                     [ type_ "button", attribute "data-content" "Clone this method", attribute "data-toggle" "popover"
+                     , attribute "data-trigger" "hover", attribute "data-container" "body", attribute "data-placement" "auto"
                      , attribute "data-html" "true", attribute "data-delay" """'{"show":"400", "hide":"100"}'"""
                      ]
                   |> appendChild cloneIcon
     removeIcon = element "i" |> addClass "fa fa-times-circle"
     removeButton = element "button"
-                  |> addClass "text-danger method-action tooltip-bs"
+                  |> addClass "text-danger method-action popover-bs"
                   |> addAction ("click", RemoveMethod call.id)
                   |> addAttributeList
-                     [ type_ "button", title "Remove this method", attribute "data-toggle" "tooltip"
-                     , attribute "data-trigger" "hover", attribute "data-container" "body", attribute "data-placement" "left"
+                     [ type_ "button", attribute "data-content" "Remove this method", attribute "data-toggle" "popover"
+                       , attribute "data-trigger" "hover", attribute "data-container" "body", attribute "data-placement" "auto"
                      , attribute "data-html" "true", attribute "data-delay" """'{"show":"400", "hide":"100"}'"""
                      ]
                   |> appendChild removeIcon
@@ -392,21 +385,14 @@ callBody model ui call pid =
                         , attribute "data-html" "true"
                         ]
                   ]
-    methodName = element "div"
-                 |> addClass "method-name"
-                 |> appendText  (if (String.isEmpty call.component) then method.name else call.component)
-                 |> appendChild
-                    ( element "span"
-                      |> appendChild
-                         ( element "i"
-                           |> addAttributeList
-                              [ class deprecatedClass
-                              , attribute "data-toggle" "popover", attribute "data-trigger" "hover", attribute "data-container" "body"
-                              , attribute "data-placement" "auto", attribute "data-title" method.name, attribute "data-content" (getTooltipContent method)
-                              , attribute "data-html" "true"
-                              ]
-                         )
-                    )
+    methodName = case ui.mode of
+                   Opened -> element "input"
+                             |> addAttributeList [ readonly (not model.hasWriteRights), type_ "text", name "component", style "width" "calc(100% - 75px)", class "form-control", value call.component,  placeholder "Enter a component name" ]
+                             |> addInputHandler  (\s -> MethodCallModified (Call pid {call  | component = s }))
+                   Closed -> element "div"
+                             |> addClass "method-name"
+                             |> appendText  (if (String.isEmpty call.component) then method.name else call.component)
+
 
     methodContent = element "div"
                     |> addClass  "method-param flex-form"
@@ -414,7 +400,7 @@ callBody model ui call pid =
                     |> addActionStopAndPrevent ("dragstart", Ignore)
                     |> addListenerStopAndPrevent ("dragStart", Json.Decode.succeed Ignore)
                     |> appendChildList
-                       [ element "label" |> appendText ((parameterName classParameter) ++ ":")
+                       [ element "label" |> appendText ((parameterName classParameter) ++ ": ")
                        , element "span"
                          |> appendText (displayValue paramValue)
                        ]
@@ -447,15 +433,31 @@ callBody model ui call pid =
             |> addAttribute (hidden (not model.hasWriteRights))
             |> appendChildList
                [ cloneButton
+               , element "span" |> appendText " "
                , removeButton
+               , element "span" |> appendText " "
+               , element "span" |> addAttributeList
+                                   [ class deprecatedClass
+                                   , attribute "data-toggle" "popover", attribute "data-trigger" "hover", attribute "data-container" "body"
+                                   , attribute "data-placement" "auto", attribute "data-content" (getTooltipContent method)
+                                   , attribute "data-html" "true"
+                                   ]
+               , element "span" |> appendText " "
+               , element "span" |> addClass "fa fa-cog" |> addStyleList [ ("color", "#ccc") ]
+               , element "span" |> appendText " "
                ]
           , element "div"
             |> addClass "flex-column"
             |> appendChildConditional condition (call.condition.os /= Nothing || call.condition.advanced /= "")
             |> appendChildList
                [ methodName
-               , methodContent
                ]
+            |> appendChildConditional methodContent (ui.mode == Closed)
+            |> appendChildConditional
+                        ( element "div"
+                          |> addClass "method-details"
+                          |> appendNode (methodDetail method call pid ui model )
+                        ) (ui.mode == Opened)
             |> appendChildConditional warns (nbErrors > 0)
         ]
        , element "div"

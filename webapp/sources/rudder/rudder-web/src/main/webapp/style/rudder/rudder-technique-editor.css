@@ -50,7 +50,6 @@
   font-size: .9em;
   color: #f08004 !important;
   opacity: 1 !important;
-  margin-left: 4px;
 }
 .ion.ion-edit {
   font-size: 18px;
@@ -857,12 +856,7 @@ button.btn.clipboard:hover {
 
 /* METHOD DETAILS */
 .method-details{
-  border: 1px solid #a7d0f1;
-  border-top: none;
-  border-bottom-left-radius : 4px;
-  border-bottom-right-radius: 4px;
-  background-color: #f3f8ff;
-  padding: 10px 10px 0 10px;
+  padding: 0;
   font-size: 14px;
 }
 .method-details .form-control{
@@ -880,8 +874,12 @@ button.btn.clipboard:hover {
 }
 .method-details .tabs-list{
   border-bottom: 1px solid #e5e5e5;
-  margin: 10px -10px 15px -10px;
-  width: calc(100% + 20px);
+  margin: 10px 0px 15px 0px;
+  width: 100% ;
+}
+
+.method-details .tabs{
+  padding-left: 10px;
 }
 
 .method-details .form-group{
@@ -1013,7 +1011,7 @@ ul.list-unstyled > li{
   cursor: pointer;
   transition-property: opacity;
   transition-duration: .2s;
-  opacity: 0;
+  opacity: .6;
 }
 #methods .method:hover .method-info .btn-holder .method-action {
   opacity: .6;
@@ -1089,7 +1087,6 @@ ul.list-unstyled > li{
 }
 .method .method-name {
   font-size: 16px;
-  color: #222D42;
 }
 .method .method-name .dsc-icon {
   margin-left: 6px;
@@ -1460,4 +1457,7 @@ ul.list-unstyled > li{
 }
 #__RENDERED_TEXT__ * {
   background-color: transparent !important;
+}
+.method-parameter {
+  padding-bottom: 5px;
 }
