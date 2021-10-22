@@ -136,7 +136,7 @@ showTechnique model technique origin ui =
                                      Nothing -> True
                                      Just (Move x) ->(getId x) == c.id
                                      Just _ -> False
-                     base =     [ showMethodCall model methodUi parentId c ]
+                     base =     [ showMethodCall model methodUi ui parentId c ]
                      dropElem = AfterElem Nothing (Call parentId c)
                      dropTarget =  element "li"
                                    |> addAttribute (id "no-methods") |> addStyle ("padding", "3px 15px")

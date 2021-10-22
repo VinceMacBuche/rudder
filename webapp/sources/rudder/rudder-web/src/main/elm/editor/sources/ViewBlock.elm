@@ -316,7 +316,7 @@ blockBody model parentId block ui techniqueUi =
                   ]
     methodName = case ui.mode of
                    Opened -> element "input"
-                             |> addAttributeList [ readonly (not model.hasWriteRights), type_ "text", name "component", style "width" "calc(100% - 65px)", class "form-control", value block.component,  placeholder "Enter a component name" ]
+                             |> addAttributeList [ readonly (not model.hasWriteRights), onFocus DisableDragDrop , onBlur EnableDragDrop, type_ "text", name "component", style "width" "calc(100% - 65px)", class "form-control", value block.component,  placeholder "Enter a component name" ]
                              |> addInputHandler  (\s -> MethodCallModified (Block parentId {block  | component = s }))
                    Closed -> element "div"
                              |> addClass "method-name"
@@ -342,7 +342,7 @@ blockBody model parentId block ui techniqueUi =
   |> addClass "method"
   |> addAttribute (id block.id.value)
   |> addAttribute (hidden currentDrag)
-  |> DragDrop.makeDraggable model.dnd (Move (Block parentId block)) dragDropMessages
+  |> (if techniqueUi.enableDragDrop then DragDrop.makeDraggable model.dnd (Move (Block parentId block)) dragDropMessages else identity)
   |> Dom.appendChildList
      [ dragElem
      , element "div"
@@ -416,6 +416,7 @@ showChildren model block ui techniqueUi parentId =
           , element "span"
             |> appendText " Drag and drop generic methods here to fill this component"
           ]
+
        |> DragDrop.makeDroppable model.dnd (InBlock block) dragDropMessages
        |> addStyle ("opacity", (if (DragDrop.isCurrentDropTarget model.dnd (InBlock block)) then "1" else  "0.4"))
        |> addAttribute (hidden (not (List.isEmpty block.calls)))
@@ -448,7 +449,7 @@ showChildren model block ui techniqueUi parentId =
                                  Just (Move x) -> getId x == c.id
                                  Nothing -> True
                                  _ -> False
-                               base =     [ showMethodCall model methodUi parentId c ]
+                               base =     [ showMethodCall model methodUi techniqueUi parentId c ]
                                dropElem = AfterElem (Just block.id) (Call parentId c)
                                dropTarget =  element "li"
                                              |> addAttribute (id "no-methods") |> addStyle ("padding", "3px 15px")

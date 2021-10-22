@@ -187,6 +187,7 @@ type alias TechniqueUiInfo =
   , saving           : Bool
   , nameState        : ValidationState TechniqueNameError
   , idState          : ValidationState TechniqueIdError
+  , enableDragDrop   : Bool
   }
 
 type MethodCallTab = CallParameters | CallConditions | Result | CallReporting
@@ -249,6 +250,8 @@ type Msg =
   | MoveCompleted DragElement DropElement
   | SetMissingIds String
   | Notification (String -> Cmd Msg) String
+  | DisableDragDrop
+  | EnableDragDrop
 
 dragDropMessages : DragDrop.Messages Msg DragElement DropElement
 dragDropMessages =

@@ -159,7 +159,7 @@ selectTechnique model technique =
         (d.technique, st, Cmd.none)
     callState = (Dict.fromList (List.map (\c -> (c.id.value, defaultMethodUiInfo)) (List.concatMap getAllCalls effectiveTechnique.elems)))
     blockState = (Dict.fromList (List.map (\c -> (c.id.value, MethodBlockUiInfo Closed Children ValidState False)) (List.concatMap getAllBlocks effectiveTechnique.elems)))
-    ui = TechniqueUiInfo General callState blockState [] False ValidState ValidState
+    ui = TechniqueUiInfo General callState blockState [] False ValidState ValidState True
   in
     ({ model | mode = TechniqueDetails effectiveTechnique  state ui } )
       |> update OpenMethods
@@ -223,7 +223,7 @@ update msg model =
 
     NewTechnique id ->
       let
-        ui = TechniqueUiInfo General Dict.empty Dict.empty [] False Unchanged Unchanged
+        ui = TechniqueUiInfo General Dict.empty Dict.empty [] False Unchanged Unchanged True
         t = Technique (TechniqueId "") "1.0" "" "" "ncf_techniques" [] [] []
         newModel =  { model | mode = TechniqueDetails t (Creation id) ui}
       in
@@ -241,7 +241,7 @@ update msg model =
             callsState = (Dict.fromList (List.map (\c -> (c.id.value, defaultMethodUiInfo)) (List.concatMap allMethodCalls t.elems)))
             bloksState = (Dict.fromList (List.map (\c -> (c.id.value, MethodBlockUiInfo Closed Children ValidState False)) (List.concatMap getAllBlocks t.elems)))
             mode = TechniqueDetails t (Creation t.id) (
-                     TechniqueUiInfo General callsState bloksState [] False (checkTechniqueName t model) (checkTechniqueId (Creation t.id) t model)
+                     TechniqueUiInfo General callsState bloksState [] False (checkTechniqueName t model) (checkTechniqueId (Creation t.id) t model) True
                    )
             (newModel, cmd) = (update (CallApi ( getRessources (Creation t.id) ))  {model | mode = mode })
           in
@@ -279,7 +279,7 @@ update msg model =
       let
         callState =  Dict.fromList (List.map (\c -> (c.id.value, defaultMethodUiInfo)) (List.concatMap allMethodCalls technique.elems))
         blockState =  Dict.fromList (List.map (\c -> (c.id.value, MethodBlockUiInfo Closed Children ValidState False)) (List.concatMap getAllBlocks technique.elems))
-        ui = TechniqueUiInfo General callState  blockState [] False Unchanged Unchanged
+        ui = TechniqueUiInfo General callState  blockState [] False Unchanged Unchanged True
         (newModel,_) = update OpenMethods { model | mode = TechniqueDetails technique  (Clone technique internalId) ui }
       in
         updatedStoreTechnique newModel
@@ -801,3 +801,15 @@ update msg model =
 
     Notification notif notifMsg ->
       (model, notif notifMsg)
+    DisableDragDrop ->
+
+      case model.mode of
+        Introduction -> (model, Cmd.none)
+        TechniqueDetails t e u ->
+          ({model | mode = TechniqueDetails t e {u | enableDragDrop = False} }, Cmd.none )
+    EnableDragDrop ->
+
+      case model.mode of
+        Introduction -> (model, Cmd.none)
+        TechniqueDetails t e u ->
+          ({model | mode = TechniqueDetails t e {u | enableDragDrop = True} }, Cmd.none )

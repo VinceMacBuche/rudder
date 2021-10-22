@@ -858,6 +858,7 @@ button.btn.clipboard:hover {
 .method-details{
   padding: 0;
   font-size: 14px;
+  user-select: text;
 }
 .method-details .form-control{
   padding: 4px 6px;

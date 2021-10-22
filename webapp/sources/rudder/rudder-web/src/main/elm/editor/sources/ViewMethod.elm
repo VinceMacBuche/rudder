@@ -5,6 +5,7 @@ import Dict
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
+import Json.Encode
 import List.Extra
 import MethodConditions exposing (..)
 import Regex
@@ -15,6 +16,8 @@ import Dom exposing (..)
 import Json.Decode
 import AgentValueParser exposing (..)
 import ViewMethodsList exposing (getTooltipContent)
+import VirtualDom
+
 --
 -- This file deals with one method container (condition, parameters, etc)
 --
@@ -63,7 +66,7 @@ showParam model call state methodParam param =
       ]
     , small [] [ text ( " " ++ methodParam.description) ]
     ]
-  , textarea  [  readonly (not model.hasWriteRights),  name "param", class "form-control", rows  1 , value (displayValue param.value) , onInput  (MethodCallParameterModified call param.id)   ] [] --msd-elastic     ng-trim="{{trimParameter(parameterInfo)}}" ng-model="parameter.value"></textarea>
+  , textarea  [ attribute "draggable" "false", onFocus DisableDragDrop , onBlur EnableDragDrop,  readonly (not model.hasWriteRights),  name "param", class "form-control", rows  1 , value (displayValue param.value) , onInput  (MethodCallParameterModified call param.id)   ] [] --msd-elastic     ng-trim="{{trimParameter(parameterInfo)}}" ng-model="parameter.value"></textarea>
   , if (not (List.isEmpty errors)) then ul [ class "list-unstyled" ]
       (List.map (\e -> li [ class "text-danger" ] [ text e ]) errors)
     else text ""
@@ -136,7 +139,7 @@ showMethodTab model method parentId call uiInfo=
       in
       div [ class "tab-conditions"] [
         div [class "form-group condition-form", id "os-form"] [
-          div [ class "form-inline" ] [ -- form
+          div [ class "form-inline" ] [
             div [ class "form-group" ] [
               label [ style "display" "inline-block",  class "", for "OsCondition"] [ text "Operating system: " ]
             , div [ style "display" "inline-block", style "width" "auto", style "margin-left" "5px",class "btn-group"] [
@@ -157,29 +160,6 @@ showMethodTab model method parentId call uiInfo=
             , if (hasSP condition.os ) then input [readonly (not model.hasWriteRights), value (Maybe.withDefault "" (Maybe.map String.fromInt (getSP condition.os) )), onInput (updateConditonVersion updateSP), type_ "number", style "display" "inline-block", style "width" "auto", class "form-control", style "margin-left" "5px", placeholder "Service pack"] []  else text ""
             ]
           ]
-          {-
-                        <div class="tab-conditions" ng-if="ui.methodTabs[method_call['$$hashKey']]=='conditions'">
-                          <div class="form-group condition-form" id="os-form">
-                            <label for="os_class">Operating system:</label>
-                            <form class="form-inline" role="form">
-                            <form class="form-inline sm-space-top" name="CForm.versionForm" role="form">
-                              <div class="form-group" ng-show="checkMajorVersion(method_call)">
-                                <label for="os_class">Version (Major):</label>
-                                <input type="text" ng-pattern="versionRegex" class="form-control" ng-change="updateClassContext(method_call)" ng-model="method_call.OS_class.majorVersion" name="versionMaj" placeholder="">
-                              </div>
-                              <div class="form-group" ng-show="checkMinorVersion(method_call)">
-                                <label for="os_class">Version (Minor):</label>
-                                <input type="text"  ng-pattern="versionRegex" class="form-control" ng-change="updateClassContext(method_call)" ng-disabled="method_call.OS_class.majorVersion === undefined || method_call.OS_class.majorVersion === '' " ng-model="method_call.OS_class.minorVersion"  placeholder="" name="versionMin">
-                              </div>
-                              <div ng-messages="CForm.versionForm.versionMaj.$error" class="sm-space-top" role="alert">
-                                <div ng-message="pattern" class="text-danger">Invalid major version's number</div>
-                              </div>
-                              <div ng-messages="CForm.versionForm.versionMin.$error" role="alert">
-                                <div ng-message="pattern" class="text-danger">Invalid minor version's number</div>
-                              </div>
-                            </form>
-                          </div>
-                          -}
         ]
       , div [ class "form-group condition-form" ] [
           label [ for "advanced"] [ text "Other conditions:" ]
@@ -187,11 +167,7 @@ showMethodTab model method parentId call uiInfo=
                      let
                        updatedCondition = {condition | advanced = s }
                        updatedCall = Call parentId {call | condition = updatedCondition }
-                     in MethodCallModified updatedCall)  ] [] --ng-pattern="/^[a-zA-Z0-9_!.|${}\[\]()@:]+$/" ng-model="method_call.advanced_class" ng-change="updateClassContext(method_call)"></textarea>
-          {-<div ng-messages="CForm.form.cfClasses.$error" role="alert">
-                                <div ng-message="pattern" class="text-danger">This field should only contains alphanumerical characters (a-zA-Z0-9) or the following characters _!.|${}[]()@:</div>
-                              </div>
-                            </div>-}
+                     in MethodCallModified updatedCall)  ] []
        ]
       , div [ class "form-group condition-form" ] [
           label [ for "class_context" ] [ text "Applied condition expression:" ]
@@ -202,31 +178,6 @@ showMethodTab model method parentId call uiInfo=
             text ""
         ]
       ]
-    {-
-                        <div class="tab-conditions" ng-if="ui.methodTabs[method_call['$$hashKey']]=='conditions'">
-                          <div class="form-group condition-form" id="os-form">
-                            <label for="os_class">Operating system:</label>
-                            <form class="form-inline" role="form">
-                            <form class="form-inline sm-space-top" name="CForm.versionForm" role="form">
-                              <div class="form-group" ng-show="checkMajorVersion(method_call)">
-                                <label for="os_class">Version (Major):</label>
-                                <input type="text" ng-pattern="versionRegex" class="form-control" ng-change="updateClassContext(method_call)" ng-model="method_call.OS_class.majorVersion" name="versionMaj" placeholder="">
-                              </div>
-                              <div class="form-group" ng-show="checkMinorVersion(method_call)">
-                                <label for="os_class">Version (Minor):</label>
-                                <input type="text"  ng-pattern="versionRegex" class="form-control" ng-change="updateClassContext(method_call)" ng-disabled="method_call.OS_class.majorVersion === undefined || method_call.OS_class.majorVersion === '' " ng-model="method_call.OS_class.minorVersion"  placeholder="" name="versionMin">
-                              </div>
-                              <div ng-messages="CForm.versionForm.versionMaj.$error" class="sm-space-top" role="alert">
-                                <div ng-message="pattern" class="text-danger">Invalid major version's number</div>
-                              </div>
-                              <div ng-messages="CForm.versionForm.versionMin.$error" role="alert">
-                                <div ng-message="pattern" class="text-danger">Invalid minor version's number</div>
-                              </div>
-                            </form>
-                          </div>
-
-
-                          -}
     Result     ->
       let
         classParameter = getClassParameter method
@@ -273,8 +224,6 @@ showMethodTab model method parentId call uiInfo=
         ]
       ]
 
-
-
 methodDetail: Method -> MethodCall -> Maybe CallId -> MethodCallUiInfo -> Model -> Html Msg
 methodDetail method call parentId ui model =
   let
@@ -297,7 +246,7 @@ methodDetail method call parentId ui model =
         , case method.documentation of
             Just _ ->
               let
-                classes = "btn btn-sm btn-primary show-doc " ++
+                classes = "btn btn-sm btn-primary " ++
                           if List.member method.id model.methodsUI.docsOpen then "doc-opened" else ""
               in
                 button [ class classes, type_ "button", onClick (ToggleDoc call.methodName) ] [
@@ -310,8 +259,8 @@ methodDetail method call parentId ui model =
   ]
 
 
-showMethodCall: Model -> MethodCallUiInfo -> Maybe CallId ->  MethodCall -> Element Msg
-showMethodCall model ui  parentId call =
+showMethodCall: Model -> MethodCallUiInfo -> TechniqueUiInfo -> Maybe CallId ->  MethodCall -> Element Msg
+showMethodCall model ui tui parentId call =
   let
     method = case Dict.get call.methodName.value model.methods of
                Just m -> m
@@ -319,14 +268,14 @@ showMethodCall model ui  parentId call =
   in
       element "li"
       |> addClass (if (ui.mode == Opened) then "active" else "") --     ng-class="{'active': methodIsSelected(method_call), 'missingParameters': checkMissingParameters(method_call.parameters, method.parameter).length > 0, 'errorParameters': checkErrorParameters(method_call.parameters).length > 0, 'is-edited' : canResetMethod(method_call)}"
-      |> appendChild (callBody model ui call parentId)
+      |> appendChild (callBody model ui tui call parentId)
       |> addAttribute (hidden (Maybe.withDefault False (Maybe.map ((==) (Move (Call parentId  call))) (DragDrop.currentlyDraggedObject model.dnd) )))
 
 
 
 
-callBody : Model -> MethodCallUiInfo ->  MethodCall -> Maybe CallId -> Element Msg
-callBody model ui call pid =
+callBody : Model -> MethodCallUiInfo -> TechniqueUiInfo ->  MethodCall -> Maybe CallId -> Element Msg
+callBody model ui techniqueUi call pid =
   let
     method = case Dict.get call.methodName.value model.methods of
                    Just m -> m
@@ -377,6 +326,8 @@ callBody model ui call pid =
                      |> appendText "Condition:"
                    , element "span"
                      |> appendText (conditionStr call.condition)
+                     |> addAction ("onmousedown", DisableDragDrop)
+                     |> addAction ("onmouseup", EnableDragDrop)
                      |> addAttributeList
                         [ class "popover-bs", title (conditionStr call.condition)
                         , attribute "data-toggle" "popover", attribute "data-trigger" "hover", attribute "data-placement" "top"
@@ -387,16 +338,18 @@ callBody model ui call pid =
                   ]
     methodName = case ui.mode of
                    Opened -> element "input"
-                             |> addAttributeList [ readonly (not model.hasWriteRights), type_ "text", name "component", style "width" "calc(100% - 75px)", class "form-control", value call.component,  placeholder "Enter a component name" ]
+                             |> addAttributeList [ readonly (not model.hasWriteRights), onFocus DisableDragDrop , onBlur EnableDragDrop, type_ "text", name "component", style "width" "calc(100% - 75px)", class "form-control", value call.component,  placeholder "Enter a component name" ]
                              |> addInputHandler  (\s -> MethodCallModified (Call pid {call  | component = s }))
                    Closed -> element "div"
                              |> addClass "method-name"
                              |> appendText  (if (String.isEmpty call.component) then method.name else call.component)
+                             |> appendChildConditional
+                                  (element "span" |> addStyle ("opacity"," 0.4") |> appendText (" - "++ method.name) )
+                                  ((not (String.isEmpty call.component)) && call.component /= method.name )
 
 
     methodContent = element "div"
                     |> addClass  "method-param flex-form"
-                    |> addActionStopAndPrevent ("ondragstart", Ignore)
                     |> addActionStopAndPrevent ("dragstart", Ignore)
                     |> addListenerStopAndPrevent ("dragStart", Json.Decode.succeed Ignore)
                     |> appendChildList
@@ -422,7 +375,7 @@ callBody model ui call pid =
   |> addClass "method"
   |> addAttribute (id call.id.value)
   |> addAttribute (hidden currentDrag)
-  |> DragDrop.makeDraggable model.dnd (Move (Call pid call)) dragDropMessages
+  |> (if techniqueUi.enableDragDrop then DragDrop.makeDraggable model.dnd (Move (Call pid call)) dragDropMessages else identity)
   |> Dom.appendChildList
      [ dragElem
      , element "div"
@@ -457,6 +410,8 @@ callBody model ui call pid =
                         ( element "div"
                           |> addClass "method-details"
                           |> appendNode (methodDetail method call pid ui model )
+                          |> addAttribute (VirtualDom.property "draggable" (Json.Encode.bool techniqueUi.enableDragDrop))
+                          |> addActionStopAndPrevent ("dragstart", Ignore)
                         ) (ui.mode == Opened)
             |> appendChildConditional warns (nbErrors > 0)
         ]
@@ -466,6 +421,4 @@ callBody model ui call pid =
                  --, attribute "data-template" "{{getStatusTooltipMessage(method_call)}}", attribute "data-container" "body"
                  , attribute "data-html" "true", attribute "data-delay" """'{"show":"400", "hide":"100"}'""" ]
          |> appendChild (element "i" |> addClass "ion ion-edit" )
-
      ]
-
