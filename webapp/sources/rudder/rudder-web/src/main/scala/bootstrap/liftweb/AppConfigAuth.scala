@@ -343,7 +343,8 @@ object LogFailedLogin {
 class RudderInMemoryUserDetailsService(val authConfigProvider: UserDetailListProvider) extends UserDetailsService {
   @throws(classOf[UsernameNotFoundException])
   override def loadUserByUsername(username:String) : RudderUserDetail = {
-    authConfigProvider.authConfig.users.getOrElse(username, throw new UsernameNotFoundException(s"User with username '${username}' was not found"))
+    val u = if(RudderConfig.rudderUsernameCaseSensitive) username else username.toLowerCase()
+    authConfigProvider.authConfig.users.getOrElse(u, throw new UsernameNotFoundException(s"User with username '${username}' was not found"))
   }
 }
 
@@ -512,6 +513,12 @@ class RestAuthenticationFilter(
   }
 
   private[this] def authenticate(userDetails: RudderUserDetail) : Unit = {
+//    val users = if(RudderConfig.rudderUsernameCaseSensitive) {
+//      userDetails
+//    } else {
+//      userDetails.copy(account = RudderAccount.User(userDetails.getUsername.toLowerCase(), userDetails.getPassword))
+//    }
+
     val authenticationToken = new UsernamePasswordAuthenticationToken(
         userDetails
       , userDetails.getAuthorities

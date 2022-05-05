@@ -50,7 +50,6 @@ import com.normation.rudder.domain.logger.ApplicationLogger
 import com.normation.rudder.domain.logger.PluginLogger
 import com.normation.rudder.rest.RoleApiMapping
 import com.normation.rudder.web.services.RudderUserDetail
-
 import org.bouncycastle.util.encoders.Hex
 import org.springframework.security.core.GrantedAuthority
 import org.xml.sax.SAXParseException
@@ -197,10 +196,11 @@ final class FileUserDetailListProvider(roleApiMapping: RoleApiMapping, authorisa
   def reload(): Either[UserConfigFileError, Unit] = {
     UserFileProcessing.parseUsers(roleApiMapping, file, authorisationLevel.userAuthEnabled) match {
       case Right(config) =>
-        cache = config
+        val configFiltered = sanityLoginFilter(config)
+        cache = configFiltered
         // callbacks
         callbacks.foreach { cb =>
-          cb(config)
+          cb(configFiltered)
         }
         Right(())
       case Left(err) => Left(err)
@@ -212,6 +212,41 @@ final class FileUserDetailListProvider(roleApiMapping: RoleApiMapping, authorisa
   }
 
   override def authConfig: UserDetailList = cache
+
+  /**
+   * Filter the list of users by checking if the username
+   * is unique according to case sensitivity:
+   *
+   *   - if `case sensitivity` is enable
+   *     log a warn if there is potential collision when
+   *     this parameter will be disabled
+   *
+   *   - users with same username (according to the case sensitivity)
+   *     will be removed from the returned list
+   */
+  private[this] def sanityLoginFilter(userDetails: UserDetailList): UserDetailList = {
+    val userLogins = if(RudderConfig.rudderUsernameCaseSensitive){
+      userDetails.users.values.map(_.getUsername)
+    } else {
+      userDetails.users.values.map(_.getUsername.toLowerCase())
+    }
+    val duplicatesLogin = userLogins.groupBy(identity).collect { case (x, List(_,_,_*)) => x }.toList
+
+    (duplicatesLogin.isEmpty, RudderConfig.rudderUsernameCaseSensitive) match {
+      case (true, true) =>
+        val potentialDup = userLogins.map(_.toLowerCase()).groupBy(identity).collect { case (x, List(_,_,_*)) => x }
+        if(potentialDup.nonEmpty) {
+          ApplicationLogger.warn(s"Users with potential username collision if case sensitivity is deactivated: ${potentialDup.mkString(", ")}")
+          userDetails
+        } else {
+          userDetails
+        }
+      case (false, _) =>
+        ApplicationLogger.error(s"Users with duplicates username will be ignored: ${duplicatesLogin.mkString(", ")}")
+        userDetails.copy(users = userDetails.users -- duplicatesLogin)
+      case (true, false) => userDetails
+    }
+  }
 }
 
 
@@ -289,6 +324,29 @@ object UserFileProcessing {
     }
   }
 
+  def parseCaseSensitivityOpt(resource: UserFile): Either[UserConfigFileError, Boolean] = {
+    val optXml = {
+      try {
+        Right(scala.xml.XML.load(resource.inputStream()))
+      } catch {
+        case e : SAXParseException =>
+          Left(UserConfigFileError(s"User definitions: XML in file /opt/rudder/etc/rudder-users.xml is incorrect, error message is: ${e.getMessage()} (line ${e.getLineNumber()}, column ${e.getColumnNumber()})", Some(e)))
+        case e: Exception =>
+          Left(UserConfigFileError("User definitions: An error occured while parsing /opt/rudder/etc/rudder-users.xml. Logging in to the Rudder web interface will not be possible until this is fixed and the application restarted.", Some(e)))
+      }
+    }
+    for {
+      xml <- optXml
+      root = (xml \\ "authentication")
+    } yield {
+      (root(0) \ "@case-sensitivity").text.toLowerCase match {
+        case "true" => true
+        // error if not "true" or "false" ?
+        case _      => false
+      }
+    }
+  }
+
   /**
    * Parse the given input stream toward a Rudder XML user file. The expected format is:
    * <authentication hash="sha512">
@@ -317,7 +375,7 @@ object UserFileProcessing {
       //now, get users
       val users = ( (xml \ "user").toList.flatMap { node =>
        //for each node, check attribute name (mandatory), password  (mandatory) and role (optional)
-       (   node.attribute("name").map(_.toList.map(_.text))
+       (   node.attribute("name").map(_.toList.map(username => if (RudderConfig.rudderUsernameCaseSensitive) (username.text) else username.text.toLowerCase()))
          , node.attribute("password").map(_.toList.map(_.text))
          , node.attribute("role").map(_.toList.map( role => RoleToRights.parseRole(role.text.split(",").toSeq.map(_.trim))))
        ) match {
@@ -351,5 +409,4 @@ object UserFileProcessing {
       Right(UserDetailList.fromRudderAccount(roleApiMapping, hash, users))
     }
   }
-
 }
