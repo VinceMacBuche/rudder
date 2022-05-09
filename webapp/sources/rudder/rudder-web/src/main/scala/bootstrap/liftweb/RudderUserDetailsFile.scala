@@ -135,16 +135,52 @@ final case class UserDetailList(
 )
 
 object UserDetailList {
+  /**
+   * Filter the list of users by checking if the username
+   * is unique according to case sensitivity:
+   *
+   *   - if `case sensitivity` is enable
+   *     log a warn if there is potential collision when
+   *     this parameter will be disabled
+   *
+   *   - users with same username (according to the case sensitivity)
+   *     will be removed from the returned list
+   */
+  def sanityLoginFilter(userDetails: List[RudderUserDetail]): List[RudderUserDetail] = {
+    val userLogins = if(RudderConfig.rudderUsernameCaseSensitive){
+      userDetails.map(_.getUsername)
+    } else {
+      userDetails.map(_.getUsername.toLowerCase())
+    }
+    val duplicatesLogin = userLogins.groupBy(identity).collect { case (x, List(_,_,_*)) => x }.toList
+    (duplicatesLogin.isEmpty, RudderConfig.rudderUsernameCaseSensitive) match {
+      case (true, false) => userDetails
+      case (isDuplicatesEmpty, isLoginCaseSensitive) =>
+        val potentialDup = userLogins.map(_.toLowerCase()).groupBy(identity).collect { case (x, List(_,_,_*)) => x }
+        if(potentialDup.nonEmpty && isLoginCaseSensitive) {
+          ApplicationLogger.warn(s"Users with potential username collision if case sensitivity is deactivated: ${potentialDup.mkString(", ")}")
+        }
+        if(!isDuplicatesEmpty) {
+          ApplicationLogger.error(s"Users with duplicates username will be ignored: ${duplicatesLogin.mkString(", ")}")
+          userDetails.filter { a => !duplicatesLogin.contains(a.getUsername) }
+        } else {
+          userDetails
+        }
+    }
+  }
+
   def fromRudderAccount(roleApiMapping: RoleApiMapping, encoder: PasswordEncoder.Rudder, users: List[(RudderAccount.User,Seq[Role])]): UserDetailList = {
-    new UserDetailList(encoder, users.map { case (user, roles) =>
+    val userDetails = users.map { case (user, roles) =>
       // for users, we don't have the possibility to order APIs. So we just sort them from most specific to less
       // (ie from longest path to shorted)
       // but still group by first part so that we have all nodes together, etc.
       val acls = roleApiMapping.getApiAclFromRoles(roles).groupBy(_.path.parts.head).flatMap { case (_, seq) =>
-         seq.sortBy(_.path)(AclPath.orderingaAclPath).sortBy(_.path.parts.head.value)
+        seq.sortBy(_.path)(AclPath.orderingaAclPath).sortBy(_.path.parts.head.value)
       }.toList
-      (user.login, RudderUserDetail(user, roles.toSet, ApiAuthorization.ACL(acls)))
-    }.toMap)
+      RudderUserDetail(user, roles.toSet, ApiAuthorization.ACL(acls))
+    }
+    val filteredUsers = sanityLoginFilter(userDetails)
+    UserDetailList(encoder, filteredUsers.map(u => (u.getUsername, u)).toMap)
   }
 }
 
@@ -196,11 +232,10 @@ final class FileUserDetailListProvider(roleApiMapping: RoleApiMapping, authorisa
   def reload(): Either[UserConfigFileError, Unit] = {
     UserFileProcessing.parseUsers(roleApiMapping, file, authorisationLevel.userAuthEnabled) match {
       case Right(config) =>
-        val configFiltered = sanityLoginFilter(config)
-        cache = configFiltered
+        cache = config
         // callbacks
         callbacks.foreach { cb =>
-          cb(configFiltered)
+          cb(config)
         }
         Right(())
       case Left(err) => Left(err)
@@ -213,40 +248,6 @@ final class FileUserDetailListProvider(roleApiMapping: RoleApiMapping, authorisa
 
   override def authConfig: UserDetailList = cache
 
-  /**
-   * Filter the list of users by checking if the username
-   * is unique according to case sensitivity:
-   *
-   *   - if `case sensitivity` is enable
-   *     log a warn if there is potential collision when
-   *     this parameter will be disabled
-   *
-   *   - users with same username (according to the case sensitivity)
-   *     will be removed from the returned list
-   */
-  private[this] def sanityLoginFilter(userDetails: UserDetailList): UserDetailList = {
-    val userLogins = if(RudderConfig.rudderUsernameCaseSensitive){
-      userDetails.users.values.map(_.getUsername)
-    } else {
-      userDetails.users.values.map(_.getUsername.toLowerCase())
-    }
-    val duplicatesLogin = userLogins.groupBy(identity).collect { case (x, List(_,_,_*)) => x }.toList
-
-    (duplicatesLogin.isEmpty, RudderConfig.rudderUsernameCaseSensitive) match {
-      case (true, true) =>
-        val potentialDup = userLogins.map(_.toLowerCase()).groupBy(identity).collect { case (x, List(_,_,_*)) => x }
-        if(potentialDup.nonEmpty) {
-          ApplicationLogger.warn(s"Users with potential username collision if case sensitivity is deactivated: ${potentialDup.mkString(", ")}")
-          userDetails
-        } else {
-          userDetails
-        }
-      case (false, _) =>
-        ApplicationLogger.error(s"Users with duplicates username will be ignored: ${duplicatesLogin.mkString(", ")}")
-        userDetails.copy(users = userDetails.users -- duplicatesLogin)
-      case (true, false) => userDetails
-    }
-  }
 }
 
 
@@ -405,7 +406,6 @@ object UserFileProcessing {
            Nil
        }
       })
-
       Right(UserDetailList.fromRudderAccount(roleApiMapping, hash, users))
     }
   }
