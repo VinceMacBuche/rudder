@@ -513,12 +513,6 @@ class RestAuthenticationFilter(
   }
 
   private[this] def authenticate(userDetails: RudderUserDetail) : Unit = {
-//    val users = if(RudderConfig.rudderUsernameCaseSensitive) {
-//      userDetails
-//    } else {
-//      userDetails.copy(account = RudderAccount.User(userDetails.getUsername.toLowerCase(), userDetails.getPassword))
-//    }
-
     val authenticationToken = new UsernamePasswordAuthenticationToken(
         userDetails
       , userDetails.getAuthorities
