@@ -146,26 +146,29 @@ object UserDetailList {
    *   - users with same username (according to the case sensitivity)
    *     will be removed from the returned list
    */
-  def sanityLoginFilter(userDetails: List[RudderUserDetail]): List[RudderUserDetail] = {
-    val userLogins = if(RudderConfig.rudderUsernameCaseSensitive){
-      userDetails.map(_.getUsername)
-    } else {
-      userDetails.map(_.getUsername.toLowerCase())
-    }
-    val duplicatesLogin = userLogins.groupBy(identity).collect { case (x, List(_,_,_*)) => x }.toList
-    (duplicatesLogin.isEmpty, RudderConfig.rudderUsernameCaseSensitive) match {
-      case (true, false) => userDetails
-      case (isDuplicatesEmpty, isLoginCaseSensitive) =>
-        val potentialDup = userLogins.map(_.toLowerCase()).groupBy(identity).collect { case (x, List(_,_,_*)) => x }
-        if(potentialDup.nonEmpty && isLoginCaseSensitive) {
-          ApplicationLogger.warn(s"Users with potential username collision if case sensitivity is deactivated: ${potentialDup.mkString(", ")}")
+  def sanityLoginFilter(userDetails: List[RudderUserDetail]): Map[String,RudderUserDetail] = {
+    userDetails.groupBy(_.getUsername.toLowerCase).flatMap{
+      // User name is unique with or without case sensitivity, accept
+      case (k, u :: Nil) => (u.getUsername,u) :: Nil
+      // User name is not unique with case sensitivity disabled, refuse everything
+      case (_, users) if ! RudderConfig.rudderUsernameCaseSensitive =>
+        ApplicationLogger.error(s"Users with duplicates username will be ignored: ${users.map(_.getUsername).mkString(", ")}")
+        Nil
+      // Disabled case sensitivity is treated above, putting a guard here make a non exhaustive match, do without guard,
+      case (_,users) =>
+        // Remove user with exact same name, not only with case sensitivity
+        val res = users.groupBy(_.getUsername).flatMap {
+          // User name is unique, accept
+          case (k, u :: Nil) => (k,u) :: Nil
+          // User name is not unique with case sensitivity disabled, Refuse login
+          case (_, users) =>
+            ApplicationLogger.error(s"Users with duplicates username will be ignored: ${users.map(_.getUsername).mkString(", ")}")
+            Nil
         }
-        if(!isDuplicatesEmpty) {
-          ApplicationLogger.error(s"Users with duplicates username will be ignored: ${duplicatesLogin.mkString(", ")}")
-          userDetails.filter { a => !duplicatesLogin.contains(a.getUsername) }
-        } else {
-          userDetails
-        }
+
+        // Warn that some users  with name different only by their case are defined, and that disabling case sensitivity would break those users
+        ApplicationLogger.warn(s"Users with potential username collision if case sensitivity is disabled: ${res.keys.mkString(", ")}")
+        res
     }
   }
 
@@ -180,7 +183,7 @@ object UserDetailList {
       RudderUserDetail(user, roles.toSet, ApiAuthorization.ACL(acls))
     }
     val filteredUsers = sanityLoginFilter(userDetails)
-    UserDetailList(encoder, filteredUsers.map(u => (u.getUsername, u)).toMap)
+    UserDetailList(encoder, filteredUsers)
   }
 }
 
@@ -376,7 +379,7 @@ object UserFileProcessing {
       //now, get users
       val users = ( (xml \ "user").toList.flatMap { node =>
        //for each node, check attribute name (mandatory), password  (mandatory) and role (optional)
-       (   node.attribute("name").map(_.toList.map(username => if (RudderConfig.rudderUsernameCaseSensitive) (username.text) else username.text.toLowerCase()))
+       (   node.attribute("name").map(_.toList.map(_.text))
          , node.attribute("password").map(_.toList.map(_.text))
          , node.attribute("role").map(_.toList.map( role => RoleToRights.parseRole(role.text.split(",").toSeq.map(_.trim))))
        ) match {
