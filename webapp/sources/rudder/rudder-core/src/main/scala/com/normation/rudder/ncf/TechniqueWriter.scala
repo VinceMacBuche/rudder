@@ -632,25 +632,26 @@ class ClassicTechniqueWriter(basePath : String, parameterTypeService: ParameterT
       }
 
       // Reporting argument
-      val reportingArgs = escapeCFEngineString(call.component) ::
+      val reportingValues = escapeCFEngineString(call.component) ::
                           escapeCFEngineString(classParameterValue) ::
                           call.id :: Nil
 
+      val reportingArgs = "c_name" :: "c_key" :: "report_id" :: Nil
       // create the bundle arguments:
-      // there are 3 arguments corresponding to the reportingArgs, (nned to be quoted)
+      // there are 3 arguments corresponding to the reportingValues, (need to be quoted)
       // the rest is for the methodArgs.
-      val bundleArguments = reportingArgs.map( x  => s""""${x}"""")  ::: params.toList
+      val bundleArguments = reportingValues.map( x  => s""""${x}"""")  ::: params.toList
 
-      val argsList = bundleArguments.zipWithIndex.map {case (_, id) => "arg_" + id}
+      val argsList = reportingArgs ::: params.toList.zipWithIndex.map {case (_, id) => "arg_" + id}
 
-      val bundleName = (call.id + "_" + bundleIncrement).replaceAll("-", "_")
+      val bundleName = (technique.bundleName.value + "_gm_" + bundleIncrement).replaceAll("-", "_")
       bundleIncrement = bundleIncrement + 1
 
       // The bundle that will effectively act
       val bundleActing = {
         val bundleCall =
-          s"""    "${promiser}" usebundle => ${reportingContextInBundle(argsList.take(reportingArgs.size))};
-             |    "${promiser}" usebundle => ${call.methodId.value}(${convertArgsToBundleCall(argsList.drop(reportingArgs.size))});
+          s"""    "${promiser}" usebundle => ${reportingContextInBundle(argsList.take(reportingValues.size))};
+             |    "${promiser}" usebundle => ${call.methodId.value}(${convertArgsToBundleCall(argsList.drop(reportingValues.size))});
              |""".stripMargin('|')
 
         s"""bundle agent ${bundleName}(${argsList.mkString(", ")}) {

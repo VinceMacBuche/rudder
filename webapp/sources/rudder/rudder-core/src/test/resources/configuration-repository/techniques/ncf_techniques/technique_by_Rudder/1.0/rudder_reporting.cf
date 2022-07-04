@@ -7,42 +7,42 @@ bundle agent technique_by_Rudder_rudder_reporting(technique_parameter)
     "class_prefix"      string => string_head("${full_class_prefix}", "1000");
 
   methods:
-    "id1_${report_data.directive_id}" usebundle => id1_6("Customized component", "${node.properties[apache_package_name]}", "id1", Skipping method 'Package install version' with key parameter '${node.properties[apache_package_name]}' since condition 'any' is not reached, ${node.properties[apache_package_name]}, ${class_prefix}_package_install_version_${node.properties[apache_package_name]}, @{args}),
+    "id1_${report_data.directive_id}" usebundle => technique_by_Rudder_gm_6("Customized component", "${node.properties[apache_package_name]}", "id1", Skipping method 'Package install version' with key parameter '${node.properties[apache_package_name]}' since condition 'any' is not reached, ${node.properties[apache_package_name]}, ${class_prefix}_package_install_version_${node.properties[apache_package_name]}, @{args}),
                                              unless => concat("(debian)");
     "id2_${report_data.directive_id}" usebundle => disable_reporting,
                                              unless => concat("(debian.windows)");
-    "id2_${report_data.directive_id}" usebundle => id2_7("Command execution", "Write-Host \"testing special characters ` è &é 'à é \"", "id2", Skipping method 'Command execution' with key parameter 'Write-Host \"testing special characters ` è &é 'à é \"' since condition 'windows' is not reached, Write-Host \"testing special characters ` è &é 'à é \", ${class_prefix}_command_execution_Write-Host \"testing special characters ` è &é 'à é \", @{args}),
+    "id2_${report_data.directive_id}" usebundle => technique_by_Rudder_gm_7("Command execution", "Write-Host \"testing special characters ` è &é 'à é \"", "id2", Skipping method 'Command execution' with key parameter 'Write-Host \"testing special characters ` è &é 'à é \"' since condition 'windows' is not reached, Write-Host \"testing special characters ` è &é 'à é \", ${class_prefix}_command_execution_Write-Host \"testing special characters ` è &é 'à é \", @{args}),
                                              unless => concat("(debian.windows)");
     "id2_${report_data.directive_id}" usebundle => enable_reporting,
                                              unless => concat("(debian.windows)");
-    "id3_${report_data.directive_id}" usebundle => id3_8("Customized component", "${node.properties[apache_package_name]}", "id3", Skipping method 'Service start' with key parameter '${node.properties[apache_package_name]}' since condition 'package_install_version_${node.properties[apache_package_name]}_repaired' is not reached, ${node.properties[apache_package_name]}, ${class_prefix}_service_start_${node.properties[apache_package_name]}, @{args}),
+    "id3_${report_data.directive_id}" usebundle => technique_by_Rudder_gm_8("Customized component", "${node.properties[apache_package_name]}", "id3", Skipping method 'Service start' with key parameter '${node.properties[apache_package_name]}' since condition 'package_install_version_${node.properties[apache_package_name]}_repaired' is not reached, ${node.properties[apache_package_name]}, ${class_prefix}_service_start_${node.properties[apache_package_name]}, @{args}),
                                              unless => concat("package_install_version_",canonify("${node.properties[apache_package_name]}"),"_repaired");
-    "id4_${report_data.directive_id}" usebundle => id4_9("Package install", "openssh-server", "id4", Skipping method 'Package install' with key parameter 'openssh-server' since condition 'redhat' is not reached, openssh-server, ${class_prefix}_package_install_openssh-server, @{args}),
+    "id4_${report_data.directive_id}" usebundle => technique_by_Rudder_gm_9("Package install", "openssh-server", "id4", Skipping method 'Package install' with key parameter 'openssh-server' since condition 'redhat' is not reached, openssh-server, ${class_prefix}_package_install_openssh-server, @{args}),
                                              unless => concat("redhat");
 
 }
 
-bundle agent id1_6(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6) {
+bundle agent technique_by_Rudder_gm_6(c_name, c_key, report_id, arg_0, arg_1, arg_2, arg_3) {
   methods:
-    "id1_${report_data.directive_id}" usebundle => _method_reporting_context_v4("${arg_0}","${arg_1}","${arg_2}");
-    "id1_${report_data.directive_id}" usebundle => package_install_version("${arg_3}","${arg_4}","${arg_5}","${arg_6}");
+    "id1_${report_data.directive_id}" usebundle => _method_reporting_context_v4("${c_name}","${c_key}","${report_id}");
+    "id1_${report_data.directive_id}" usebundle => package_install_version("${arg_0}","${arg_1}","${arg_2}","${arg_3}");
 
 }
-bundle agent id2_7(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6) {
+bundle agent technique_by_Rudder_gm_7(c_name, c_key, report_id, arg_0, arg_1, arg_2, arg_3) {
   methods:
-    "id2_${report_data.directive_id}" usebundle => _method_reporting_context_v4("${arg_0}","${arg_1}","${arg_2}");
-    "id2_${report_data.directive_id}" usebundle => command_execution("${arg_3}","${arg_4}","${arg_5}","${arg_6}");
+    "id2_${report_data.directive_id}" usebundle => _method_reporting_context_v4("${c_name}","${c_key}","${report_id}");
+    "id2_${report_data.directive_id}" usebundle => command_execution("${arg_0}","${arg_1}","${arg_2}","${arg_3}");
 
 }
-bundle agent id3_8(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6) {
+bundle agent technique_by_Rudder_gm_8(c_name, c_key, report_id, arg_0, arg_1, arg_2, arg_3) {
   methods:
-    "id3_${report_data.directive_id}" usebundle => _method_reporting_context_v4("${arg_0}","${arg_1}","${arg_2}");
-    "id3_${report_data.directive_id}" usebundle => service_start("${arg_3}","${arg_4}","${arg_5}","${arg_6}");
+    "id3_${report_data.directive_id}" usebundle => _method_reporting_context_v4("${c_name}","${c_key}","${report_id}");
+    "id3_${report_data.directive_id}" usebundle => service_start("${arg_0}","${arg_1}","${arg_2}","${arg_3}");
 
 }
-bundle agent id4_9(arg_0, arg_1, arg_2, arg_3, arg_4, arg_5, arg_6) {
+bundle agent technique_by_Rudder_gm_9(c_name, c_key, report_id, arg_0, arg_1, arg_2, arg_3) {
   methods:
-    "id4_${report_data.directive_id}" usebundle => _method_reporting_context_v4("${arg_0}","${arg_1}","${arg_2}");
-    "id4_${report_data.directive_id}" usebundle => package_install("${arg_3}","${arg_4}","${arg_5}","${arg_6}");
+    "id4_${report_data.directive_id}" usebundle => _method_reporting_context_v4("${c_name}","${c_key}","${report_id}");
+    "id4_${report_data.directive_id}" usebundle => package_install("${arg_0}","${arg_1}","${arg_2}","${arg_3}");
 
 }

@@ -13,58 +13,58 @@ bundle agent technique_by_Rudder(technique_parameter)
     "pass2" expression => "pass1";
     "pass1" expression => "any";
   methods:
-    "id1_${report_data.directive_id}" usebundle => id1_0("Customized component", "${node.properties[apache_package_name]}", "id1", "${node.properties[apache_package_name]}", "2.2.11"),
+    "id1_${report_data.directive_id}" usebundle => technique_by_Rudder_gm_0("Customized component", "${node.properties[apache_package_name]}", "id1", "${node.properties[apache_package_name]}", "2.2.11"),
                                              if => concat("(debian)");
     "id2_${report_data.directive_id}" usebundle => disable_reporting,
                                              if => concat("(debian.windows)");
-    "id2_${report_data.directive_id}" usebundle => id2_1("Command execution", "Write-Host \"testing special characters ` è &é 'à é \"", "id2", "Write-Host \"testing special characters ` è &é 'à é \""),
+    "id2_${report_data.directive_id}" usebundle => technique_by_Rudder_gm_1("Command execution", "Write-Host \"testing special characters ` è &é 'à é \"", "id2", "Write-Host \"testing special characters ` è &é 'à é \""),
                                              if => concat("(debian.windows)");
     "id2_${report_data.directive_id}" usebundle => enable_reporting,
                                              if => concat("(debian.windows)");
-    "id3_${report_data.directive_id}" usebundle => id3_2("Customized component", "${node.properties[apache_package_name]}", "id3", "${node.properties[apache_package_name]}"),
+    "id3_${report_data.directive_id}" usebundle => technique_by_Rudder_gm_2("Customized component", "${node.properties[apache_package_name]}", "id3", "${node.properties[apache_package_name]}"),
                                              if => concat("package_install_version_",canonify("${node.properties[apache_package_name]}"),"_repaired");
-    "id4_${report_data.directive_id}" usebundle => id4_3("Package install", "openssh-server", "id4", "openssh-server"),
+    "id4_${report_data.directive_id}" usebundle => technique_by_Rudder_gm_3("Package install", "openssh-server", "id4", "openssh-server"),
                                              if => concat("redhat");
-    "id5_${report_data.directive_id}" usebundle => id5_4("Command execution", "/bin/echo \"testing special characters ` è &é 'à é \"\\", "id5", "/bin/echo \"testing special characters ` è &é 'à é \"\\"),
+    "id5_${report_data.directive_id}" usebundle => technique_by_Rudder_gm_4("Command execution", "/bin/echo \"testing special characters ` è &é 'à é \"\\", "id5", "/bin/echo \"testing special characters ` è &é 'à é \"\\"),
                                              if => concat("any");
-    "id6_${report_data.directive_id}" usebundle => id6_5("Not sure we should test it ...", "NA", "id6", "NA", "NA"),
+    "id6_${report_data.directive_id}" usebundle => technique_by_Rudder_gm_5("Not sure we should test it ...", "NA", "id6", "NA", "NA"),
                                              if => concat("any");
 
 }
 
-bundle agent id1_0(arg_0, arg_1, arg_2, arg_3, arg_4) {
+bundle agent technique_by_Rudder_gm_0(c_name, c_key, report_id, arg_0, arg_1) {
   methods:
-    "id1_${report_data.directive_id}" usebundle => _method_reporting_context_v4("${arg_0}","${arg_1}","${arg_2}");
-    "id1_${report_data.directive_id}" usebundle => package_install_version("${arg_3}","${arg_4}");
+    "id1_${report_data.directive_id}" usebundle => _method_reporting_context_v4("${c_name}","${c_key}","${report_id}");
+    "id1_${report_data.directive_id}" usebundle => package_install_version("${arg_0}","${arg_1}");
 
 }
-bundle agent id2_1(arg_0, arg_1, arg_2, arg_3) {
+bundle agent technique_by_Rudder_gm_1(c_name, c_key, report_id, arg_0) {
   methods:
-    "id2_${report_data.directive_id}" usebundle => _method_reporting_context_v4("${arg_0}","${arg_1}","${arg_2}");
-    "id2_${report_data.directive_id}" usebundle => command_execution("${arg_3}");
+    "id2_${report_data.directive_id}" usebundle => _method_reporting_context_v4("${c_name}","${c_key}","${report_id}");
+    "id2_${report_data.directive_id}" usebundle => command_execution("${arg_0}");
 
 }
-bundle agent id3_2(arg_0, arg_1, arg_2, arg_3) {
+bundle agent technique_by_Rudder_gm_2(c_name, c_key, report_id, arg_0) {
   methods:
-    "id3_${report_data.directive_id}" usebundle => _method_reporting_context_v4("${arg_0}","${arg_1}","${arg_2}");
-    "id3_${report_data.directive_id}" usebundle => service_start("${arg_3}");
+    "id3_${report_data.directive_id}" usebundle => _method_reporting_context_v4("${c_name}","${c_key}","${report_id}");
+    "id3_${report_data.directive_id}" usebundle => service_start("${arg_0}");
 
 }
-bundle agent id4_3(arg_0, arg_1, arg_2, arg_3) {
+bundle agent technique_by_Rudder_gm_3(c_name, c_key, report_id, arg_0) {
   methods:
-    "id4_${report_data.directive_id}" usebundle => _method_reporting_context_v4("${arg_0}","${arg_1}","${arg_2}");
-    "id4_${report_data.directive_id}" usebundle => package_install("${arg_3}");
+    "id4_${report_data.directive_id}" usebundle => _method_reporting_context_v4("${c_name}","${c_key}","${report_id}");
+    "id4_${report_data.directive_id}" usebundle => package_install("${arg_0}");
 
 }
-bundle agent id5_4(arg_0, arg_1, arg_2, arg_3) {
+bundle agent technique_by_Rudder_gm_4(c_name, c_key, report_id, arg_0) {
   methods:
-    "id5_${report_data.directive_id}" usebundle => _method_reporting_context_v4("${arg_0}","${arg_1}","${arg_2}");
-    "id5_${report_data.directive_id}" usebundle => command_execution("${arg_3}");
+    "id5_${report_data.directive_id}" usebundle => _method_reporting_context_v4("${c_name}","${c_key}","${report_id}");
+    "id5_${report_data.directive_id}" usebundle => command_execution("${arg_0}");
 
 }
-bundle agent id6_5(arg_0, arg_1, arg_2, arg_3, arg_4) {
+bundle agent technique_by_Rudder_gm_5(c_name, c_key, report_id, arg_0, arg_1) {
   methods:
-    "id6_${report_data.directive_id}" usebundle => _method_reporting_context_v4("${arg_0}","${arg_1}","${arg_2}");
-    "id6_${report_data.directive_id}" usebundle => _logger("${arg_3}","${arg_4}");
+    "id6_${report_data.directive_id}" usebundle => _method_reporting_context_v4("${c_name}","${c_key}","${report_id}");
+    "id6_${report_data.directive_id}" usebundle => _logger("${arg_0}","${arg_1}");
 
 }
