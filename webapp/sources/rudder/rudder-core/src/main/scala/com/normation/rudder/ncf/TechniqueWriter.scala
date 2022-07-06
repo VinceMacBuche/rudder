@@ -631,54 +631,58 @@ class ClassicTechniqueWriter(basePath : String, parameterTypeService: ParameterT
         case true  => "unless"
       }
 
+      // Get all values
       // Reporting argument
       val reportingValues = escapeCFEngineString(call.component) ::
                           escapeCFEngineString(classParameterValue) ::
                           call.id :: Nil
-
-      val reportingArgs = "c_name" :: "c_key" :: "report_id" :: Nil
       // create the bundle arguments:
       // there are 3 arguments corresponding to the reportingValues, (need to be quoted)
       // the rest is for the methodArgs.
-      val bundleArguments = reportingValues.map( x  => s""""${x}"""")  ::: params.toList
+      val allValues = reportingValues.map( x  => s""""${x}"""")  ::: params.toList
 
-      val argsList = reportingArgs ::: params.toList.zipWithIndex.map {case (_, id) => "arg_" + id}
+      val method = methods.get(call.methodId)
 
+      // Get all bundle argument names
       val bundleName = (technique.bundleName.value + "_gm_" + bundleIncrement).replaceAll("-", "_")
-      bundleIncrement = bundleIncrement + 1
+      bundleIncrement = bundleIncrement +1
+      val reportingArgs = "c_name" :: "c_key" :: "report_id" :: Nil
+      val bundleArgs = params.toList.zipWithIndex.map {
+        case (_, id) =>
+          method.flatMap(_.parameters.get(id).map(_.id.value)).getOrElse("arg_" + id)
+      }
+      val allArgs = reportingArgs ::: bundleArgs
 
       // The bundle that will effectively act
       val bundleActing = {
         val bundleCall =
-          s"""    "${promiser}" usebundle => ${reportingContextInBundle(argsList.take(reportingValues.size))};
-             |    "${promiser}" usebundle => ${call.methodId.value}(${convertArgsToBundleCall(argsList.drop(reportingValues.size))});
-             |""".stripMargin('|')
+          s"""    "${promiser}" usebundle => ${reportingContextInBundle(reportingArgs)};
+             |    "${promiser}" usebundle => ${call.methodId.value}(${convertArgsToBundleCall(bundleArgs)});""".stripMargin('|')
 
-        s"""bundle agent ${bundleName}(${argsList.mkString(", ")}) {
+        val allBundles =
+          if (call.disabledReporting) {
+            s"""    "${promiser}" usebundle => disable_reporting;
+               |${bundleCall}
+               |    "${promiser}" usebundle => enable_reporting;""".stripMargin('|')
+          } else {
+            bundleCall
+          }
+
+
+        s"""bundle agent ${bundleName}(${allArgs.mkString(", ")}) {
              |  methods:
-             |${bundleCall}
+             |${allBundles}
              |}
              |""".stripMargin('|')
       }
 
       // the call to the bundle
       val callBundle = {
-        val bundleCall =
-          s"""    "${promiser}" usebundle => ${bundleName}(${bundleArguments.mkString(", ")}),
+          s"""    "${promiser}" usebundle => ${bundleName}(${allValues.mkString(", ")}),
              |     ${promiser.map(_ => ' ')}         ${filterOnMethod} => concat("${condition}");
              |""".stripMargin('|')
 
-        if (call.disabledReporting) {
-          s"""    "${promiser}" usebundle => disable_reporting,
-             |     ${promiser.map(_ => ' ')}         ${filterOnMethod} => concat("${condition}");
-             |""" ++
-            bundleCall ++
-            s"""    "${promiser}" usebundle => enable_reporting,
-               |     ${promiser.map(_ => ' ')}         ${filterOnMethod} => concat("${condition}");
-               |""".stripMargin('|')
-        } else {
-          bundleCall
-        }
+
       }
       (bundleActing, callBundle)
     }
@@ -761,11 +765,11 @@ class ClassicTechniqueWriter(basePath : String, parameterTypeService: ParameterT
       def bundleMethodCall( parentBlocks : List[MethodBlock])(method : MethodElem) : List[(String, String)] = {
         method match {
           case c : MethodCall =>
-            val call = MethodCall.renameParams(c,methods)
+            val call = MethodCall.renameParams(c,methods).copy(methodId = BundleName("log_na_rudder"))
             (for {
-              method_info <- methods.get(call.methodId)
+              method_info <- methods.get(c.methodId)
               // Skip that method if name starts with _
-              if ! call.methodId.value.startsWith("_")
+              if ! c.methodId.value.startsWith("_")
               (_, classParameterValue) <- call.parameters.find( _._1 == method_info.classParameter)
 
               escapedClassParameterValue = escapeCFEngineString(classParameterValue)
@@ -786,7 +790,7 @@ class ClassicTechniqueWriter(basePath : String, parameterTypeService: ParameterT
                 Some((condition,message))
               } else {
                 // ... or if the condition needs rudder_reporting
-                if (methodCallNeedReporting(methods, parentBlocks)(call)) {
+                if (methodCallNeedReporting(methods, parentBlocks)(c)) {
                   val message = s"""Skipping method '${method_info.name}' with key parameter '${escapedClassParameterValue}' since condition '${call.condition}' is not reached"""
                   val condition = s"${canonifyCondition(call, parentBlocks)}"
                   Some((condition, message))

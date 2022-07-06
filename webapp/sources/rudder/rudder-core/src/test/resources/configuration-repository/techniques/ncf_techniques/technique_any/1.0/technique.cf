@@ -17,9 +17,8 @@ bundle agent technique_any(version)
 
 }
 
-bundle agent technique_any_gm_0(c_name, c_key, report_id, arg_0, arg_1) {
+bundle agent technique_any_gm_0(c_name, c_key, report_id, package_name, package_version) {
   methods:
     "id_${report_data.directive_id}" usebundle => _method_reporting_context_v4("${c_name}","${c_key}","${report_id}");
-    "id_${report_data.directive_id}" usebundle => package_install_version("${arg_0}","${arg_1}");
-
+    "id_${report_data.directive_id}" usebundle => package_install_version("${package_name}","${package_version}");
 }
