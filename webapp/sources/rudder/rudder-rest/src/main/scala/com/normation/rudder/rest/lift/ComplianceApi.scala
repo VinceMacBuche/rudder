@@ -211,15 +211,14 @@ class ComplianceApi(
       (for {
         level     <- restExtractor.extractComplianceLevel(req.params)
         t1         = System.currentTimeMillis
-        precision <- restExtractor.extractPercentPrecision(req.params)
+        // if there is no format CSV format is used by default, if the format is wrong, it should be an error
+        format    <- restExtractor.extractDirectiveComplianceExportFormat(req.params)
         id        <- DirectiveId.parse(directiveId).toBox
         t2         = System.currentTimeMillis
-
+        _          = TimingDebugLogger.trace(s"API ExportDirectiveComplianceCSV - getting query param in ${t2 - t1} ms")
         directive <- complianceService.getDirectiveCompliance(id, level)
         t3         = System.currentTimeMillis
-        _          = TimingDebugLogger.trace(s"API Export compliance to CSV - getting query param in ${t2 - t1} ms")
-        _          = TimingDebugLogger.trace(s"API Export compliance to CSV - getting directive compliance in ${t3 - t2} ms")
-
+        _          = TimingDebugLogger.trace(s"API ExportDirectiveComplianceCSV - getting directive compliance in ${t3 - t2} ms")
       } yield {
         directive.toCsv
       }) match {
@@ -253,11 +252,10 @@ class ComplianceApi(
         precision <- restExtractor.extractPercentPrecision(req.params)
         id        <- DirectiveId.parse(directiveId).toBox
         t2         = System.currentTimeMillis
-
+        _          = TimingDebugLogger.trace(s"API DirectiveCompliance - getting query param in ${t2 - t1} ms")
         directive <- complianceService.getDirectiveCompliance(id, level)
         t3         = System.currentTimeMillis
-        _          = TimingDebugLogger.trace(s"API GetDirectiveId - getting query param in ${t2 - t1} ms")
-        _          = TimingDebugLogger.trace(s"API GetDirectiveId - getting directive compliance in ${t3 - t2} ms")
+        _          = TimingDebugLogger.trace(s"API DirectiveCompliance - getting directive compliance '${id.uid.value}' in ${t3 - t2} ms")
 
       } yield {
         if (version.value <= 6) {
@@ -268,7 +266,7 @@ class ComplianceApi(
             precision.getOrElse(CompliancePrecision.Level2)
           ) // by default, all details are displayed
           val t4 = System.currentTimeMillis
-          TimingDebugLogger.trace(s"API GetDirectiveId - serialize to json in ${t4 - t3} ms")
+          TimingDebugLogger.trace(s"API DirectiveCompliance - serialize to json in ${t4 - t3} ms")
           json
         }
       }) match {
@@ -300,15 +298,15 @@ class ComplianceApi(
         t1           = System.currentTimeMillis
         precision   <- restExtractor.extractPercentPrecision(req.params)
         t2           = System.currentTimeMillis
+        _            = TimingDebugLogger.trace(s"API DirectivesCompliance - getting query param in ${t2 - t1} ms")
         fullLibrary <- readDirective.getFullDirectiveLibrary().toBox ?~! "Could not fetch Directives"
-        t3           = System.currentTimeMillis
         directiveIds = fullLibrary.allDirectives.values.filter(!_._2.isSystem).map(_._2.id).toList
-//        id        <- DirectiveId.parse(directiveId).toBox
+        t3           = System.currentTimeMillis
+        _            = TimingDebugLogger.trace(s"API DirectivesCompliance - getting directives id ${t3 - t2} ms")
         t4           = System.currentTimeMillis
         directives   = directiveIds.flatMap(complianceService.getDirectiveCompliance(_, level))
         t5           = System.currentTimeMillis
-        _            = TimingDebugLogger.trace(s"API GetDirectives - getting query param in ${t2 - t1} ms")
-        _            = TimingDebugLogger.trace(s"API GetDirectives - getting directive compliance in ${t3 - t2} ms")
+        _            = TimingDebugLogger.trace(s"API DirectivesCompliance - getting directives compliance in ${t5 - t4} ms")
 
       } yield {
         if (version.value <= 6) {
@@ -320,8 +318,8 @@ class ComplianceApi(
               precision.getOrElse(CompliancePrecision.Level2)
             )
           ) // by default, all details are displayed
-          val t4 = System.currentTimeMillis
-          TimingDebugLogger.trace(s"API GetDirectiveId - serialize to json in ${t4 - t3} ms")
+          val t6 = System.currentTimeMillis
+          TimingDebugLogger.trace(s"API DirectivesCompliance - serialize to json in ${t6 - t5} ms")
           json
         }
       }) match {

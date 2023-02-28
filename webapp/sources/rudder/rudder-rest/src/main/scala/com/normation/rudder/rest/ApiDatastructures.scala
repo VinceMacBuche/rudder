@@ -259,6 +259,7 @@ trait StartsAtVersion13 extends EndpointSchema { val versions = ApiV.From(13) }
 trait StartsAtVersion14 extends EndpointSchema { val versions = ApiV.From(14) }
 trait StartsAtVersion15 extends EndpointSchema { val versions = ApiV.From(15) }
 trait StartsAtVersion16 extends EndpointSchema { val versions = ApiV.From(16) }
+trait StartsAtVersion17 extends EndpointSchema { val versions = ApiV.From(17) }
 
 // utility extension trait to define the kind of API
 trait PublicApi   extends EndpointSchema { val kind = ApiKind.Public   }

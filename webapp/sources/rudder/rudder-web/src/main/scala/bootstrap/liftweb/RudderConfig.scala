@@ -1686,6 +1686,7 @@ object RudderConfig extends Loggable {
     ApiVersion(14, false) :: // rudder 7.0
     ApiVersion(15, false) :: // rudder 7.1 - system update on node details
     ApiVersion(16, false) :: // rudder 7.2 - create node api, import/export archive, hooks & campaigns internal API
+    ApiVersion(17, false) :: // rudder 7.3 - directive compliance API
     Nil
   }
 
