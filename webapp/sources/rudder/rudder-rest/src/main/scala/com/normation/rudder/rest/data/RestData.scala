@@ -245,9 +245,6 @@ final case object AcceptNode extends NodeStatusAction
 final case object RefuseNode extends NodeStatusAction
 final case object DeleteNode extends NodeStatusAction
 
-sealed trait ExportFormat
-final case object CSV extends ExportFormat
-
 final case class RestParameter(
     value:       Option[ConfigValue] = None,
     description: Option[String] = None,
