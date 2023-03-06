@@ -1512,14 +1512,12 @@ final case class RestExtractorService(
 
   }
 
-  def extractDirectiveComplianceExportFormat(params: Map[String, List[String]]): Box[String] = {
+  def extractComplianceFormat(params: Map[String, List[String]]): Box[ComplianceFormat] = {
     params.get("format") match {
-      case None | Some(Nil)     => Full("csv") // by default if no there is no format, should I choose the only one available ?
-      case Some(format :: tail) =>             // only take into account the first format param if several are passed
-        format.toLowerCase() match {
-          case "csv" => Full("csv")
-          case _     => Failure(s"Value of export format for compliance by directive should be CSV instead of ${format}")
-        }
+      case None | Some(Nil) | Some("" :: Nil) => Full(ComplianceFormat.JSON) // by default if no there is no format, should I choose the only one available ?
+      case Some(format :: _) =>
+        ComplianceFormat.fromValue(format).toBox
     }
   }
+
 }
