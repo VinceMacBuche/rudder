@@ -174,7 +174,6 @@ object ComplianceApi       extends ApiModuleProvider[ComplianceApi] {
     val dataContainer  = Some("directivesCompliance")
   }
 
-
   def endpoints = ca.mrvisser.sealerate.values[ComplianceApi].toList.sortBy(_.z)
 }
 

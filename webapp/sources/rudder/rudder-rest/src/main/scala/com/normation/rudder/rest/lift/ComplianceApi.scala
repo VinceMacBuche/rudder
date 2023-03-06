@@ -72,7 +72,6 @@ import net.liftweb.http.PlainTextResponse
 import net.liftweb.http.Req
 import net.liftweb.json._
 import net.liftweb.json.JsonDSL._
-
 import scala.collection.immutable
 import zio.syntax._
 
@@ -99,13 +98,13 @@ class ComplianceApi(
     API.endpoints
       .map(e => {
         e match {
-          case API.GetRulesCompliance           => GetRules
-          case API.GetRulesComplianceId         => GetRuleId
-          case API.GetNodesCompliance           => GetNodes
-          case API.GetNodeComplianceId          => GetNodeId
-          case API.GetGlobalCompliance          => GetGlobal
-          case API.GetDirectiveComplianceId     => GetDirectiveId
-          case API.GetDirectivesCompliance      => GetDirectives
+          case API.GetRulesCompliance       => GetRules
+          case API.GetRulesComplianceId     => GetRuleId
+          case API.GetNodesCompliance       => GetNodes
+          case API.GetNodeComplianceId      => GetNodeId
+          case API.GetGlobalCompliance      => GetGlobal
+          case API.GetDirectiveComplianceId => GetDirectiveId
+          case API.GetDirectivesCompliance  => GetDirectives
         }
       })
       .toList
@@ -195,44 +194,6 @@ class ComplianceApi(
     }
   }
 
-  object ExportCSV extends LiftApiModule {
-    val schema        = API.ExportDirectiveComplianceCSV
-    val restExtractor = restExtractorService
-    def process(
-        version:     ApiVersion,
-        path:        ApiPath,
-        directiveId: String,
-        req:         Req,
-        params:      DefaultParams,
-        authzToken:  AuthzToken
-    ): LiftResponse = {
-      implicit val action   = schema.name
-      implicit val prettify = params.prettify
-
-      (for {
-        level     <- restExtractor.extractComplianceLevel(req.params)
-        t1         = System.currentTimeMillis
-        // if there is no format CSV format is used by default, if the format is wrong, it should be an error
-        format    <- restExtractor.extractDirectiveComplianceExportFormat(req.params)
-        id        <- DirectiveId.parse(directiveId).toBox
-        t2         = System.currentTimeMillis
-        _          = TimingDebugLogger.trace(s"API ExportDirectiveComplianceCSV - getting query param in ${t2 - t1} ms")
-        directive <- complianceService.getDirectiveCompliance(id, level)
-        t3         = System.currentTimeMillis
-        _          = TimingDebugLogger.trace(s"API ExportDirectiveComplianceCSV - getting directive compliance in ${t3 - t2} ms")
-      } yield {
-        directive.toCsv
-      }) match {
-        case Full(csv) =>
-          toJsonResponse(None, ("directiveComplianceExportCSV" -> csv.mkString("\n")))
-
-        case eb: EmptyBox =>
-          val message = (eb ?~ (s"Could not export to CSV compliance for directive '${directiveId}'")).messageChain
-          toJsonError(None, JString(message))
-      }
-    }
-  }
-
   object GetDirectiveId extends LiftApiModule {
     val schema        = API.GetDirectiveComplianceId
     val restExtractor = restExtractorService
@@ -250,7 +211,7 @@ class ComplianceApi(
         level     <- restExtractor.extractComplianceLevel(req.params)
         t1         = System.currentTimeMillis
         precision <- restExtractor.extractPercentPrecision(req.params)
-        format <- restExtractorService.extractComplianceFormat(req.params)
+        format    <- restExtractorService.extractComplianceFormat(req.params)
         id        <- DirectiveId.parse(directiveId).toBox
         t2         = System.currentTimeMillis
         _          = TimingDebugLogger.trace(s"API DirectiveCompliance - getting query param in ${t2 - t1} ms")
@@ -259,7 +220,7 @@ class ComplianceApi(
         _          = TimingDebugLogger.trace(s"API DirectiveCompliance - getting directive compliance '${id.uid.value}' in ${t3 - t2} ms")
       } yield {
         format match {
-          case ComplianceFormat.CSV =>
+          case ComplianceFormat.CSV  =>
             PlainTextResponse(directive.toCsv.mkString("\n"))
           case ComplianceFormat.JSON =>
             val json = directive.toJson(
