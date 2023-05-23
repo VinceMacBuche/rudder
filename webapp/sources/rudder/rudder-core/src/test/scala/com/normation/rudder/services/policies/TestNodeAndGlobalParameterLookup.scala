@@ -1164,7 +1164,7 @@ class TestNodeAndGlobalParameterLookup extends Specification {
       )
     }
 
-    "fails when the part after ${rudder.} is empty" in {
+    "fails when the part after ${                      is empty" in {
       getError(lookupParam(Seq(badEmptyRudder), context).either.runNow) must beMatching(
         """.*\Q'== ${rudder.} =='. Error message is: Expected (rudderNode | parameters | oldParameter):1:13, found "} =="\E.*""".r
       )
