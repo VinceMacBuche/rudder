@@ -66,9 +66,9 @@ Blocks contains:
 * `condition` (optional)
 * `reporting` (optional)
   * `mode`
-    * `worst-case-weighted-sum` (default)
+    * `weighted` (default)
+    * `worst-case-weighted-sum` 
     * `worst-case-weighted-one`
-    * `weighted`
     * `focus`
     * `disabled`
   * `id` (required with `focus` mode)
