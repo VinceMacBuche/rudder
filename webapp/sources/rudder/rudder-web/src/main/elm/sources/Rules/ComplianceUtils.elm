@@ -1,7 +1,8 @@
 module Rules.ComplianceUtils exposing (..)
 
-import Dict
+import Dict exposing (Dict)
 import Dict.Extra
+import Maybe.Extra exposing (isJust)
 import Html exposing (Html, button, div, i, span, text, h1, h4, ul, li, input, a, p, form, label, textarea, select, option, table, thead, tbody, tr, th, td, small)
 import Html.Attributes exposing (id, class, type_, placeholder, value, for, href, colspan, rowspan, style, selected, disabled, attribute)
 import Html.Events exposing (onClick, onInput)
@@ -102,7 +103,7 @@ getAllComplianceValues complianceDetails =
 
     nonCompliantText =
       if nonCompliant > 0 then
-        barContent [( nonCompliant , "Non compliance" )]
+        barContent [( nonCompliant , "Non compliant" )]
       else
         ""
 
@@ -252,5 +253,66 @@ mergeCompliance c1 c2 =
       (toMaybeFloat .applying)
       (toMaybeFloat .badPolicyMode)
 
+complianceStatusGroups : Dict String (List String)
+complianceStatusGroups = Dict.fromList
+  [ ("Success"        , [ "successAlreadyOK", "auditCompliant", "successRepaired", "successNotApplicable", "auditNotApplicable" ] )
+  , ("Non compliant"  , [ "auditNonCompliant" ] )
+  , ("Error"          , [ "error", "auditError" ] )
+  , ("Unexpected"     , [ "unexpectedMissingComponent", "unexpectedUnknownComponent", "badPolicyMode" ] )
+  , ("Pending"        , [ "applying" ] )
+  , ("Disabled"       , [ "reportsDisabled" ] )
+  , ("No report"      , [ "noReport" ] )
+  ]
+
+getComplianceStatusTitle : String -> String
+getComplianceStatusTitle id =
+ case id of
+   "successAlreadyOK"           -> "Success (enforce)"
+   "auditCompliant"             -> "Compliant"
+   "successRepaired"            -> "Repaired"
+   "successNotApplicable"       -> "Not applicable (enforce)"
+   "auditNotApplicable"         -> "Not applicable (audit)"
+   "auditNonCompliant"          -> "Non compliant"
+   "error"                      -> "Error (enforce)"
+   "auditError"                 -> "Error (audit)"
+   "unexpectedMissingComponent" -> "Missing reports"
+   "unexpectedUnknownComponent" -> "Unknown reports"
+   "badPolicyMode"              -> "Not supported mixed mode"
+   "applying"                   -> "Applying"
+   "reportsDisabled"            -> "Reports disabled"
+   "noReport"                   -> "No report"
+   _ -> ""
 
 
+checkFilterCompliance : ComplianceDetails -> ComplianceFilters -> Bool
+checkFilterCompliance complianceDetails complianceFilters =
+  let
+    dict = Dict.fromList
+      [ ("successAlreadyOK"           , complianceDetails.successAlreadyOK           )
+      , ("auditCompliant"             , complianceDetails.auditCompliant             )
+      , ("successRepaired"            , complianceDetails.successRepaired            )
+      , ("successNotApplicable"       , complianceDetails.successNotApplicable       )
+      , ("auditNotApplicable"         , complianceDetails.auditNotApplicable         )
+      , ("auditNonCompliant"          , complianceDetails.auditNonCompliant          )
+      , ("error"                      , complianceDetails.error                      )
+      , ("auditError"                 , complianceDetails.auditError                 )
+      , ("unexpectedMissingComponent" , complianceDetails.unexpectedMissingComponent )
+      , ("unexpectedUnknownComponent" , complianceDetails.unexpectedUnknownComponent )
+      , ("badPolicyMode"              , complianceDetails.badPolicyMode              )
+      , ("applying"                   , complianceDetails.applying                   )
+      , ("reportsDisabled"            , complianceDetails.reportsDisabled            )
+      , ( "noReport"                  , complianceDetails.noReport                   )
+      ]
+    filteredDict = dict
+      |> Dict.filter (\k v -> isJust v)
+  in
+    filteredDict
+    |> Dict.Extra.any (\k val ->
+      let
+        isSelected = List.member k complianceFilters.selectedStatus
+      in
+        if complianceFilters.showOnlyStatus then
+          isSelected
+        else
+          not isSelected
+    )
