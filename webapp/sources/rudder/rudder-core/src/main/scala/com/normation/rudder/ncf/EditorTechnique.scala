@@ -116,17 +116,19 @@ object EditorTechnique {
    * have been put in Rudder by hand by a dev (see https: //issues.rudder.io/issues/23474)
    */
   def checkTechniqueIdConsistency(techniqueBaseDirectory: File, techniqueDescriptor: EditorTechnique): IOResult[Unit] = {
-    ZIO.when(!techniqueBaseDirectory.path.endsWith(techniqueDescriptor.path)) {
-      ZIO.fail(
-        Inconsistency(
-          s"Technique descriptor at path '${techniqueBaseDirectory.pathAsString}' contains a technique 'id' or " +
-          s"'version' attribute that does not match the conventional path of the technique " +
-          s"which must be: '.../category/parts/.../{techniqueId}/{techniqueVersion}/technique.yml'. " +
-          s"Please change either technique directory or the descriptor information so that they " +
-          s"match one other each others."
+    ZIO
+      .when(!techniqueBaseDirectory.path.endsWith(techniqueDescriptor.path)) {
+        ZIO.fail(
+          Inconsistency(
+            s"Technique descriptor at path '${techniqueBaseDirectory.pathAsString}' contains a technique 'id' or " +
+            s"'version' attribute that does not match the conventional path of the technique " +
+            s"which must be: '.../category/parts/.../{techniqueId}/{techniqueVersion}/technique.yml'. " +
+            s"Please change either technique directory or the descriptor information so that they " +
+            s"match one other each others."
+          )
         )
-      )
-    }.unit
+      }
+      .unit
   }
 }
 
