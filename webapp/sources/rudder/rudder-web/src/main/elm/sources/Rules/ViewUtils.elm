@@ -127,9 +127,11 @@ type alias ItemFun item subItem data =
   , id : item -> String
   , childDetails : Maybe (subItem -> String -> Dict String (String, SortOrder) -> Model -> List (Html Msg))
   , subItemRows : item -> List String
+  , filterItems : item -> Bool
   }
 
-filterByCompliance filter = \i ->
+filterByCompliance : ComplianceFilters -> ComponentCompliance value -> Bool
+filterByCompliance filter i =
   let
     compliance = \item ->
       case item of
@@ -159,6 +161,7 @@ valueCompliance complianceFilters =
     .value
     Nothing
     (always [])
+    (filterValueByCompliance complianceFilters)
 
 nodeValueCompliance : Model -> ComplianceFilters -> ItemFun NodeValueCompliance ValueLine NodeValueCompliance
 nodeValueCompliance mod complianceFilters =
@@ -173,13 +176,14 @@ nodeValueCompliance mod complianceFilters =
     )
     (\_ i -> i)
     [ ("Node", .nodeId >> (\nId -> span[][text (getNodeHostname mod nId.value), goToBtn (getNodeLink mod.contextPath nId.value)]),  (\d1 d2 -> N.compare d1.name d2.name))
-    , ("Compliance", .complianceDetails >> buildComplianceBar ,  (\d1 d2 -> Basics.compare d1.compliance d2.compliance))
+    , ("Compliance", .complianceDetails >> buildComplianceBar complianceFilters,  (\d1 d2 -> Basics.compare d1.compliance d2.compliance))
     ]
     (.nodeId >> .value)
     (Just (\item -> showComplianceDetails (valueCompliance complianceFilters) item))
     (always (List.map Tuple3.first (valueCompliance complianceFilters).rows))
+    (filterDetailsByCompliance complianceFilters)
 
-byComponentCompliance : ItemFun value subValue valueData -> ComplianceFilters -> ItemFun (ComponentCompliance value) (Either (ComponentCompliance value) value) (ComponentCompliance value)
+byComponentCompliance : ItemFun value subValue valueData  -> ComplianceFilters -> ItemFun (ComponentCompliance value) (Either (ComponentCompliance value) value) (ComponentCompliance value)
 byComponentCompliance subFun complianceFilters =
   let
     name = \item ->
@@ -203,7 +207,7 @@ byComponentCompliance subFun complianceFilters =
             sortFunction = subItemOrder (byComponentCompliance subFun complianceFilters) model sortId
           in
             b.components
-            |> List.fvalueComplianceilter (filterByCompliance complianceFilters)
+            |> List.filter (filterByCompliance complianceFilters)
             |> List.sortWith sortFunction
             |> List.map Left
         Value c ->
@@ -211,13 +215,13 @@ byComponentCompliance subFun complianceFilters =
             sortFunction =  subItemOrder subFun model sortId
           in
             c.values
-            -- @TODO : |> List.filter someFunction
+            |> List.filter subFun.filterItems
             |> List.sortWith sortFunction
             |> List.map Right
     )
     (\_ i -> i)
     [ ("Component", name >> text,  (\d1 d2 -> N.compare (name d1) (name d2)))
-    , ("Compliance", \i -> buildComplianceBar (compliance i), (\d1 d2 -> Basics.compare (complianceValue d1) (complianceValue d2)) )
+    , ("Compliance", \i -> buildComplianceBar complianceFilters (compliance  i ), (\d1 d2 -> Basics.compare (complianceValue d1) (complianceValue d2)) )
     ]
     name
     (Just ( \x ->
@@ -230,6 +234,7 @@ byComponentCompliance subFun complianceFilters =
         Block _ -> (List.map Tuple3.first (byComponentCompliance subFun complianceFilters).rows)
         Value _ ->  (List.map Tuple3.first subFun.rows)
     )
+    (always True)
 
 byDirectiveCompliance : Model -> ComplianceFilters -> ItemFun value subValue valueData -> ItemFun (DirectiveCompliance value) (ComponentCompliance value) (Directive, DirectiveCompliance value)
 byDirectiveCompliance mod complianceFilters subFun =
@@ -252,11 +257,12 @@ byDirectiveCompliance mod complianceFilters subFun =
     )
     (\m i -> (Maybe.withDefault (Directive i.directiveId i.name "" "" "" False False "" []) (Dict.get i.directiveId.value m.directives), i ))
     [ ("Directive", \(d,_)  -> span [] [ badgePolicyMode globalPolicy d.policyMode, text d.displayName, buildTagsTree d.tags, goToBtn (getDirectiveLink contextPath d.id) ],  (\(_,d1) (_,d2) -> N.compare d1.name d2.name ))
-    , ("Compliance", \(_,i) -> buildComplianceBar  i.complianceDetails,  (\(_,d1) (_,d2) -> Basics.compare d1.compliance d2.compliance ))
+    , ("Compliance", \(_,i) -> buildComplianceBar complianceFilters i.complianceDetails,  (\(_,d1) (_,d2) -> Basics.compare d1.compliance d2.compliance ))
     ]
     (.directiveId >> .value)
     (Just (\b -> showComplianceDetails (byComponentCompliance subFun complianceFilters) b))
     (always (List.map Tuple3.first (byComponentCompliance subFun complianceFilters).rows))
+    (always True)
 
 byNodeCompliance :  Model -> ComplianceFilters -> ItemFun NodeCompliance (DirectiveCompliance ValueLine) NodeCompliance
 byNodeCompliance mod complianceFilters =
@@ -274,11 +280,12 @@ byNodeCompliance mod complianceFilters =
     )
     (\_ i -> i)
     [ ("Node", .nodeId >> (\nId -> span[][text (getNodeHostname mod nId.value), goToBtn (getNodeLink mod.contextPath nId.value)]),  (\d1 d2 -> N.compare d1.name d2.name))
-    , ("Compliance", .complianceDetails >> buildComplianceBar,  (\d1 d2 -> Basics.compare d1.compliance d2.compliance))
+    , ("Compliance", .complianceDetails >> buildComplianceBar complianceFilters  ,  (\d1 d2 -> Basics.compare d1.compliance d2.compliance))
     ]
     (.nodeId >> .value)
     (Just (\b -> showComplianceDetails directive b))
     (always (List.map Tuple3.first directive.rows))
+    (always True)
 
 
 
@@ -570,23 +577,26 @@ buildIncludeList originRule groupsTree model editMode includeBool ruleTarget =
   in
     rowIncludeGroup
 
-buildComplianceBar : ComplianceDetails -> Html Msg
-buildComplianceBar complianceDetails=
+buildComplianceBar :ComplianceFilters -> ComplianceDetails   -> Html Msg
+buildComplianceBar filters complianceDetails =
   let
+    filteredCompliance = filterCompliance complianceDetails filters
     displayCompliance : {value : Float, rounded : Int, details : String} -> String -> Html msg
     displayCompliance compliance className =
       if compliance.value > 0 then
         let
 
           --Hide the compliance text if the value is too small (less than 3%)
-          complianceTxt = if compliance.rounded < 3 then "" else String.fromInt (compliance.rounded) ++ "%"
+          realPercent = compliance.value / (sumPercent filteredCompliance) * 100
+          realRounded = Basics.floor realPercent
+          complianceTxt = if realRounded < 3 then "" else String.fromInt (realRounded) ++ "%"
         in
-          div [class ("progress-bar progress-bar-" ++ className ++ " bs-tooltip"), attribute "data-toggle" "tooltip", attribute "data-placement" "top", attribute "data-container" "body", attribute "data-html" "true", attribute "data-original-title" (buildTooltipContent "Compliance" compliance.details), style "flex" (fromFloat compliance.value)]
+          div [class ("progress-bar progress-bar-" ++ className ++ " bs-tooltip"), attribute "data-toggle" "tooltip", attribute "data-placement" "top", attribute "data-container" "body", attribute "data-html" "true", attribute "data-original-title" (buildTooltipContent "Compliance" compliance.details), style "flex" (fromFloat realPercent)]
           [ text complianceTxt ]
       else
         text ""
 
-    allComplianceValues = getAllComplianceValues complianceDetails
+    allComplianceValues = getAllComplianceValues filteredCompliance
   in
     if ( allComplianceValues.okStatus.value + allComplianceValues.nonCompliant.value + allComplianceValues.error.value + allComplianceValues.unexpected.value + allComplianceValues.pending.value + allComplianceValues.reportsDisabled.value + allComplianceValues.noReport.value == 0 ) then
       div[ class "text-muted"][text "No data available"]

@@ -80,7 +80,7 @@ informationTab model details =
     compliance =
       case getRuleCompliance model rule.id of
        Just co ->
-          buildComplianceBar co.complianceDetails
+          buildComplianceBar (ComplianceFilters False False [] ) co.complianceDetails
        Nothing -> text "No report"
     rightCol =
       if isNewRule then

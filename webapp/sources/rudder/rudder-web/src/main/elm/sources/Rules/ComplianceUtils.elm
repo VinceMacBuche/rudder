@@ -205,6 +205,18 @@ getAllComplianceValues complianceDetails =
   in
     allComplianceValues
 
+
+sumPercent : ComplianceDetails -> Float
+sumPercent compliance =
+  let
+    getValue v = Maybe.withDefault 0 v
+  in
+   [ compliance.successAlreadyOK, compliance.applying, compliance.auditCompliant, compliance.auditError,
+     compliance.auditNonCompliant, compliance.auditNotApplicable, compliance.badPolicyMode, compliance.error,
+     compliance.noReport, compliance.reportsDisabled, compliance.successNotApplicable, compliance.successRepaired,
+     compliance.unexpectedMissingComponent, compliance.unexpectedUnknownComponent
+   ] |> List.map getValue |> List.sum
+
 getDirectiveComputedCompliance : (DirectiveCompliance value) -> Float
 getDirectiveComputedCompliance dc =
   let
@@ -283,6 +295,41 @@ getComplianceStatusTitle id =
    "noReport"                   -> "No report"
    _ -> ""
 
+
+filterCompliance : ComplianceDetails -> ComplianceFilters -> ComplianceDetails
+filterCompliance complianceDetails complianceFilters =
+  let
+    dict s = case s of
+               "successAlreadyOK"  ->  \v -> { v | successAlreadyOK = Nothing }
+               "auditCompliant"  ->  \v -> { v | auditCompliant = Nothing }
+               "successRepaired"  ->  \v -> { v | successRepaired = Nothing }
+               "successNotApplicable"  ->  \v -> { v | successNotApplicable = Nothing }
+               "auditNotApplicable"  ->  \v -> { v | auditNotApplicable = Nothing }
+               "auditNonCompliant"  ->  \v -> { v | auditNonCompliant = Nothing }
+               "error"  ->  \v -> { v | error = Nothing }
+               "auditError"  ->  \v -> { v | auditError = Nothing }
+               "unexpectedMissingComponent"  ->  \v -> { v | unexpectedMissingComponent = Nothing }
+               "unexpectedUnknownComponent"  ->  \v -> { v | unexpectedUnknownComponent = Nothing }
+               "badPolicyMode"  ->  \v -> { v | badPolicyMode = Nothing }
+               "applying"  ->  \v -> { v | applying = Nothing }
+               "reportsDisabled"  ->  \v -> { v | reportsDisabled = Nothing }
+               "noReport"  ->  \v -> { v | noReport = Nothing }
+               _ -> \v -> v
+
+    fun key current = (dict key) current
+
+    allStatuses =
+                 [ "successAlreadyOK", "auditCompliant", "successRepaired", "successNotApplicable", "auditNotApplicable"
+                 , "auditNonCompliant"
+                   , "error", "auditError", "unexpectedMissingComponent", "unexpectedUnknownComponent", "badPolicyMode"
+                 , "applying" , "reportsDisabled" , "noReport"
+                   ]
+    statuses = if complianceFilters.showOnlyStatus then
+                 List.filter (\s -> not (List.member s complianceFilters.selectedStatus )) allStatuses
+               else
+                 complianceFilters.selectedStatus
+  in
+    List.foldl fun complianceDetails statuses
 
 checkFilterCompliance : ComplianceDetails -> ComplianceFilters -> Bool
 checkFilterCompliance complianceDetails complianceFilters =
