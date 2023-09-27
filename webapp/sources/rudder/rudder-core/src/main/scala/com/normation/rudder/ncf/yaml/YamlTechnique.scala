@@ -175,7 +175,7 @@ object YamlTechniqueSerializer {
                 item.condition.getOrElse(""),
                 item.name,
                 // boolean for "disableReporting"
-                item.reporting.map((r: Reporting) => r.mode == "disabled").getOrElse(false)
+                item.reporting.map(_.mode == "disabled").getOrElse(false)
               )
             )
           case None         => Left(Consistancy("error"))
