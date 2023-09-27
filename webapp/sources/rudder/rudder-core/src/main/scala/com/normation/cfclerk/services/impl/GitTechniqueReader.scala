@@ -873,9 +873,8 @@ class GitTechniqueReader(
     import com.normation.rudder.ncf.yaml.YamlTechniqueSerializer._
 
     // looking at descriptor on file path, because it's what TechniqueCompiler will look at
-    val descriptor = repo.rootDirectory / (relativePathToGitRepos.getOrElse(
-      ""
-    ) + "/" + techniqueRelativePath.getPath + "/" + TechniqueFiles.yaml)
+    val descriptor =
+      repo.rootDirectory / relativePathToGitRepos.getOrElse("") / techniqueRelativePath.getPath / TechniqueFiles.yaml
 
     ZIO.attempt {
       if (descriptor.exists()) {
