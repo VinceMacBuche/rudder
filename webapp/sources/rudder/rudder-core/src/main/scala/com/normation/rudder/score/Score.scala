@@ -28,22 +28,30 @@ object ScoreValue {
   }
 }
 
-trait ScoreDetails
 
-case class ComplianceScoreDetails(compliance: CompliancePercent) extends ScoreDetails
+case class ComplianceScoreDetails(compliance: CompliancePercent)
 
-case class Score (name:    String,value:   ScoreValue, message: String, details: ScoreDetails)
+trait Score[T] {
+  def name: String
+  def value: ScoreValue
+  def message: String
+  def details: T
+  val noDetails : NoDetailsScore = NoDetailsScore(name, value, message)
+}
 
-case class ComplianceScore(override val value: ScoreValue,override val  message: String,override val  details: ComplianceScoreDetails) extends Score("compliance", value, message, details)
+case class NoDetailsScore(name : String, value : ScoreValue, message : String)
+case class ComplianceScore(value: ScoreValue,message: String,details: ComplianceScoreDetails) extends Score[ComplianceScoreDetails] {
+  val name = "compliance"
+}
 
-case class GlobalScore(value: ScoreValue, message: String, details: List[Score])
+case class GlobalScore(value: ScoreValue, message: String, details: List[NoDetailsScore])
 
 object GlobalScoreService {
-  def computeGlobalScore(oldScore: List[Score], scores: List[Score]): GlobalScore = {
+  def computeGlobalScore(oldScore: List[NoDetailsScore], scores: List[Score[_]]): GlobalScore = {
 
     val correctScores = scores.foldRight(oldScore) {
       case (newScore, acc) =>
-        newScore :: acc.filterNot(_.name == newScore.name)
+        newScore.noDetails :: acc.filterNot(_.name == newScore.name)
     }
     import ScoreValue._
     val score         = if (correctScores.exists(_.value == E)) { E }
@@ -62,11 +70,11 @@ trait ScoreEvent
 case class ComplianceScoreEvent(nodeId: NodeId, compliancePercent: CompliancePercent) extends ScoreEvent
 
 trait ScoreEventHandler {
-  def handle(event: ScoreEvent): IOResult[List[(NodeId, List[Score])]]
+  def handle(event: ScoreEvent): IOResult[List[(NodeId, List[Score[_]])]]
 }
 
 object ComplianceScoreEventHandler extends ScoreEventHandler {
-  def handle(event: ScoreEvent): IOResult[List[(NodeId, List[Score])]] = {
+  def handle(event: ScoreEvent): IOResult[List[(NodeId, List[Score[_]])]] = {
     event match {
       case ComplianceScoreEvent(n, p) =>
         val score = if (p.compliance >= 100) {
@@ -98,7 +106,7 @@ class ScoreService {
     } yield {}
   }
 
-  def update(newScores : Map[NodeId,List[Score]]) = {
+  def update(newScores : Map[NodeId,List[Score[_]]]) = {
     for {
       c <- cache.get
       updatedValue = (for {

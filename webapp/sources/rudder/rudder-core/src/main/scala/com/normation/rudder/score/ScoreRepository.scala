@@ -66,23 +66,26 @@ object ScoreRepositoryImpl {
   import Doobie.DateTimeMeta
   import com.normation.rudder.db.json.implicits._
   import doobie._
-  implicit val stateWrite: Meta[Score] = new Meta(pgDecoderGet, pgEncoderPut)
+
+  implicit val getScoreValue : Get[ScoreValue] = Get[String].temap(ScoreValue.fromString)
+
+  //implicit val stateWrite: Meta[Score[_]] = new Meta(pgDecoderGet, pgEncoderPut)
 
   implicit val eventWrite: Write[(NodeId,GlobalScore)] = {
-    Write[(String, String, String, List[Score])].contramap {
+    Write[(String, String, String, List[NoDetailsScore])].contramap {
       case (nodeId: NodeId, score: GlobalScore) =>
         (nodeId.value, score.value.value, score.message, score.details)
     }
   }
 
   implicit val eventRead: Read[(NodeId,GlobalScore)] = {
-    Read[(String, String, String, List[Score])].map {
-      d: (String, String, String, List[Score]) =>
+    Read[(String, ScoreValue, String, List[NoDetailsScore])].map {
+      d: (String, ScoreValue, String, List[NoDetailsScore]) =>
         (NodeId(d._1), GlobalScore(
-          ScoreValue.fromString(d._2),
+          d._2,
           d._3,
-          d._4,
-        )
+          d._4
+        ))
     }
   }
 
