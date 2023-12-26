@@ -95,8 +95,8 @@ object ComplianceScoreEventHandler extends ScoreEventHandler {
 }
 
 
-class ScoreService {
-  val cache: Ref[Map[NodeId, GlobalScore]] = Ref.make(Map[NodeId, GlobalScore]()).runNow
+class ScoreService(globalScoreRepository: GlobalScoreRepository) {
+  val cache: Ref[Map[NodeId, GlobalScore]] = globalScoreRepository.getAll().flatMap(Ref.make(_)).runNow
 
   def getAll() : IOResult[Map[NodeId, GlobalScore]] = cache.get
 
@@ -118,7 +118,8 @@ class ScoreService {
         }
         (nodeId, GlobalScoreService.computeGlobalScore(oldScores, newScores))
       })
-      updatedCache <- ZIO.foreach(updatedValue.toList) { case (nodeId, score) => cache.update(_.+((nodeId, score))) }
+
+      updatedCache <- ZIO.foreach(updatedValue.toList) { case (nodeId, score) => globalScoreRepository.save(nodeId, score) *> cache.update(_.+((nodeId, score))) }
     } yield {}
 
   }
