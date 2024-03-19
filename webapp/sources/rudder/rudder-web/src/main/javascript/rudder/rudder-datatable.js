@@ -1366,7 +1366,7 @@ function createNodeTable(gridId, refresh) {
       bottom = $('.main-details > .table-container'),
       handle = $('#drag');
 
-    if (handle) {
+    if (handle.length) {
       hasHandle = true;
     }
     handle.on('mousedown', function (e) {
