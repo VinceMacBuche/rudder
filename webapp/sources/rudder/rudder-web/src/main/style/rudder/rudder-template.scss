@@ -1075,14 +1075,12 @@ ul {
       border-top: 1px $rudder-border-color-default solid;
       text-align: center;
       background-color: #f8f9fc;
-
       &:active {
         cursor: ns-resize;
       }
       & > i.fa {
         opacity : 0.4;
       }
-
     }
   }
 }
