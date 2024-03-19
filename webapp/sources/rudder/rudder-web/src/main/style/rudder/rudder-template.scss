@@ -1069,18 +1069,20 @@ ul {
     margin-bottom: 5px;
     z-index: 10000;
     & > #drag {
-      position: absolute;
-      top: -8.5px;
-      left: 0;
-      right: 0;
-      height: 10px;
+      line-height: 6px;
+      font-size: 10px;
       cursor: ns-resize;
       border-top: 1px $rudder-border-color-default solid;
-      background: linear-gradient(rgba($rudder-bg-gray, 0.75),rgba($rudder-bg-gray, 0.75)),url(../../images/tableau/drag-resize-handle-horizontal.png) center center no-repeat $rudder-bg-gray;
+      text-align: center;
+      background-color: #f8f9fc;
 
       &:active {
         cursor: ns-resize;
       }
+      & > i.fa {
+        opacity : 0.4;
+      }
+
     }
   }
 }
