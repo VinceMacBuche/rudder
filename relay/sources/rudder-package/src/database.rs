@@ -10,6 +10,7 @@ use std::{
 };
 
 use anyhow::{anyhow, bail, Context, Result};
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, info, warn};
 
@@ -213,15 +214,16 @@ impl Database {
     }
 
     pub fn disabled_plugins_save(&self, backup_path: &Path, webapp: &mut Webapp) -> Result<()> {
-        let saved = webapp
-            .jars()?
-            .iter()
-            // Let's ignore unknown jars
-            .flat_map(|j| self.plugin_provides_jar(j))
-            .map(|p| format!("disabled {}", p.metadata.name))
-            .collect::<Vec<String>>()
-            .join("\n");
-        fs::write(backup_path, saved).with_context(|| {
+        let mut disabled = Vec::new();
+        let enabled_jars = webapp.jars()?;
+        println!("{:?}", enabled_jars);
+        for (name, p) in self.plugins.iter().sorted_by_key(|x| x.0) {
+           if ! p.metadata.jar_files.is_empty() && ! p.metadata.jar_files.iter().all(|j| enabled_jars.contains(j)) {
+              println!("{:?} contains all {:?}", enabled_jars, p.metadata.jar_files);
+              disabled.push(format!("disabled {}", name));
+           }
+        }
+        fs::write(backup_path, disabled.iter().fold("".to_string(), |acc, s| format!("{}{}\n", acc, s))).with_context(|| {
             format!(
                 "Failed to save the plugins statuses in the backup file {}",
                 backup_path.to_string_lossy()
@@ -351,7 +353,33 @@ mod tests {
     use crate::{archive, versions::RudderVersion};
 
     #[test]
-    fn test_read_plugin_status_line_from_backup() {
+    fn test_save_plugin_statuses() {
+        let temp_dir = TempDir::new().unwrap();
+        let database_path = temp_dir.path().join("database.json");
+        let webapp_path = temp_dir.path().join("webappPath.json");
+        let backup_path = temp_dir.path().join("backup.json");
+        fs::copy(
+            "tests/status_backup_file/database.json",
+            database_path.clone(),
+        )
+        .unwrap();
+        fs::copy("tests/status_backup_file/webapp.xml", webapp_path.clone()).unwrap();
+        let mut w = Webapp::new(
+            webapp_path,
+            RudderVersion::from_path("./tests/versions/rudder-server-version").unwrap(),
+        );
+        let d = Database::read(Path::new(&database_path)).unwrap();
+        d.disabled_plugins_save(&backup_path, &mut w).unwrap();
+        assert_eq!(
+               fs::read_to_string(backup_path).unwrap(),
+               fs::read_to_string("./tests/status_backup_file/backup.expected").unwrap()
+        );
+
+
+    }
+
+    #[test]
+    fn test_apply_plugin_status_line_from_backup() {
         let temp_dir = TempDir::new().unwrap();
         let database_path = temp_dir.path().join("database.json");
         let webapp_path = temp_dir.path().join("webappPath.json");
