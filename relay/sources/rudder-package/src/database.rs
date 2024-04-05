@@ -212,13 +212,13 @@ impl Database {
         Ok(())
     }
 
-    pub fn enabled_plugins_save(&self, backup_path: &Path, webapp: &mut Webapp) -> Result<()> {
+    pub fn disabled_plugins_save(&self, backup_path: &Path, webapp: &mut Webapp) -> Result<()> {
         let saved = webapp
             .jars()?
             .iter()
             // Let's ignore unknown jars
             .flat_map(|j| self.plugin_provides_jar(j))
-            .map(|p| format!("enable {}", p.metadata.name))
+            .map(|p| format!("disabled {}", p.metadata.name))
             .collect::<Vec<String>>()
             .join("\n");
         fs::write(backup_path, saved).with_context(|| {
@@ -250,8 +250,8 @@ impl Database {
         })?;
         if plugin_name.ends_with(".jar") && plugin_name.starts_with('/') {
             match status {
-                "disable" => webapp.disable_jars(&[plugin_name.to_owned()]),
-                "enable" => webapp.enable_jars(&[plugin_name.to_owned()]),
+                "disabled" => webapp.disable_jars(&[plugin_name.to_owned()]),
+                "enabled" => webapp.enable_jars(&[plugin_name.to_owned()]),
                 _ => bail!("Unexpected plugin status in the backup file: {}", line),
             }
         } else {
@@ -260,8 +260,8 @@ impl Database {
                 plugin_name
             ))?;
             match status {
-                "disable" => i.disable(webapp),
-                "enable" => i.enable(webapp),
+                "disabled" => i.disable(webapp),
+                "enabled" => i.enable(webapp),
                 _ => bail!("Unexpected plugin status in the backup file: {}", line),
             }
         }
@@ -367,7 +367,7 @@ mod tests {
         );
         let d = Database::read(Path::new(&database_path)).unwrap();
         // Enable >8.1 syntax
-        d.apply_plugin_status_line_from_backup("enable rudder-plugin-dsc", &mut w)
+        d.apply_plugin_status_line_from_backup("enabled rudder-plugin-dsc", &mut w)
             .unwrap();
         assert!(w
             .jars()
@@ -375,7 +375,7 @@ mod tests {
             .contains(&"/opt/rudder/share/plugins/dsc/dsc.jar".to_string()));
 
         // Disable >8.1 syntax
-        d.apply_plugin_status_line_from_backup("disable rudder-plugin-dsc", &mut w)
+        d.apply_plugin_status_line_from_backup("disabled rudder-plugin-dsc", &mut w)
             .unwrap();
         assert!(!w
             .jars()
@@ -384,7 +384,7 @@ mod tests {
 
         // Enable <8.0 syntax
         d.apply_plugin_status_line_from_backup(
-            "enable /opt/rudder/share/plugins/dsc/dsc.jar",
+            "enabled /opt/rudder/share/plugins/dsc/dsc.jar",
             &mut w,
         )
         .unwrap();
@@ -395,7 +395,7 @@ mod tests {
 
         // Disable <8.0 syntax
         d.apply_plugin_status_line_from_backup(
-            "disable /opt/rudder/share/plugins/dsc/dsc.jar",
+            "disabled /opt/rudder/share/plugins/dsc/dsc.jar",
             &mut w,
         )
         .unwrap();
@@ -406,17 +406,17 @@ mod tests {
 
         // Unsupported plugin name syntax
         assert!(d
-            .apply_plugin_status_line_from_backup("enable dsc", &mut w)
+            .apply_plugin_status_line_from_backup("enabled dsc", &mut w)
             .is_err());
 
         // Unsupported plugin status syntax
         assert!(d
-            .apply_plugin_status_line_from_backup("eNable rudder-plugin-dsc", &mut w)
+            .apply_plugin_status_line_from_backup("eNabled rudder-plugin-dsc", &mut w)
             .is_err());
 
         // Non installed plugin
         assert!(d
-            .apply_plugin_status_line_from_backup("enable rudder-plugin-unknown", &mut w)
+            .apply_plugin_status_line_from_backup("enabled rudder-plugin-unknown", &mut w)
             .is_err());
     }
 
