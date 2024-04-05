@@ -216,7 +216,6 @@ impl Database {
     pub fn disabled_plugins_save(&self, backup_path: &Path, webapp: &mut Webapp) -> Result<()> {
         let mut disabled = Vec::new();
         let enabled_jars = webapp.jars()?;
-        println!("{:?}", enabled_jars);
         for (name, p) in self.plugins.iter().sorted_by_key(|x| x.0) {
             if !p.metadata.jar_files.is_empty()
                 && !p
@@ -225,7 +224,6 @@ impl Database {
                     .iter()
                     .all(|j| enabled_jars.contains(j))
             {
-                println!("{:?} contains all {:?}", enabled_jars, p.metadata.jar_files);
                 disabled.push(format!("disabled {}", name));
             }
         }
