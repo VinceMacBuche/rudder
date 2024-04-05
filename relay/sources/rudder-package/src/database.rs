@@ -218,12 +218,24 @@ impl Database {
         let enabled_jars = webapp.jars()?;
         println!("{:?}", enabled_jars);
         for (name, p) in self.plugins.iter().sorted_by_key(|x| x.0) {
-           if ! p.metadata.jar_files.is_empty() && ! p.metadata.jar_files.iter().all(|j| enabled_jars.contains(j)) {
-              println!("{:?} contains all {:?}", enabled_jars, p.metadata.jar_files);
-              disabled.push(format!("disabled {}", name));
-           }
+            if !p.metadata.jar_files.is_empty()
+                && !p
+                    .metadata
+                    .jar_files
+                    .iter()
+                    .all(|j| enabled_jars.contains(j))
+            {
+                println!("{:?} contains all {:?}", enabled_jars, p.metadata.jar_files);
+                disabled.push(format!("disabled {}", name));
+            }
         }
-        fs::write(backup_path, disabled.iter().fold("".to_string(), |acc, s| format!("{}{}\n", acc, s))).with_context(|| {
+        fs::write(
+            backup_path,
+            disabled
+                .iter()
+                .fold("".to_string(), |acc, s| format!("{}{}\n", acc, s)),
+        )
+        .with_context(|| {
             format!(
                 "Failed to save the plugins statuses in the backup file {}",
                 backup_path.to_string_lossy()
@@ -371,11 +383,9 @@ mod tests {
         let d = Database::read(Path::new(&database_path)).unwrap();
         d.disabled_plugins_save(&backup_path, &mut w).unwrap();
         assert_eq!(
-               fs::read_to_string(backup_path).unwrap(),
-               fs::read_to_string("./tests/status_backup_file/backup.expected").unwrap()
+            fs::read_to_string(backup_path).unwrap(),
+            fs::read_to_string("./tests/status_backup_file/backup.expected").unwrap()
         );
-
-
     }
 
     #[test]
