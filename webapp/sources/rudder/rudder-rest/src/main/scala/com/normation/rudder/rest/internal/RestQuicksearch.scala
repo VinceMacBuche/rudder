@@ -96,13 +96,19 @@ class RestQuicksearch(
           // Should not happen, but for now make one token from it, maybe we should only take head ?
           case Some(values)       => values.mkString("")
         }
+        val limit = req.params.get("limit") match {
+          case Some(value :: Nil) => value.toIntOption.getOrElse(MAX_RES_BY_KIND)
+          case None               => MAX_RES_BY_KIND
+          // Should not happen, but for now make one token from it, maybe we should only take head ?
+          case Some(values)       => values.headOption.map(_.toIntOption.getOrElse(MAX_RES_BY_KIND)).getOrElse(MAX_RES_BY_KIND)
+        }
         quicksearch.search(token)(CurrentUser.queryContext).toBox match {
           case eb: EmptyBox =>
             val e = eb ?~! s"Error when looking for object containing '${token}'"
             toJsonError(None, e.messageChain)
 
           case Full(results) =>
-            toJsonResponse(None, prepare(results, MAX_RES_BY_KIND))
+            toJsonResponse(None, prepare(results, limit))
         }
       }
     }
@@ -150,7 +156,7 @@ class RestQuicksearch(
         // distinct by id:
         val unique   = set.map(x => (x.id, x)).toMap.values.toSeq.sortBy(_.name)
         // on take the nth first, sorted by name
-        val returned = unique.take(maxByKind)
+        val returned = if (maxByKind == 0) unique else unique.take(maxByKind)
 
         val summary = ResultTypeSummary(tpe.name, unique.size, returned.size)
 
