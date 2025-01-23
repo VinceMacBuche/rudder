@@ -38,10 +38,13 @@
 package bootstrap.liftweb
 
 import com.normation.NamedZioLogger
+import com.normation.errors.IOResult
+
 import javax.servlet.UnavailableException
 import org.joda.time.Duration
 import org.joda.time.format.PeriodFormatter
 import org.joda.time.format.PeriodFormatterBuilder
+import zio.ZIO
 
 /**
  *
@@ -60,7 +63,7 @@ trait BootstrapChecks {
   def description: String
 
   @throws(classOf[UnavailableException])
-  def checks(): Unit
+  def checks(): IOResult[Unit]
 
 }
 
@@ -89,7 +92,7 @@ class SequentialImmediateBootStrapChecks(_checkActions: BootstrapChecks*) extend
     .toFormatter();
 
   @throws(classOf[UnavailableException])
-  override def checks(): Unit = checkActions.zipWithIndex.foreach {
+  override def checks(): IOResult[Unit] = ZIO.foreach(checkActions.zipWithIndex) {
     case (check, i) =>
       val start = System.currentTimeMillis
       val msg   = if (BootstrapLogger.logEffect.isDebugEnabled) {
@@ -97,9 +100,9 @@ class SequentialImmediateBootStrapChecks(_checkActions: BootstrapChecks*) extend
       } else {
         s"${check.description}"
       }
-      BootstrapLogger.logEffect.info(msg)
-      check.checks()
-      BootstrapLogger.logEffect.debug(
+      BootstrapLogger.logPure.info(msg) *>
+      check.checks() *>
+      BootstrapLogger.logPure.debug(
         msg + s": OK in [${formatter.print(new Duration(System.currentTimeMillis - start).toPeriod)}] ms"
       )
   }
