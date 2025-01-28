@@ -796,13 +796,13 @@ class ComplianceAPIService(
                                      )
                                    )
                                  }.toMap
-
     } yield {
 
       // for each rule for each node, we want to have a
       // directiveId -> reporttype map
       val nonEmptyRules = reportsByRule.toSeq.map {
         case (ruleId, reports) =>
+          val (_, policyMode) = nodeAndPolicyModeByRules.get(ruleId).getOrElse((Chunk.empty,None))
           // aggregate by directives, if level is at least 2
           val byDirectives: Map[DirectiveId, immutable.Iterable[(NodeId, DirectiveStatusReport)]] = if (computedLevel < 2) {
             Map()
@@ -815,17 +815,20 @@ class ComplianceAPIService(
             ruleObjects.get(ruleId).map(_.name).getOrElse("Unknown rule"),
             ComplianceLevel.sum(reports.map(_.compliance)),
             compliance.mode,
-            nodeAndPolicyModeByRules.get(ruleId).flatMap(_._2),
+            policyMode,
             byDirectives.map {
               case (directiveId, nodeDirectives) =>
+                val directive = directives.get(directiveId)
+                val nodeModes = nodeDirectives.map(_._1).flatMap(nodeFacts.get).map(_.rudderSettings.policyMode).toSet
+                val directiveMode = PolicyMode.parse(ComputePolicyMode.directiveModeOnRule(nodeModes,globalPolicyMode)(directive.flatMap(_._2.policyMode))._1).toOption
                 ByRuleDirectiveCompliance(
                   directiveId,
-                  directives.get(directiveId).map(_._2.name).getOrElse("Unknown directive"),
+                  directive.map(_._2.name).getOrElse("Unknown directive"),
                   ComplianceLevel.sum(
                     nodeDirectives.map(_._2.compliance)
                   ),
                   None,
-                  directives.get(directiveId).flatMap(_._2.policyMode), {
+                  directiveMode, {
                     // here we want the compliance by components of the directive.
                     // if level is high enough, get all components and group by their name
                     val byComponents: Map[String, immutable.Iterable[(NodeId, ComponentStatusReport)]] = if (computedLevel < 3) {
@@ -1437,11 +1440,14 @@ class ComplianceAPIService(
                       ComplianceLevel(noAnswer = rule.directiveIds.size),
                       policyMode,
                       rule.directiveIds.map { rid =>
+                        val directive = directiveLib.get(rid).map(_._2)
+                        val directiveMode = PolicyMode.directivePolicyMode(globalMode, policyMode, directive.flatMap(_.policyMode), directive.map(_.isSystem).getOrElse(false))
+
                         ByNodeDirectiveCompliance(
                           rid,
-                          directiveLib.get(rid).map(_._2.name).getOrElse("Unknown Directive"),
+                          directive.map(_.name).getOrElse("Unknown Directive"),
                           ComplianceLevel(noAnswer = 1),
-                          directiveLib.get(rid).flatMap(_._2.policyMode),
+                          Some(directiveMode),
                           None,
                           Nil
                         )
@@ -1457,6 +1463,7 @@ class ComplianceAPIService(
       // directiveId -> reporttype map
       val nonEmptyNodes = reports.map {
         case (nodeId, status) =>
+          val nodePolicyMode = nodeInfos.get(nodeId).flatMap(_._2.policyMode)
           (
             nodeId,
             ByNodeNodeCompliance(
@@ -1464,7 +1471,7 @@ class ComplianceAPIService(
               nodeInfos.get(nodeId).map(_._1).getOrElse("Unknown node"),
               ComplianceLevel.sum(status.reports.map(_.compliance)),
               compliance.mode, // Add this line to include no
-              nodeInfos.get(nodeId).flatMap(_._2.policyMode),
+              nodePolicyMode,
               status.reports.toSeq.map(r => {
                 ByNodeRuleCompliance(
                   r.ruleId,
@@ -1473,10 +1480,13 @@ class ComplianceAPIService(
                   ruleMap.get(r.ruleId).flatMap(nodeAndPolicyModeByRules.get(_)).flatMap(_._2),
                   r.directives.toSeq.map {
                     case (_, directiveReport) =>
+                      val directive = directiveLib.get(directiveReport.directiveId).map(_._2)
+                      val directiveMode = PolicyMode.directivePolicyMode(globalMode, nodePolicyMode, directive.flatMap(_.policyMode), directive.map(_.isSystem).getOrElse(false))
+
                       ByNodeDirectiveCompliance(
                         directiveReport,
-                        directiveLib.get(directiveReport.directiveId).flatMap(_._2.policyMode),
-                        directiveLib.get(directiveReport.directiveId).map(_._2.name).getOrElse("Unknown Directive")
+                        Some(directiveMode),
+                        directive.map(_.name).getOrElse("Unknown Directive")
                       )
                   } ++ directiveOverrides.getOrElse(r.ruleId, Nil)
                 )
