@@ -42,6 +42,7 @@ import com.normation.eventlog.EventLogRequest
 import com.normation.eventlog.EventLogRequest.Column.ID
 import com.normation.eventlog.EventLogRequest.Direction.Desc
 import com.normation.eventlog.EventLogRequest.Order
+import com.normation.rudder.Rights
 import com.normation.rudder.services.eventlog.EventLogService
 import com.normation.rudder.tenants.QueryContext
 import com.normation.rudder.web.StaticResourceRewrite
@@ -71,7 +72,11 @@ class EventListDisplayer(service: EventLogService, staticResourceRewrite: Static
 
   given StaticResourceRewrite = staticResourceRewrite
 
-  def display(gridName: String, refreshEvents: () => Box[Seq[EventLog]])(implicit qc: QueryContext): NodeSeq = {
+  // `rights` are the permissions of the user asking for these events: they only get the event logs
+  // they are allowed to read
+  def display(gridName: String, rights: Rights, refreshEvents: () => Box[Seq[EventLog]])(implicit
+      qc: QueryContext
+  ): NodeSeq = {
     // common part between last events and interval
     def displayEvents(events: Box[Seq[EventLog]]): JsCmd = {
       events match {
@@ -125,7 +130,7 @@ class EventListDisplayer(service: EventLogService, staticResourceRewrite: Static
                       Some(Order(ID, Desc)),
                       None
                     )
-        logs     <- service.getUserEventLogs(Some(filter)).toBox
+        logs     <- service.getUserEventLogs(Some(filter), rights).toBox
       } yield {
         logs
       })

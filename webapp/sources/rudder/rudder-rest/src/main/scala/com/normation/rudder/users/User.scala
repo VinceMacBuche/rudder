@@ -167,16 +167,7 @@ case class RudderUserDetail(
   override val isCredentialsNonExpired                    = true
   override val isEnabled: Boolean = status == UserStatus.Active
 
-  override def checkRights(auth: AuthorizationType): Boolean = {
-    if (authz.authorizationTypes.contains(AuthorizationType.NoRights)) false
-    else if (authz.authorizationTypes.contains(AuthorizationType.AnyRights)) true
-    else {
-      auth match {
-        case AuthorizationType.NoRights => false
-        case _                          => authz.authorizationTypes.contains(auth)
-      }
-    }
-  }
+  override def checkRights(auth: AuthorizationType): Boolean = authz.has(auth)
 }
 
 /**

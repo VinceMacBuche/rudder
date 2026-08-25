@@ -234,6 +234,13 @@ trait EndpointSchema {
 
   // specific mapping of ACL that has access to some part of this endpoint
   def otherAcls: Map[AuthorizationType, List[ApiAclElement]] = Map.empty
+
+  // When true, holding *any* permission (including a permission defined in a plugin, unknown here)
+  // gives access to that endpoint, whatever `authz` says. A user with no permission at all
+  // (`no_rights`) is still denied.
+  // It MUST only be used by endpoints which filter the data they return based on the permissions of
+  // the caller (ex: event logs, which only return the events the caller is allowed to read).
+  def openToAnyAuthz: Boolean = false
 }
 
 trait EndpointSchema0 extends EndpointSchema {

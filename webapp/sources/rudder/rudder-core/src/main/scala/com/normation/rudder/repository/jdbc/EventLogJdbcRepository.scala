@@ -329,15 +329,16 @@ object EventLogJdbcRepository {
     val excludePrincipals =
       filter.flatMap(f => f.principal).flatMap(p => p.exclude.map(nec => fragments.notIn(fr"principal", nec)))
 
+    // an event type can have several serialized values in database (legacy ones), all of them must be matched
     val includeTypes: Option[Fragment] = {
       filter
         .flatMap(f => f.typeFilter)
-        .flatMap(p => p.include.map(nec => fragments.in(fr"eventtype", nec.map(_.serialize))))
+        .flatMap(p => p.include.map(nec => fragments.in(fr"eventtype", nec.flatMap(EventTypeFactory.serializations))))
     }
     val excludeTypes: Option[Fragment] = {
       filter
         .flatMap(f => f.typeFilter)
-        .flatMap(p => p.exclude.map(nec => fragments.notIn(fr"eventtype", nec.map(_.serialize))))
+        .flatMap(p => p.exclude.map(nec => fragments.notIn(fr"eventtype", nec.flatMap(EventTypeFactory.serializations))))
     }
 
     val search = filter.flatMap(f => f.search).flatMap(toFragment)

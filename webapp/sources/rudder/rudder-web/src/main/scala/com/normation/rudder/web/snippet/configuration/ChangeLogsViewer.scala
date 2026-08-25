@@ -43,7 +43,9 @@ import com.normation.eventlog.EventLog
 import com.normation.eventlog.EventLogRequest
 import com.normation.eventlog.EventLogRequest.Column.ID
 import com.normation.eventlog.EventLogRequest.Direction
+import com.normation.rudder.Rights
 import com.normation.rudder.tenants.QueryContext
+import com.normation.rudder.users.CurrentUser
 import net.liftweb.common.*
 import net.liftweb.http.SecureDispatchSnippet
 import scala.xml.NodeSeq
@@ -57,7 +59,7 @@ class ChangeLogsViewer extends SecureDispatchSnippet with Loggable {
   private val eventList       = RudderConfig.eventListDisplayer
   private val gridName        = "changeLogsGrid"
 
-  def getLastEvents(implicit qc: QueryContext): Box[Seq[EventLog]] = {
+  def getLastEvents(rights: Rights)(implicit qc: QueryContext): Box[Seq[EventLog]] = {
     val filter = EventLogRequest(
       start = 0,
       length = 1000,
@@ -69,13 +71,18 @@ class ChangeLogsViewer extends SecureDispatchSnippet with Loggable {
       None
     )
     eventLogService
-      .getUserEventLogs(Some(filter))
+      .getUserEventLogs(Some(filter), rights)
       .toBox
 
   }
 
   def secureDispatch: QueryContext ?=> PartialFunction[String, NodeSeq => NodeSeq] = {
-    case "display" => { _ => eventList.display(gridName, () => getLastEvents) }
+    case "display" => { _ =>
+      // permissions of the user must be resolved now: the ajax callbacks below are executed in an
+      // other request, where the request-scoped `CurrentUser` is not the one of that user anymore
+      val rights = CurrentUser.getRights
+      eventList.display(gridName, rights, () => getLastEvents(rights))
+    }
   }
 
 }

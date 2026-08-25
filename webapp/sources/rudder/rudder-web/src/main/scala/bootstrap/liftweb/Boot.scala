@@ -53,6 +53,7 @@ import com.normation.plugins.RudderPluginDef
 import com.normation.plugins.RudderPluginLicenseStatus
 import com.normation.plugins.RudderPluginModule
 import com.normation.plugins.RudderPluginVersion
+import com.normation.rudder.ActionType
 import com.normation.rudder.AuthorizationType
 import com.normation.rudder.AuthorizationType as Authz
 import com.normation.rudder.domain.eventlog.ApplicationStarted
@@ -220,6 +221,20 @@ object Boot {
   // isEnabled evaluation must be by name to reflect current status.
   def needPermsWith(isEnabled: => Boolean, requiredAuthz: AuthorizationType*): TestAccess = {
     TestAccess(() => userIsAllowedWith("/secure/index", isEnabled, requiredAuthz*))
+  }
+
+  // shortcut for the pages which are accessible with any read permission because they filter their
+  // content based on the permissions of the user (ex: change logs).
+  // Permissions can be added by plugins, so they can't be enumerated here: we check the action.
+  def needAnyReadPerm: TestAccess = {
+    TestAccess(() => {
+      val rights = CurrentUser.getRights
+      if (rights.grantsAll || rights.authorizationTypes.exists(_.action == ActionType.VALUE.READ.name)) {
+        Empty
+      } else {
+        Full(RedirectWithState("/secure/index", redirection))
+      }
+    })
   }
 }
 
@@ -782,8 +797,9 @@ class Boot extends Loggable {
           >> Hidden,
         Menu("240-global-parameters", <span>Global properties</span>) / "secure" / "configurationManager" / "parameterManagement"
           >> needPerms(Authz.Parameter.Read),
+        // event logs are filtered based on the permissions of the user, see EventLogType.readAuthz
         Menu("280-event-logs", <span>Change logs</span>) / "secure" / "configurationManager" / "changeLogs"
-          >> needPerms(Authz.Administration.Read)
+          >> needAnyReadPerm
       )
     }
 

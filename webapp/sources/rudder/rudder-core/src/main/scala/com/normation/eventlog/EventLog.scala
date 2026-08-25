@@ -20,9 +20,12 @@
 
 package com.normation.eventlog
 
+import com.normation.errors.SecurityError
 import com.normation.eventlog.EventLogRequest.IncludeExclude
 import com.normation.eventlog.EventLogRequest.PrincipalFilter
 import com.normation.eventlog.EventLogRequest.TypeFilter
+import com.normation.rudder.AuthorizationType
+import com.normation.rudder.Rights
 import com.normation.rudder.domain.eventlog.*
 import com.normation.rudder.tenants.ChangeContext
 import com.normation.rudder.tenants.SecurityTag
@@ -77,6 +80,15 @@ trait EventLogType extends PartialFunction[String, EventLogType] {
   def serialize: String
 
   def canRollback: Boolean
+
+  /**
+   * The permissions that give read access to the events of that type: having at least one of them
+   * is enough (`OR` semantic), see `EventLogRequest.restrictToReadable`.
+   *
+   * There is no default value on purpose: each event type must state who is allowed to read it.
+   * For an event that is only meaningful for administrators, use `Set(AuthorizationType.Administration.Read)`.
+   */
+  def readAuthz: Set[AuthorizationType]
 
   override def isDefinedAt(x: String): Boolean = {
     serialize == x
@@ -224,8 +236,16 @@ object EventLog {
   val emptyDetails: Elem = withContent(NodeSeq.Empty)
 }
 
+/*
+ * An event log that the actor is not allowed to read, surfaced as a `SecurityError` so that it is
+ * distinguishable (and auditable), see `EventLogType.readAuthz`.
+ */
+final case class EventLogSecurityError(msg: String) extends SecurityError
+
 case object UnknownEventLogType extends NoRollbackEventLogType {
   def serialize = "UnknownType"
+  // fail closed: we have no idea what that event is about
+  val readAuthz: Set[AuthorizationType] = Set(AuthorizationType.Administration.Read)
 }
 
 case class EventLogRequest(
@@ -257,6 +277,32 @@ case class EventLogRequest(
 
   def addUserFilters: EventLogRequest = {
     this.excludeRudderActor.excludeAutomaticallyGeneratedType
+  }
+
+  /**
+   * Restrict that request to the event types the given permissions allow to read
+   * (see `EventLogType.readAuthz`). The types explicitly asked for in the request are kept,
+   * minus the ones the permissions don't allow.
+   *
+   * `None` means that not a single event type can be read: the caller must then answer an empty
+   * result *without* querying the database (fail closed).
+   *
+   * Administrators (`any_rights`) are not restricted at all, so that they keep seeing the event
+   * types that rudder-core does not know about, typically the ones defined in plugins.
+   */
+  def restrictToReadable(rights: Rights): Option[EventLogRequest] = {
+    if (rights.grantsAll) {
+      Some(this)
+    } else {
+      val readable = EventTypeFactory.eventTypes.filter(t => rights.hasAny(t.readAuthz))
+      val included = typeFilter.flatMap(_.include) match {
+        case None          => readable
+        case Some(include) => readable.filter(include.contains)
+      }
+      NonEmptyChunk
+        .fromIterableOption(included)
+        .map(nec => this.copy(typeFilter = Some(TypeFilter(Some(nec), typeFilter.flatMap(_.exclude)))))
+    }
   }
 }
 

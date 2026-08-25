@@ -296,6 +296,31 @@ case class Rights private (authorizationTypes: Set[AuthorizationType]) {
 
   def displayAuthorizations: String = authorizationTypes.map(_.id).toList.sorted.mkString(", ")
 
+  /**
+   * True when everything is granted, including permissions unknown here (ie the ones a plugin may
+   * register later on): this is the rudder administrator case.
+   */
+  def grantsAll: Boolean = authorizationTypes.contains(AuthorizationType.AnyRights)
+
+  /**
+   * Check that permission is granted, taking care of the special `any_rights` and `no_rights` cases.
+   */
+  def has(authz: AuthorizationType): Boolean = {
+    if (authorizationTypes.contains(AuthorizationType.NoRights)) false
+    else if (grantsAll) true
+    else {
+      authz match {
+        case AuthorizationType.NoRights => false
+        case _                          => authorizationTypes.contains(authz)
+      }
+    }
+  }
+
+  /**
+   * Check that at least one of these permissions is granted ("OR" semantic).
+   */
+  def hasAny(authzs: Iterable[AuthorizationType]): Boolean = authzs.exists(has)
+
   override def equals(other: Any): Boolean = other match {
     case that: Rights => this.authorizationTypes == that.authorizationTypes
     case _ => false

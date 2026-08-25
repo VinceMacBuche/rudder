@@ -45,6 +45,7 @@ import com.normation.errors.Inconsistency
 import com.normation.errors.IOResult
 import com.normation.errors.SystemError
 import com.normation.eventlog.*
+import com.normation.rudder.Rights
 import com.normation.rudder.batch.CurrentDeploymentStatus
 import com.normation.rudder.domain.eventlog.*
 import com.normation.rudder.domain.logger.EventLogsLoggerPure
@@ -66,27 +67,41 @@ class EventLogServiceImpl(val repository: EventLogRepository) extends EventLogSe
    * @param filter the filter case class
    * @return the list of event logs for users.
    */
-  override def getUserEventLogs(filter: Option[EventLogRequest])(implicit qc: QueryContext): IOResult[Seq[EventLog]] = {
-    (for {
-      events <-
+  override def getUserEventLogs(filter: Option[EventLogRequest], rights: Rights)(implicit
+      qc: QueryContext
+  ): IOResult[Seq[EventLog]] = {
+    userFilter(filter, rights) match {
+      // the user can't read any event type: no need to query the database
+      case None    => Seq.empty.succeed
+      case Some(f) =>
         repository
-          .getEventLogByCriteria(Some(filter.getOrElse(EventLogRequest.emptyFilter).addUserFilters))
+          .getEventLogByCriteria(Some(f))
           .chainError(
             s"Error when trying fetch event logs from database for page ${filter.map(_.start).getOrElse(0) / filter.map(_.length).getOrElse(0) + 1}"
           )
-    } yield {
-      events
-    }).catchSystemErrors
+          .catchSystemErrors
+    }
   }
 
-  override def getUserEventLogCount(filter: Option[EventLogRequest])(implicit qc: QueryContext): IOResult[Long] = {
-    (for {
-      events <- repository
-                  .getEventLogCount(Some(filter.getOrElse(EventLogRequest.emptyFilter).addUserFilters))
-                  .chainError(s"Error when counting event logs from database")
-    } yield {
-      events
-    }).catchSystemErrors
+  override def getUserEventLogCount(filter: Option[EventLogRequest], rights: Rights)(implicit
+      qc: QueryContext
+  ): IOResult[Long] = {
+    userFilter(filter, rights) match {
+      case None    => 0L.succeed
+      case Some(f) =>
+        repository
+          .getEventLogCount(Some(f))
+          .chainError(s"Error when counting event logs from database")
+          .catchSystemErrors
+    }
+  }
+
+  /*
+   * Complete the filter with the "user event logs" ones, then restrict it to what the caller is
+   * allowed to read. `None` means: nothing at all can be read.
+   */
+  private def userFilter(filter: Option[EventLogRequest], rights: Rights): Option[EventLogRequest] = {
+    filter.getOrElse(EventLogRequest.emptyFilter).addUserFilters.restrictToReadable(rights)
   }
 }
 

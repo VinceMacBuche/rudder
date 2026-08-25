@@ -244,18 +244,22 @@ sealed trait EventLogApi extends EnumEntry with EndpointSchema with SortIndex {
 }
 
 object EventLogApi extends Enum[EventLogApi] with ApiModuleProvider[EventLogApi] {
+  // Both endpoints below are open to any permission: they only return the event logs whose type the
+  // caller is allowed to read (see EventLogType.readAuthz)
   case object GetEventLogs extends EventLogApi with InternalApi with ZeroParam with StartsAtVersion2 with SortIndex {
     val z: Int = implicitly[Line].value
     val description    = "Get event logs based on filters"
     val (action, path) = POST / "eventlog"
-    val authz: List[AuthorizationType] = AuthorizationType.Administration.Read :: Nil
+    val authz:                   List[AuthorizationType] = Nil
+    override val openToAnyAuthz: Boolean                 = true
   }
 
   case object GetEventLogDetails extends EventLogApi with InternalApi with OneParam with StartsAtVersion2 with SortIndex {
     val z: Int = implicitly[Line].value
     val description    = "Get details of a specific event log"
     val (action, path) = GET / "eventlog" / "{id}" / "details"
-    val authz: List[AuthorizationType] = AuthorizationType.Administration.Read :: Nil
+    val authz:                   List[AuthorizationType] = Nil
+    override val openToAnyAuthz: Boolean                 = true
   }
 
   case object RollbackEventLog extends EventLogApi with InternalApi with OneParam with StartsAtVersion2 with SortIndex {

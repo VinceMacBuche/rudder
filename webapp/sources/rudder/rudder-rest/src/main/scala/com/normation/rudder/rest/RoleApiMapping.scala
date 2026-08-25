@@ -65,9 +65,14 @@ class AuthorizationMappingListEndpoint(endpoints: List[EndpointSchema]) extends 
   // merge maps using List monoid to add acls for the same authz
   private val allAcls: Map[AuthorizationType, List[ApiAclElement]] = acls |+| otherAcls
 
-  override def mapAuthorization(authz: AuthorizationType): List[ApiAclElement] = {
-    allAcls.get(authz).getOrElse(Nil)
+  // endpoints that any permission gives access to, see `EndpointSchema.openToAnyAuthz`. They can't be
+  // mapped by authorization, since permissions defined in plugins are not known here.
+  private val openAcls: List[ApiAclElement] = endpoints.collect { case e if e.openToAnyAuthz => AuthzForApi(e) }
 
+  override def mapAuthorization(authz: AuthorizationType): List[ApiAclElement] = {
+    // `no_rights` must never give access to anything, even to the endpoints open to any permission
+    val open = if (authz == AuthorizationType.NoRights) Nil else openAcls
+    allAcls.get(authz).getOrElse(Nil) ::: open
   }
 }
 

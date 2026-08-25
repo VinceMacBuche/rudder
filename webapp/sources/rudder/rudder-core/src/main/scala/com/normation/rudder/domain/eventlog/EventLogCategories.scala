@@ -38,6 +38,9 @@
 package com.normation.rudder.domain.eventlog
 
 import com.normation.eventlog.*
+import com.normation.rudder.AuthorizationType
+import zio.Chunk
+import zio.NonEmptyChunk
 
 ///// Define interesting categories /////
 case object UserLogCategory                extends EventLogCategory
@@ -69,202 +72,264 @@ case object NodeLogCategory                extends EventLogCategory
 // the promises related event type
 case object AutomaticStartDeployementEventType extends NoRollbackEventLogType {
   def serialize = "AutomaticStartDeployement"
+  val readAuthz: Set[AuthorizationType] = Set(AuthorizationType.Deployment.Read)
 }
 case object ManualStartDeployementEventType    extends NoRollbackEventLogType {
   def serialize = "ManualStartDeployement"
+  val readAuthz: Set[AuthorizationType] = Set(AuthorizationType.Deployment.Read)
 }
 case object SuccessfulDeploymentEventType      extends NoRollbackEventLogType {
   def serialize = "SuccessfulDeployment"
+  val readAuthz: Set[AuthorizationType] = Set(AuthorizationType.Deployment.Read)
 }
 case object FailedDeploymentEventType          extends NoRollbackEventLogType {
   def serialize = "FailedDeployment"
+  val readAuthz: Set[AuthorizationType] = Set(AuthorizationType.Deployment.Read)
 }
 // the login related event type
 case object LoginEventType                     extends NoRollbackEventLogType {
   def serialize = "UserLogin"
+  val readAuthz: Set[AuthorizationType] = Set(AuthorizationType.Administration.Read)
 }
 case object BadCredentialsEventType            extends NoRollbackEventLogType {
   def serialize = "BadCredentials"
+  val readAuthz: Set[AuthorizationType] = Set(AuthorizationType.Administration.Read)
 }
 case object LogoutEventType                    extends NoRollbackEventLogType {
   def serialize = "UserLogout"
+  val readAuthz: Set[AuthorizationType] = Set(AuthorizationType.Administration.Read)
 }
 case object CreateAPIAccountEventType          extends NoRollbackEventLogType {
   def serialize = "CreateAPIAccount"
+  val readAuthz: Set[AuthorizationType] = Set(AuthorizationType.Administration.Read)
 }
 case object DeleteAPIAccountEventType          extends NoRollbackEventLogType {
   def serialize = "DeleteAPIAccount"
+  val readAuthz: Set[AuthorizationType] = Set(AuthorizationType.Administration.Read)
 }
 case object ModifyAPITokenEventType            extends NoRollbackEventLogType {
   def serialize = "ModifyAPIAccount"
+  val readAuthz: Set[AuthorizationType] = Set(AuthorizationType.Administration.Read)
 }
 // the node related event type
 case object AddNodeGroupEventType              extends RollbackEventLogType   {
   def serialize = "NodeGroupAdded"
+  val readAuthz: Set[AuthorizationType] = Set(AuthorizationType.Group.Read)
 }
 case object DeleteNodeGroupEventType           extends RollbackEventLogType   {
   def serialize = "NodeGroupDeleted"
+  val readAuthz: Set[AuthorizationType] = Set(AuthorizationType.Group.Read)
 }
 case object ModifyNodeGroupEventType           extends RollbackEventLogType   {
   def serialize = "NodeGroupModified"
+  val readAuthz: Set[AuthorizationType] = Set(AuthorizationType.Group.Read)
 }
 
-// change request related
+// change request related: the people who can see change requests are the ones taking part in the
+// validation workflow
 case object AddChangeRequestEventType    extends NoRollbackEventLogType {
   def serialize = "ChangeRequestAdded"
+  val readAuthz: Set[AuthorizationType] = ChangeRequestEventLogType.readAuthz
 }
 case object DeleteChangeRequestEventType extends NoRollbackEventLogType {
   def serialize = "ChangeRequestDeleted"
+  val readAuthz: Set[AuthorizationType] = ChangeRequestEventLogType.readAuthz
 }
 case object ModifyChangeRequestEventType extends NoRollbackEventLogType {
   def serialize = "ChangeRequestModified"
+  val readAuthz: Set[AuthorizationType] = ChangeRequestEventLogType.readAuthz
+}
+
+object ChangeRequestEventLogType {
+  val readAuthz: Set[AuthorizationType] =
+    Set(AuthorizationType.Validator.Read, AuthorizationType.Deployer.Read, AuthorizationType.Configuration.Read)
 }
 
 // secret related
 case object AddSecretEventType extends NoRollbackEventLogType {
   def serialize = "SecretAdded"
+  val readAuthz: Set[AuthorizationType] = Set(AuthorizationType.Administration.Read)
 }
 
 case object ModifySecretEventType extends NoRollbackEventLogType {
   def serialize = "SecretModified"
+  val readAuthz: Set[AuthorizationType] = Set(AuthorizationType.Administration.Read)
 }
 
 case object DeleteSecretEventType extends NoRollbackEventLogType {
   def serialize = "SecretDeleted"
+  val readAuthz: Set[AuthorizationType] = Set(AuthorizationType.Administration.Read)
 }
 
 // directive related
 case object AddDirectiveEventType    extends RollbackEventLogType {
   def serialize = "DirectiveAdded"
+  val readAuthz: Set[AuthorizationType] = Set(AuthorizationType.Directive.Read)
 }
 case object DeleteDirectiveEventType extends RollbackEventLogType {
   def serialize = "DirectiveDeleted"
+  val readAuthz: Set[AuthorizationType] = Set(AuthorizationType.Directive.Read)
 }
 case object ModifyDirectiveEventType extends RollbackEventLogType {
   def serialize = "DirectiveModified"
+  val readAuthz: Set[AuthorizationType] = Set(AuthorizationType.Directive.Read)
 }
 
 // Editor technique related
 case object AddEditorTechniqueEventType    extends RollbackEventLogType {
   def serialize = "EditorTechniqueAdded"
+  val readAuthz: Set[AuthorizationType] = Set(AuthorizationType.Technique.Read)
 }
 case object DeleteEditorTechniqueEventType extends RollbackEventLogType {
   def serialize = "EditorTechniqueDeleted"
+  val readAuthz: Set[AuthorizationType] = Set(AuthorizationType.Technique.Read)
 }
 case object ModifyEditorTechniqueEventType extends RollbackEventLogType {
   def serialize = "EditorTechniqueModified"
+  val readAuthz: Set[AuthorizationType] = Set(AuthorizationType.Technique.Read)
 }
 
 // the generic event related event type
 case object ApplicationStartedEventType extends NoRollbackEventLogType {
   def serialize = "ApplicationStarted"
+  val readAuthz: Set[AuthorizationType] = Set(AuthorizationType.Administration.Read)
 }
 case object ActivateRedButtonEventType  extends NoRollbackEventLogType {
   def serialize = "ActivateRedButton"
+  val readAuthz: Set[AuthorizationType] = Set(AuthorizationType.Administration.Read)
 }
 case object ReleaseRedButtonEventType   extends NoRollbackEventLogType {
   def serialize = "ReleaseRedButton"
+  val readAuthz: Set[AuthorizationType] = Set(AuthorizationType.Administration.Read)
 }
 
 case object ReloadTechniqueLibraryType extends NoRollbackEventLogType {
   def serialize = "ReloadTechniqueLibrary"
+  val readAuthz: Set[AuthorizationType] = Set(AuthorizationType.Technique.Read)
 }
 
 case object AddTechniqueEventType extends NoRollbackEventLogType {
   def serialize = "TechniqueAdded"
+  val readAuthz: Set[AuthorizationType] = Set(AuthorizationType.Technique.Read)
 }
 
 case object ModifyTechniqueEventType extends NoRollbackEventLogType {
   def serialize = "TechniqueModified"
+  val readAuthz: Set[AuthorizationType] = Set(AuthorizationType.Technique.Read)
 }
 
 case object DeleteTechniqueEventType extends NoRollbackEventLogType {
   def serialize = "TechniqueDeleted"
+  val readAuthz: Set[AuthorizationType] = Set(AuthorizationType.Technique.Read)
 }
 
 // rule related event type
 case object AddRuleEventType    extends RollbackEventLogType   {
   def serialize = "RuleAdded"
+  val readAuthz: Set[AuthorizationType] = Set(AuthorizationType.Rule.Read)
 }
 case object DeleteRuleEventType extends RollbackEventLogType   {
   def serialize = "RuleDeleted"
+  val readAuthz: Set[AuthorizationType] = Set(AuthorizationType.Rule.Read)
 }
 case object ModifyRuleEventType extends RollbackEventLogType   {
   def serialize = "RuleModified"
+  val readAuthz: Set[AuthorizationType] = Set(AuthorizationType.Rule.Read)
 }
 // asset related event type
 case object AcceptNodeEventType extends NoRollbackEventLogType {
   def serialize = "AcceptNode"
+  val readAuthz: Set[AuthorizationType] = Set(AuthorizationType.Node.Read)
 }
 case object RefuseNodeEventType extends NoRollbackEventLogType {
   def serialize = "RefuseNode"
+  val readAuthz: Set[AuthorizationType] = Set(AuthorizationType.Node.Read)
 }
 case object DeleteNodeEventType extends NoRollbackEventLogType {
   def serialize = "DeleteNode"
+  val readAuthz: Set[AuthorizationType] = Set(AuthorizationType.Node.Read)
 }
 
 // the system event type
 case object ClearCacheEventType         extends NoRollbackEventLogType {
   def serialize = "ClearCache"
+  val readAuthz: Set[AuthorizationType] = Set(AuthorizationType.Administration.Read)
 }
 case object UpdatePolicyServerEventType extends NoRollbackEventLogType {
   def serialize = "UpdatePolicyServer"
+  val readAuthz: Set[AuthorizationType] = Set(AuthorizationType.Administration.Read)
 }
 
-// Import/export
+// Import/export: archive management is an administration feature
 case object ExportGroupsEventType           extends NoRollbackEventLogType {
   def serialize = "ExportGroups"
+  val readAuthz: Set[AuthorizationType] = Set(AuthorizationType.Administration.Read)
 }
 case object ImportGroupsEventType           extends RollbackEventLogType   {
   def serialize = "ImportGroups"
+  val readAuthz: Set[AuthorizationType] = Set(AuthorizationType.Administration.Read)
 }
 case object ExportTechniqueLibraryEventType extends NoRollbackEventLogType {
   def serialize = "ExportTechniqueLibrary"
+  val readAuthz: Set[AuthorizationType] = Set(AuthorizationType.Administration.Read)
 }
 case object ImportTechniqueLibraryEventType extends RollbackEventLogType   {
   def serialize = "ImportTechniqueLibrary"
+  val readAuthz: Set[AuthorizationType] = Set(AuthorizationType.Administration.Read)
 }
 case object ExportRulesEventType            extends NoRollbackEventLogType {
   def serialize = "ExportRules"
+  val readAuthz: Set[AuthorizationType] = Set(AuthorizationType.Administration.Read)
 }
 case object ImportRulesEventType            extends RollbackEventLogType   {
   def serialize = "ImportRules"
+  val readAuthz: Set[AuthorizationType] = Set(AuthorizationType.Administration.Read)
 }
 case object ExportParametersEventType       extends NoRollbackEventLogType {
   def serialize = "ExportParameters"
+  val readAuthz: Set[AuthorizationType] = Set(AuthorizationType.Administration.Read)
 }
 case object ImportParametersEventType       extends RollbackEventLogType   {
   def serialize = "ImportParameters"
+  val readAuthz: Set[AuthorizationType] = Set(AuthorizationType.Administration.Read)
 }
 case object ExportFullArchiveEventType      extends NoRollbackEventLogType {
   def serialize = "ExportFullArchive"
+  val readAuthz: Set[AuthorizationType] = Set(AuthorizationType.Administration.Read)
 }
 case object ImportFullArchiveEventType      extends RollbackEventLogType   {
   def serialize = "ImportFullArchive"
+  val readAuthz: Set[AuthorizationType] = Set(AuthorizationType.Administration.Read)
 }
 case object RollbackEventType               extends NoRollbackEventLogType {
   def serialize = "Rollback"
+  val readAuthz: Set[AuthorizationType] = Set(AuthorizationType.Administration.Read)
 }
 case object WorkflowStepChangedEventType    extends NoRollbackEventLogType {
   def serialize = "WorkflowStepChanged"
+  val readAuthz: Set[AuthorizationType] = ChangeRequestEventLogType.readAuthz
 }
 
 // Parameter event type
 case object AddGlobalParameterEventType extends RollbackEventLogType {
   def serialize = "GlobalParameterAdded"
+  val readAuthz: Set[AuthorizationType] = Set(AuthorizationType.Parameter.Read)
 }
 
 case object DeleteGlobalParameterEventType extends RollbackEventLogType {
   def serialize = "GlobalParameterDeleted"
+  val readAuthz: Set[AuthorizationType] = Set(AuthorizationType.Parameter.Read)
 }
 
 case object ModifyGlobalParameterEventType extends RollbackEventLogType {
   def serialize = "GlobalParameterModified"
+  val readAuthz: Set[AuthorizationType] = Set(AuthorizationType.Parameter.Read)
 }
 
 // node: only modify for now
 case object ModifyNodeEventType extends RollbackEventLogType {
   def serialize = "NodeModified"
+  val readAuthz: Set[AuthorizationType] = Set(AuthorizationType.Node.Read)
 
   // for node, we have more "is defined at", because till 3.2,
   // we had several node events that we merged together in 4.0
@@ -276,14 +341,18 @@ case object ModifyNodeEventType extends RollbackEventLogType {
 
 case object PromoteNodeToRelayEventType extends NoRollbackEventLogType {
   def serialize = "NodePromotedToRelay"
+  val readAuthz: Set[AuthorizationType] = Set(AuthorizationType.Node.Read)
 }
 
 case object DemoteRelayToNodeEventType extends NoRollbackEventLogType {
   def serialize = "RelayDemotedToNode"
+  val readAuthz: Set[AuthorizationType] = Set(AuthorizationType.Node.Read)
 }
 
+// global properties are rudder settings
 sealed trait ModifyGlobalPropertyEventType extends NoRollbackEventLogType {
   def propertyName: String
+  val readAuthz:    Set[AuthorizationType] = Set(AuthorizationType.Administration.Read)
 }
 
 case object ModifySendServerMetricsEventType extends ModifyGlobalPropertyEventType {
@@ -431,6 +500,7 @@ object EventTypeFactory {
     RollbackEventType,
     AddChangeRequestEventType,
     ModifyChangeRequestEventType,
+    DeleteChangeRequestEventType,
     WorkflowStepChangedEventType,
     AddGlobalParameterEventType,
     DeleteGlobalParameterEventType,
@@ -452,6 +522,16 @@ object EventTypeFactory {
 
   def get(s: String): Option[EventLogType] = {
     eventTypesMap.get(s)
+  }
+
+  /*
+   * All the serialized values that identify that event type in database, ie the current one plus the
+   * legacy ones (see `extraEventTypeMap`). Needed to build exact filters on the `eventtype` column.
+   */
+  def serializations(eventType: EventLogType): NonEmptyChunk[String] = {
+    NonEmptyChunk(eventType.serialize) ++ Chunk.fromIterable(extraEventTypeMap.collect {
+      case (serialized, t) if t == eventType => serialized
+    })
   }
 }
 

@@ -39,6 +39,8 @@ package com.normation.rudder.rest.internal
 
 import com.normation.errors.*
 import com.normation.eventlog.*
+import com.normation.rudder.AuthorizationType
+import com.normation.rudder.Rights
 import com.normation.rudder.api.ApiVersion
 import com.normation.rudder.domain.eventlog.*
 import com.normation.rudder.domain.logger.EventLogsLoggerPure
@@ -98,13 +100,14 @@ class EventLogAPI(
     ): LiftResponse = {
       implicit val prettify: Boolean      = params.prettify
       implicit val qc:       QueryContext = authzToken.qc
+      val rights = authzToken.user.authz
 
       (for {
         restFilter  <- req.fromJson[RestEventLogFilter].toIO
         filter       = restFilter.toEventLogRequest
-        totalRecord <- coreService.getUserEventLogCount(filter = None)
-        totalFilter <- coreService.getUserEventLogCount(filter = Some(filter))
-        events      <- coreService.getUserEventLogs(filter = Some(filter))
+        totalRecord <- coreService.getUserEventLogCount(filter = None, rights)
+        totalFilter <- coreService.getUserEventLogCount(filter = Some(filter), rights)
+        events      <- coreService.getUserEventLogs(filter = Some(filter), rights)
         res          = EventLogSlice(events, totalRecord, totalFilter)
       } yield {
         (restFilter.draw, res)
@@ -140,7 +143,7 @@ class EventLogAPI(
       (
         for {
           evId    <- id.toLongOption.notOptional("event log ID is not a long integer : " + id)
-          details <- service.getEventLogDetails(evId)
+          details <- service.getEventLogDetails(evId, authzToken.user.authz)
         } yield {
           details
         }
@@ -189,7 +192,7 @@ class EventLogAPI(
     }
   }
 
-  def getEventLogsOfGivenTypes(req: Req, params: DefaultParams, include: NonEmptyChunk[EventLogType])(using
+  def getEventLogsOfGivenTypes(req: Req, params: DefaultParams, include: NonEmptyChunk[EventLogType], rights: Rights)(using
       qc: QueryContext
   ): LiftResponse = {
 
@@ -203,9 +206,9 @@ class EventLogAPI(
       filter       = queryFilter.copy(typeFilter = {
                        Some(EventLogRequest.TypeFilter(include = Some(include), exclude = None))
                      })
-      totalRecord <- coreService.getUserEventLogCount(filter = None)
-      totalFilter <- coreService.getUserEventLogCount(filter = Some(filter))
-      events      <- coreService.getUserEventLogs(filter = Some(filter))
+      totalRecord <- coreService.getUserEventLogCount(filter = None, rights)
+      totalFilter <- coreService.getUserEventLogCount(filter = Some(filter), rights)
+      events      <- coreService.getUserEventLogs(filter = Some(filter), rights)
       res          = EventLogSlice(events, totalRecord, totalFilter)
     } yield {
       (restFilter.draw, res)
@@ -240,7 +243,8 @@ class EventLogAPI(
       getEventLogsOfGivenTypes(
         req,
         params,
-        NonEmptyChunk(AddDirectiveEventType, DeleteDirectiveEventType, ModifyDirectiveEventType)
+        NonEmptyChunk(AddDirectiveEventType, DeleteDirectiveEventType, ModifyDirectiveEventType),
+        authzToken.user.authz
       )
     }
   }
@@ -260,7 +264,8 @@ class EventLogAPI(
       getEventLogsOfGivenTypes(
         req,
         params,
-        NonEmptyChunk(AddRuleEventType, DeleteRuleEventType, ModifyRuleEventType)
+        NonEmptyChunk(AddRuleEventType, DeleteRuleEventType, ModifyRuleEventType),
+        authzToken.user.authz
       )
     }
   }
@@ -280,7 +285,8 @@ class EventLogAPI(
       getEventLogsOfGivenTypes(
         req,
         params,
-        NonEmptyChunk(AddNodeGroupEventType, DeleteNodeGroupEventType, ModifyNodeGroupEventType)
+        NonEmptyChunk(AddNodeGroupEventType, DeleteNodeGroupEventType, ModifyNodeGroupEventType),
+        authzToken.user.authz
       )
     }
   }
@@ -300,7 +306,8 @@ class EventLogAPI(
       getEventLogsOfGivenTypes(
         req,
         params,
-        NonEmptyChunk(AddEditorTechniqueEventType, DeleteEditorTechniqueEventType, ModifyEditorTechniqueEventType)
+        NonEmptyChunk(AddEditorTechniqueEventType, DeleteEditorTechniqueEventType, ModifyEditorTechniqueEventType),
+        authzToken.user.authz
       )
     }
   }
@@ -320,7 +327,8 @@ class EventLogAPI(
       getEventLogsOfGivenTypes(
         req,
         params,
-        NonEmptyChunk(AddGlobalParameterEventType, DeleteGlobalParameterEventType, ModifyGlobalParameterEventType)
+        NonEmptyChunk(AddGlobalParameterEventType, DeleteGlobalParameterEventType, ModifyGlobalParameterEventType),
+        authzToken.user.authz
       )
     }
   }
@@ -334,10 +342,16 @@ class EventLogService(
 ) {
   import EventLogService.*
 
-  def getEventLogDetails(id: Long)(implicit qc: QueryContext): IOResult[RestEventLogDetails] = {
+  def getEventLogDetails(id: Long, rights: Rights)(implicit qc: QueryContext): IOResult[RestEventLogDetails] = {
 
     (for {
       event <- repo.getEventLogById(id)
+      // fail closed: the actor must be allowed to read that kind of event
+      _     <- ZIO.when(!rights.hasAny(event.eventType.readAuthz)) {
+                 EventLogSecurityError(
+                   s"Event log with id '${id}' can not be read with the permissions of user '${qc.actor.name}'"
+                 ).fail
+               }
       crId  <- ZIO.foreach(event.id)(repo.getEventLogWithChangeRequest(_).notOptional("").map(_._2).catchAll(_ => None.succeed))
 
       htmlDetails        = eventLogDetailGenerator.displayDetails(event, crId.flatten)
@@ -347,7 +361,8 @@ class EventLogService(
       RestEventLogDetails(
         id.toString,
         htmlDetails,
-        event.canRollBack,
+        // rollback is an administration action: don't propose it to a user who can't do it
+        event.canRollBack && rights.has(AuthorizationType.Administration.Write),
         nodePropertiesDiff.map(_.transformInto[SimpleDiffJson[List[NodeProperty]]]),
         linesDiff.map(_.transformInto[SimpleDiffJson[String]])
       )
